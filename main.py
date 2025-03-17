@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import base64
+import uuid
 
 # Set page configuration
 st.set_page_config(
@@ -43,6 +45,33 @@ st.markdown("""
     .red-header {
         color: #C62828;
         font-weight: 600;
+    }
+    .copy-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+    }
+    /* Hide the copy icon when copy is successful */
+    .copy-success .copy-icon {
+        display: none;
+    }
+    /* Hide the check icon by default */
+    .check-icon {
+        display: none;
+    }
+    /* Show the check icon when copy is successful */
+    .copy-success .check-icon {
+        display: inline;
+    }
+    .copy-success::after {
+        content: "Copied!";
+        margin-left: 6px;
+        color: #4CAF50;
+    }
+    /* Hide the Streamlit default footer */
+    #MainMenu, footer, header { 
+        visibility: hidden; 
     }
 </style>
 """, unsafe_allow_html=True)
@@ -211,6 +240,57 @@ def generate_timeline_text(events):
     
     return text
 
+# Function to create a JS-based copy button
+def copy_button(text):
+    # Create a unique ID for this component
+    component_id = f"copy_button_{str(uuid.uuid4()).replace('-', '_')}"
+    
+    # Encode the text to avoid issues with quotes and special characters
+    encoded_text = base64.b64encode(text.encode()).decode()
+    
+    # JavaScript to handle copying to clipboard with success state
+    copy_js = f"""
+    <script>
+    function copyTextToClipboard_{component_id}() {{
+        // Decode the base64 text
+        const encodedText = "{encoded_text}";
+        const decodedText = atob(encodedText);
+        
+        // Create a temporary textarea element to copy from
+        const textarea = document.createElement('textarea');
+        textarea.value = decodedText;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        
+        // Select and copy the text
+        textarea.select();
+        document.execCommand('copy');
+        
+        // Clean up
+        document.body.removeChild(textarea);
+        
+        // Show success state
+        const btn = document.getElementById('{component_id}');
+        btn.classList.add('copy-success');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {{
+            btn.classList.remove('copy-success');
+        }}, 2000);
+    }}
+    </script>
+    
+    <button id="{component_id}" class="copy-btn" onclick="copyTextToClipboard_{component_id}()">
+        <span class="copy-icon">📋</span>
+        <span class="check-icon">✓</span>
+        Copy Timeline
+    </button>
+    """
+    
+    return copy_js
+
 # Main app function
 def main():
     # Load data
@@ -243,23 +323,25 @@ def main():
     # Generate timeline text
     timeline_text = generate_timeline_text(events)
     
-    # Timeline actions in columns for better layout
-    col1, col2 = st.columns(2)
+    # Create a copy button and a download button side by side
+    col1, col2 = st.columns([1, 3])
     
-    # Show timeline text when button is clicked
-    if col1.button("📋 View Timeline Text", type="primary"):
-        # Show collapsible code block for easy copying
-        with st.expander("Timeline Text (Click to expand/collapse)", expanded=True):
-            st.code(timeline_text, language="markdown")
-            st.info("⚠️ Select the text above and use Ctrl+C (or Cmd+C on Mac) to copy it to your clipboard.")
+    with col1:
+        # Custom copy button with JavaScript
+        st.markdown(copy_button(timeline_text), unsafe_allow_html=True)
     
-    # Download button is always available
-    col2.download_button(
-        label="💾 Download Timeline",
-        data=timeline_text,
-        file_name="timeline.md",
-        mime="text/markdown",
-    )
+    with col2:
+        # Download button as fallback
+        st.download_button(
+            label="Download Timeline",
+            data=timeline_text,
+            file_name="timeline.md",
+            mime="text/markdown",
+        )
+    
+    # Hidden content area for the timeline text (used for preview but can be hidden)
+    with st.expander("Preview Timeline"):
+        st.code(timeline_text, language="markdown")
     
     # Filter events
     filtered_events = events
