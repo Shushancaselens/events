@@ -231,7 +231,7 @@ def main():
     filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
     # Display events
-    for i, event in enumerate(filtered_events):
+    for event in filtered_events:
         date_formatted = format_date(event["date"])
         
         # Create expander for each event
@@ -256,20 +256,16 @@ def main():
             with citation_cols[1]:
                 st.markdown("**Addressed by:**")
                 status_cols = st.columns(2)
-                
-                # Claimant indicator - Blue when active
                 with status_cols[0]:
                     if has_claimant:
-                        st.info("Claimant")  # Blue indicator for active claimant
+                        st.success("Claimant")
                     else:
-                        st.text("Claimant")  # Gray text for inactive
-                
-                # Respondent indicator - Red when active  
+                        st.info("Claimant")
                 with status_cols[1]:
                     if has_respondent:
-                        st.error("Respondent")  # Red indicator for active respondent
+                        st.error("Respondent")
                     else:
-                        st.text("Respondent")  # Gray text for inactive
+                        st.info("Respondent")
             
             st.markdown("---")
             
@@ -277,13 +273,13 @@ def main():
             if event.get("pdf_name") or event.get("source_text"):
                 st.subheader("📄 Supporting Documents")
                 
-                for j, pdf_name in enumerate(event.get("pdf_name", [])):
-                    source_text = event.get("source_text", [""])[j] if j < len(event.get("source_text", [])) else ""
+                for i, pdf_name in enumerate(event.get("pdf_name", [])):
+                    source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
                     
                     with st.container():
                         st.markdown(f"**{pdf_name}**")
                         st.caption(source_text)
-                        st.button("Open Document", key=f"doc_{i}_{j}")
+                        st.button("Open Document", key=f"doc_{event['date']}_{i}")
                     st.markdown("---")
             
             # Submissions section
@@ -292,14 +288,12 @@ def main():
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
             
-            # Claimant submissions - with blue header
+            # Claimant submissions
             with claimant_col:
-                claimant_header = st.container()
-                with claimant_header:
-                    st.info("Claimant")  # Blue header for claimant
+                st.markdown("**Claimant**")
                 
                 if event.get("claimant_arguments"):
-                    for k, arg in enumerate(event["claimant_arguments"]):
+                    for idx, arg in enumerate(event["claimant_arguments"]):
                         with st.container():
                             st.markdown(f"**Page {arg['page']}**")
                             st.caption(arg['source_text'])
@@ -307,14 +301,12 @@ def main():
                 else:
                     st.caption("No claimant submissions")
             
-            # Respondent submissions - with red header
+            # Respondent submissions
             with respondent_col:
-                respondent_header = st.container()
-                with respondent_header:
-                    st.error("Respondent")  # Red header for respondent
+                st.markdown("**Respondent**")
                 
                 if event.get("respondent_arguments"):
-                    for m, arg in enumerate(event["respondent_arguments"]):
+                    for idx, arg in enumerate(event["respondent_arguments"]):
                         with st.container():
                             st.markdown(f"**Page {arg['page']}**")
                             st.caption(arg['source_text'])
