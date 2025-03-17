@@ -9,10 +9,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add custom CSS for styling
+# Add custom CSS for blue and red styling
 st.markdown("""
 <style>
-    /* Blue and red styling */
     .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
@@ -44,22 +43,6 @@ st.markdown("""
     .red-header {
         color: #C62828;
         font-weight: 600;
-    }
-    
-    /* Make expander headers bigger and bolder */
-    .streamlit-expanderHeader {
-        font-size: 18px !important;
-        font-weight: 700 !important;
-    }
-    
-    /* Add some extra space between expanders */
-    .streamlit-expanderContent {
-        margin-bottom: 15px;
-    }
-    
-    /* Style the date part specifically */
-    .event-date {
-        font-weight: 700;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -289,11 +272,8 @@ def main():
     for event in filtered_events:
         date_formatted = format_date(event["date"])
         
-        # Format the date with emphasis
-        title = f"<span class='event-date'>{date_formatted}</span>: {event['event']}"
-        
         # Create expander for each event
-        with st.expander(title):
+        with st.expander(f"{date_formatted}: {event['event']}"):
             # Calculate citation counts
             claimant_count = len(event.get("claimant_arguments", []))
             respondent_count = len(event.get("respondent_arguments", []))
