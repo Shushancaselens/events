@@ -9,59 +9,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add custom CSS for blue and red styling
-st.markdown("""
-<style>
-    /* Colors for parties */
-    .blue-pill {
-        background-color: #E3F2FD;
-        color: #1565C0;
-        border-radius: 12px;
-        padding: 4px 12px;
-        font-weight: 500;
-        display: inline-block;
-    }
-    .red-pill {
-        background-color: #FFEBEE;
-        color: #C62828;
-        border-radius: 12px;
-        padding: 4px 12px;
-        font-weight: 500;
-        display: inline-block;
-    }
-    .gray-pill {
-        background-color: #F5F5F5;
-        color: #9E9E9E;
-        border-radius: 12px;
-        padding: 4px 12px;
-        font-weight: 500;
-        display: inline-block;
-    }
-    .blue-header {
-        color: #1565C0;
-        font-weight: 600;
-    }
-    .red-header {
-        color: #C62828;
-        font-weight: 600;
-    }
-    
-    /* Make timeline event titles 20px */
-    .streamlit-expanderHeader {
-        font-size: 20px !important;
-    }
-    
-    /* Custom card for documents */
-    .document-card {
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 16px;
-        background-color: white;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Load the data directly in Python without JSON parsing
 @st.cache_data
 def load_data():
@@ -226,17 +173,6 @@ def generate_timeline_text(events):
     
     return text
 
-# Function to create a nicely formatted document card
-def document_card(title, content, button_text="Open Document", key=None):
-    with st.container():
-        st.markdown(f"""
-        <div class="document-card">
-            <div style="font-weight: 500;">{title}</div>
-            <div style="font-size: 14px; color: #616161; margin-top: 8px;">{content}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.button(f"📄 {button_text}", key=key)
-
 # Main app function
 def main():
     # Load data
@@ -295,7 +231,7 @@ def main():
     filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
     # Display events
-    for event in filtered_events:
+    for i, event in enumerate(filtered_events):
         date_formatted = format_date(event["date"])
         
         # Create expander for each event
@@ -310,30 +246,30 @@ def main():
             has_claimant = claimant_count > 0
             has_respondent = respondent_count > 0
             
-            # Citation counter and badges
+            # Citation counter and badges using pure Streamlit
             st.markdown("---")
             citation_cols = st.columns([1, 3])
             
             with citation_cols[0]:
-                # Number with label
-                st.container().markdown(f"""
-                <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; 
-                     padding: 4px 8px; text-align: center; width: fit-content;">
-                    <div style="font-size: 18px; font-weight: bold; color: #1E88E5;">{total_count}</div>
-                    <div style="font-size: 12px; color: #757575;">Citations</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.metric("Citations", total_count)
             
             with citation_cols[1]:
-                # Party badges
-                st.markdown("<span style='font-size: 14px; color: #555; margin-right: 10px;'>Addressed by:</span>", unsafe_allow_html=True)
-                claimant_class = "blue-pill" if has_claimant else "gray-pill"
-                respondent_class = "red-pill" if has_respondent else "gray-pill"
+                st.markdown("**Addressed by:**")
+                status_cols = st.columns(2)
                 
-                st.markdown(f"""
-                <span class="{claimant_class}">Claimant</span> 
-                <span class="{respondent_class}">Respondent</span>
-                """, unsafe_allow_html=True)
+                # Claimant indicator - Blue when active
+                with status_cols[0]:
+                    if has_claimant:
+                        st.info("Claimant")  # Blue indicator for active claimant
+                    else:
+                        st.text("Claimant")  # Gray text for inactive
+                
+                # Respondent indicator - Red when active  
+                with status_cols[1]:
+                    if has_respondent:
+                        st.error("Respondent")  # Red indicator for active respondent
+                    else:
+                        st.text("Respondent")  # Gray text for inactive
             
             st.markdown("---")
             
@@ -341,9 +277,14 @@ def main():
             if event.get("pdf_name") or event.get("source_text"):
                 st.subheader("📄 Supporting Documents")
                 
-                for i, pdf_name in enumerate(event.get("pdf_name", [])):
-                    source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
-                    document_card(pdf_name, source_text, key=f"doc_{event['date']}_{i}")
+                for j, pdf_name in enumerate(event.get("pdf_name", [])):
+                    source_text = event.get("source_text", [""])[j] if j < len(event.get("source_text", [])) else ""
+                    
+                    with st.container():
+                        st.markdown(f"**{pdf_name}**")
+                        st.caption(source_text)
+                        st.button("Open Document", key=f"doc_{i}_{j}")
+                    st.markdown("---")
             
             # Submissions section
             st.subheader("📝 Submissions")
@@ -351,23 +292,33 @@ def main():
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
             
-            # Claimant submissions
+            # Claimant submissions - with blue header
             with claimant_col:
-                st.markdown("<span class='blue-header'>Claimant</span>", unsafe_allow_html=True)
+                claimant_header = st.container()
+                with claimant_header:
+                    st.info("Claimant")  # Blue header for claimant
                 
                 if event.get("claimant_arguments"):
-                    for idx, arg in enumerate(event["claimant_arguments"]):
-                        document_card(f"Page {arg['page']}", arg['source_text'], key=f"claim_{event['date']}_{idx}")
+                    for k, arg in enumerate(event["claimant_arguments"]):
+                        with st.container():
+                            st.markdown(f"**Page {arg['page']}**")
+                            st.caption(arg['source_text'])
+                        st.markdown("---")
                 else:
                     st.caption("No claimant submissions")
             
-            # Respondent submissions
+            # Respondent submissions - with red header
             with respondent_col:
-                st.markdown("<span class='red-header'>Respondent</span>", unsafe_allow_html=True)
+                respondent_header = st.container()
+                with respondent_header:
+                    st.error("Respondent")  # Red header for respondent
                 
                 if event.get("respondent_arguments"):
-                    for idx, arg in enumerate(event["respondent_arguments"]):
-                        document_card(f"Page {arg['page']}", arg['source_text'], key=f"resp_{event['date']}_{idx}")
+                    for m, arg in enumerate(event["respondent_arguments"]):
+                        with st.container():
+                            st.markdown(f"**Page {arg['page']}**")
+                            st.caption(arg['source_text'])
+                        st.markdown("---")
                 else:
                     st.caption("No respondent submissions")
 
