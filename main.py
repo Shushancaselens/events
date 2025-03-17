@@ -9,6 +9,42 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Add minimal custom CSS just for the party labels
+st.markdown("""
+<style>
+.claimant-active { 
+    color: #1565C0; 
+    padding: 5px 10px;
+    border-radius: 4px;
+    background-color: #E3F2FD;
+    font-weight: bold;
+}
+.claimant-inactive { 
+    color: #1565C0; 
+    padding: 5px 10px;
+    border-radius: 4px;
+    background-color: #F5F5F5;
+    opacity: 0.7;
+    font-weight: bold;
+}
+.respondent-active { 
+    color: #C62828; 
+    padding: 5px 10px;
+    border-radius: 4px;
+    background-color: #FFEBEE;
+    font-weight: bold;
+}
+.respondent-inactive { 
+    color: #C62828; 
+    padding: 5px 10px;
+    border-radius: 4px;
+    background-color: #F5F5F5;
+    opacity: 0.7;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Load the data directly in Python without JSON parsing
 @st.cache_data
 def load_data():
@@ -246,8 +282,7 @@ def main():
             has_claimant = claimant_count > 0
             has_respondent = respondent_count > 0
             
-            # Citation counter and badges using pure Streamlit
-            st.markdown("---")
+            # Citation counter and badges using mostly pure Streamlit with consistent colors
             citation_cols = st.columns([1, 3])
             
             with citation_cols[0]:
@@ -256,18 +291,21 @@ def main():
             with citation_cols[1]:
                 st.markdown("**Addressed by:**")
                 status_cols = st.columns(2)
+                
+                # Use consistent colors with HTML tags
                 with status_cols[0]:
                     if has_claimant:
-                        st.success("Claimant")
+                        st.markdown("<span class='claimant-active'>Claimant</span>", unsafe_allow_html=True)
                     else:
-                        st.info("Claimant")
+                        st.markdown("<span class='claimant-inactive'>Claimant</span>", unsafe_allow_html=True)
+                
                 with status_cols[1]:
                     if has_respondent:
-                        st.error("Respondent")
+                        st.markdown("<span class='respondent-active'>Respondent</span>", unsafe_allow_html=True)
                     else:
-                        st.info("Respondent")
+                        st.markdown("<span class='respondent-inactive'>Respondent</span>", unsafe_allow_html=True)
             
-            st.markdown("---")
+            st.divider()
             
             # Supporting Documents section
             if event.get("pdf_name") or event.get("source_text"):
@@ -279,8 +317,8 @@ def main():
                     with st.container():
                         st.markdown(f"**{pdf_name}**")
                         st.caption(source_text)
-                        st.button("Open Document", key=f"doc_{event['date']}_{i}")
-                    st.markdown("---")
+                        st.button("📑 Open Document", key=f"doc_{event['date']}_{i}")
+                    st.divider()
             
             # Submissions section
             st.subheader("📝 Submissions")
@@ -288,29 +326,29 @@ def main():
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
             
-            # Claimant submissions
+            # Claimant submissions - with consistent blue styling
             with claimant_col:
-                st.markdown("**Claimant**")
+                st.markdown("<div style='color: #1565C0; font-weight: bold;'>Claimant</div>", unsafe_allow_html=True)
                 
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
                         with st.container():
                             st.markdown(f"**Page {arg['page']}**")
                             st.caption(arg['source_text'])
-                        st.markdown("---")
+                        st.divider()
                 else:
                     st.caption("No claimant submissions")
             
-            # Respondent submissions
+            # Respondent submissions - with consistent red styling
             with respondent_col:
-                st.markdown("**Respondent**")
+                st.markdown("<div style='color: #C62828; font-weight: bold;'>Respondent</div>", unsafe_allow_html=True)
                 
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
                         with st.container():
                             st.markdown(f"**Page {arg['page']}**")
                             st.caption(arg['source_text'])
-                        st.markdown("---")
+                        st.divider()
                 else:
                     st.caption("No respondent submissions")
 
