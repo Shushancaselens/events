@@ -9,35 +9,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add minimal custom CSS for colors only
-st.markdown("""
-<style>
-    .blue-pill {
-        background-color: #E3F2FD;
-        color: #1565C0;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-weight: 500;
-    }
-    
-    .red-pill {
-        background-color: #FFEBEE;
-        color: #C62828;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-weight: 500;
-    }
-    
-    .gray-pill {
-        background-color: #F5F5F5;
-        color: #9E9E9E;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-weight: 500;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Load the data directly in Python without JSON parsing
 @st.cache_data
 def load_data():
@@ -202,6 +173,39 @@ def generate_timeline_text(events):
     
     return text
 
+# Improved search function that checks all relevant fields
+def search_event(event, query):
+    if not query:
+        return True
+    
+    query = query.lower()
+    
+    # Check main event text
+    if query in event["event"].lower():
+        return True
+    
+    # Check source texts
+    for source in event.get("source_text", []):
+        if query in source.lower():
+            return True
+    
+    # Check document names
+    for doc in event.get("pdf_name", []):
+        if query in doc.lower():
+            return True
+    
+    # Check claimant arguments
+    for arg in event.get("claimant_arguments", []):
+        if query in arg.get("source_text", "").lower():
+            return True
+    
+    # Check respondent arguments
+    for arg in event.get("respondent_arguments", []):
+        if query in arg.get("source_text", "").lower():
+            return True
+            
+    return False
+
 # Main app function
 def main():
     # Load data
@@ -213,9 +217,11 @@ def main():
         st.title("🔍 CaseLens")
         st.divider()
         
-        # Search
+        # Search with improved explanation
         st.subheader("Search Events")
-        search_query = st.text_input("", placeholder="Search...", label_visibility="collapsed")
+        search_query = st.text_input("", placeholder="Search across all event data...", label_visibility="collapsed")
+        if search_query:
+            st.caption("Searching in event descriptions, document names, and all arguments")
         
         # Date Range
         st.subheader("Date Range")
@@ -242,13 +248,13 @@ def main():
             mime="text/markdown",
         )
     
-    # Filter events
-    filtered_events = events
+    # Filter events - IMPROVED SEARCH
+    filtered_events = events.copy()
     
     # Apply search filter
     if search_query:
-        filtered_events = [event for event in filtered_events 
-                         if search_query.lower() in event["event"].lower()]
+        filtered_events = [event for event in filtered_events if search_event(event, search_query)]
+        st.success(f"Found {len(filtered_events)} events matching '{search_query}'")
     
     # Apply date filter
     filtered_events = [
@@ -260,6 +266,9 @@ def main():
     filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
     # Display events
+    if not filtered_events:
+        st.warning("No events match your search criteria. Try adjusting your search or date range.")
+    
     for event in filtered_events:
         date_formatted = format_date(event["date"])
         
@@ -275,8 +284,8 @@ def main():
             has_claimant = claimant_count > 0
             has_respondent = respondent_count > 0
             
-            # Citation counter and badges using pure Streamlit with minimal HTML for colors
-            st.markdown("---")
+            # Citation counter and badges using pure Streamlit
+            st.divider()
             
             # Citation counter
             col1, col2 = st.columns([1, 4])
@@ -286,13 +295,20 @@ def main():
             with col2:
                 st.write("**Addressed by:**")
                 
-                # Custom badges with proper colors
-                claimant_badge = f"<span class=\"{'blue-pill' if has_claimant else 'gray-pill'}\">Claimant</span>"
-                respondent_badge = f"<span class=\"{'red-pill' if has_respondent else 'gray-pill'}\">Respondent</span>"
-                
-                st.markdown(f"{claimant_badge} {respondent_badge}", unsafe_allow_html=True)
+                # Use pure Streamlit components for badges
+                badge_cols = st.columns(2)
+                with badge_cols[0]:
+                    if has_claimant:
+                        st.info("Claimant")
+                    else:
+                        st.text("Claimant")
+                with badge_cols[1]:
+                    if has_respondent:
+                        st.error("Respondent")
+                    else:
+                        st.text("Respondent")
             
-            st.markdown("---")
+            st.divider()
             
             # Supporting Documents section
             if event.get("pdf_name") or event.get("source_text"):
@@ -301,11 +317,20 @@ def main():
                 for i, pdf_name in enumerate(event.get("pdf_name", [])):
                     source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
                     
+                    # Use color to indicate search matches
                     with st.container():
-                        st.markdown(f"**{pdf_name}**")
-                        st.caption(source_text)
+                        if search_query and search_query.lower() in pdf_name.lower():
+                            st.success(f"**{pdf_name}**")
+                        else:
+                            st.write(f"**{pdf_name}**")
+                            
+                        if search_query and search_query.lower() in source_text.lower():
+                            st.success(source_text)
+                        else:
+                            st.caption(source_text)
+                            
                         st.button("Open Document", key=f"doc_{event['date']}_{i}")
-                    st.markdown("---")
+                    st.divider()
             
             # Submissions section
             st.subheader("📝 Submissions")
@@ -313,29 +338,47 @@ def main():
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
             
-            # Claimant submissions - with blue styling
+            # Claimant submissions - with Streamlit colors
             with claimant_col:
-                st.markdown("<span style='color: #1565C0; font-weight: 500;'>Claimant</span>", unsafe_allow_html=True)
+                # Use info color for claimant
+                st.info("**Claimant**")
                 
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
+                        source_text = arg.get('source_text', '')
+                        
                         with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
-                            st.caption(arg['source_text'])
-                        st.markdown("---")
+                            st.write(f"**Page {arg['page']}**")
+                            
+                            # Highlight matched search terms with success color
+                            if search_query and search_query.lower() in source_text.lower():
+                                st.success(source_text)
+                            else:
+                                st.caption(source_text)
+                                
+                        st.divider()
                 else:
                     st.caption("No claimant submissions")
             
-            # Respondent submissions - with red styling
+            # Respondent submissions - with Streamlit colors
             with respondent_col:
-                st.markdown("<span style='color: #C62828; font-weight: 500;'>Respondent</span>", unsafe_allow_html=True)
+                # Use error color for respondent
+                st.error("**Respondent**")
                 
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
+                        source_text = arg.get('source_text', '')
+                        
                         with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
-                            st.caption(arg['source_text'])
-                        st.markdown("---")
+                            st.write(f"**Page {arg['page']}**")
+                            
+                            # Highlight matched search terms with success color
+                            if search_query and search_query.lower() in source_text.lower():
+                                st.success(source_text)
+                            else:
+                                st.caption(source_text)
+                                
+                        st.divider()
                 else:
                     st.caption("No respondent submissions")
 
