@@ -269,11 +269,14 @@ def main():
     if not filtered_events:
         st.warning("No events match your search criteria. Try adjusting your search or date range.")
     
-    for event in filtered_events:
+    for i, event in enumerate(filtered_events):
         date_formatted = format_date(event["date"])
         
-        # Create expander for each event
-        with st.expander(f"{date_formatted}: {event['event']}"):
+        # Make event titles bigger by using a header above the expander
+        st.header(f"📅 {date_formatted}")
+        
+        # Create expander with just the event text (no date)
+        with st.expander(f"{event['event']}", expanded=True):
             # Calculate citation counts
             claimant_count = len(event.get("claimant_arguments", []))
             respondent_count = len(event.get("respondent_arguments", []))
@@ -381,6 +384,9 @@ def main():
                         st.divider()
                 else:
                     st.caption("No respondent submissions")
+                    
+        # Add space between events
+        st.write("")
 
 if __name__ == "__main__":
     main()
