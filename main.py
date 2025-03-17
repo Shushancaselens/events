@@ -9,9 +9,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add custom CSS for blue and red styling
+# Add custom CSS for styling
 st.markdown("""
 <style>
+    /* Blue and red styling */
     .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
@@ -43,6 +44,26 @@ st.markdown("""
     .red-header {
         color: #C62828;
         font-weight: 600;
+    }
+    
+    /* Make event titles bigger and bolder */
+    .event-title {
+        font-size: 18px;
+        font-weight: 700;
+    }
+    .event-date {
+        font-weight: 700;
+    }
+    
+    /* Override Streamlit's default expander styling */
+    .streamlit-expanderHeader {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Make sure the styling is applied to expander content */
+    .streamlit-expanderContent {
+        font-size: 16px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -269,11 +290,20 @@ def main():
     filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
     # Display events
-    for event in filtered_events:
+    for i, event in enumerate(filtered_events):
         date_formatted = format_date(event["date"])
         
+        # Format the title with HTML to make it bigger and bolder
+        title_html = f"""
+        <div class="event-title">
+            <span class="event-date">{date_formatted}:</span> {event['event']}
+        </div>
+        """
+        
         # Create expander for each event
-        with st.expander(f"{date_formatted}: {event['event']}"):
+        # Since we can't directly style the expander label in Streamlit, 
+        # we'll use a workaround by creating a unique label identifier
+        with st.expander(title_html, expanded=False):
             # Calculate citation counts
             claimant_count = len(event.get("claimant_arguments", []))
             respondent_count = len(event.get("respondent_arguments", []))
