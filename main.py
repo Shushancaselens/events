@@ -2,7 +2,6 @@ import streamlit as st
 import json
 import pandas as pd
 from datetime import datetime
-import pyperclip
 from io import StringIO
 
 # Set page configuration
@@ -139,14 +138,147 @@ st.markdown("""
 
 # Load the JSON data
 @st.cache_data
-def load_data(json_string=None):
-    if json_string:
-        return json.loads(json_string)
-    else:
-        # In a real application, you might load from a file
-        # For this example, we'll use the provided JSON
-        with open("json_structure.json", "r") as f:
-            return json.load(f)
+def load_data():
+    # For this example, we'll use the provided JSON structure
+    json_data = """
+    {
+        "events": [
+            {
+                "date": "1965-00-00",
+                "end_date": null,
+                "event": "Martineek Herald began publishing reliable everyday news.",
+                "source_text": [
+                    "FDI Moot™ CENTER FOR INTERNATIONAL LEGAL STUDIES <LINE: 415> CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022 VOL. XXIX NO. 83 MONDAY, DECEMBER 19, 2022 MARTINEEK HERALD RELIABLE EVERYDAY NEWS"
+                ],
+                "page": [
+                    "1"
+                ],
+                "pdf_name": [
+                    "CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022.pdf"
+                ],
+                "doc_name": [
+                    "name of the document"
+                ],
+                "doc_sum": [
+                    "summary of the document"
+                ]
+            },
+            {
+                "date": "2007-12-28",
+                "end_date": null,
+                "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                "source_text": [
+                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL -USE MATERIAL"
+                ],
+                "page": [
+                    "1"
+                ],
+                "pdf_name": [
+                    "RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"
+                ],
+                "doc_name": [
+                    "name of the document"
+                ],
+                "doc_sum": [
+                    "summary of the document"
+                ],
+                "claimant_arguments": [],
+                "respondent_arguments": [
+                    {
+                        "fragment_start": "LAW DECREE",
+                        "fragment_end": "Claimant's investment.",
+                        "page": "13",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "LAW DECREE 53/2007,11 that is, Dual-Use Regulation, has been promulgated on 28 December 2007, which is the basis for judging the legitimacy of Claimant's investment."
+                    },
+                    {
+                        "fragment_start": "According to",
+                        "fragment_end": "Dual-Use Material33",
+                        "page": "17",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "According to the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material33"
+                    },
+                    {
+                        "fragment_start": "It was",
+                        "fragment_end": "Dual-Use Material35",
+                        "page": "17",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "It was clearly stated in the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material35"
+                    }
+                ]
+            },
+            {
+                "date": "2013-06-28",
+                "end_date": null,
+                "event": "The Martineek-Albion BIT was ratified.",
+                "source_text": [
+                    "rtineek and Albion terminated the 1993 Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion and replaced it with a revised Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion (the "Martineek-Albion BIT"). The Martineek-Albion BIT was ratified on"
+                ],
+                "page": [
+                    "1"
+                ],
+                "pdf_name": [
+                    "Statement of Uncontested Facts.pdf"
+                ],
+                "doc_name": [
+                    "name of the document"
+                ],
+                "doc_sum": [
+                    "summary of the document"
+                ],
+                "claimant_arguments": [
+                    {
+                        "fragment_start": "Martineek and",
+                        "fragment_end": "28 June 2013.",
+                        "page": "16",
+                        "event": "The Martineek-Albion BIT was ratified.",
+                        "source_text": "Martineek and Albion ratified the BIT on 28 June 2013."
+                    }
+                ],
+                "respondent_arguments": []
+            },
+            {
+                "date": "2016-00-00",
+                "end_date": null,
+                "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                "source_text": [
+                    "6. In late 2016, with technological advances in the Archipelago, Martineek became one of the world's leading manufacturers of industrial robots."
+                ],
+                "page": [
+                    "1"
+                ],
+                "pdf_name": [
+                    "Statement of Uncontested Facts.pdf"
+                ],
+                "doc_name": [
+                    "name of the document"
+                ],
+                "doc_sum": [
+                    "summary of the document"
+                ],
+                "claimant_arguments": [
+                    {
+                        "fragment_start": "In late",
+                        "fragment_end": "competitive purposes",
+                        "page": "19",
+                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                        "source_text": "In late 2016, Martineek became one of the world's leading manufacturers of industrial robots,37 while the rapid development in technology of Albion might be in advance of Martineek's entities. Respondent's actions were more likely for competitive purposes"
+                    }
+                ],
+                "respondent_arguments": [
+                    {
+                        "fragment_start": "Through a",
+                        "fragment_end": "robotic industry.",
+                        "page": "6",
+                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                        "source_text": "Through a raft of major reforms, Martineek made significant efforts to attract foreign investments and became a global leader in the robotic industry."
+                    }
+                ]
+            }
+        ]
+    }
+    """
+    return json.loads(json_data)
 
 # Function to parse date
 def parse_date(date_str):
@@ -221,16 +353,16 @@ def main():
     """, unsafe_allow_html=True)
     
     # Sidebar - Search
-    st.sidebar.markdown("### Search Events")
+    st.sidebar.markdown("### 🔍 Search Events")
     search_query = st.sidebar.text_input("", placeholder="Search...", label_visibility="collapsed")
     
     # Sidebar - Date Range
-    st.sidebar.markdown("### Date Range")
+    st.sidebar.markdown("### 📅 Date Range")
     
     # Get min and max dates
     valid_dates = [parse_date(event["date"]) for event in events if parse_date(event["date"])]
-    min_date = min(valid_dates) if valid_dates else datetime(2000, 1, 1)
-    max_date = max(valid_dates) if valid_dates else datetime(2025, 1, 1)
+    min_date = min(valid_dates) if valid_dates else datetime(1965, 1, 1)
+    max_date = max(valid_dates) if valid_dates else datetime(2022, 1, 1)
     
     start_date = st.sidebar.date_input("Start Date", min_date)
     end_date = st.sidebar.date_input("End Date", max_date)
@@ -239,14 +371,15 @@ def main():
     st.markdown("<h1 class='main-title'>Desert Line Projects (DLP) and The Republic of Yemen</h1>", unsafe_allow_html=True)
     
     # Button to copy timeline
-    if st.button("Copy Timeline", type="primary"):
+    if st.button("📋 Copy Timeline", type="primary"):
         timeline_text = generate_timeline_text(events)
-        try:
-            pyperclip.copy(timeline_text)
-            st.success("Timeline copied to clipboard!")
-        except:
-            st.code(timeline_text, language="markdown")
-            st.info("Copy the text above manually (pyperclip not available in this environment)")
+        st.code(timeline_text, language="markdown")
+        st.download_button(
+            label="Download Timeline as Text",
+            data=timeline_text,
+            file_name="timeline.md",
+            mime="text/markdown",
+        )
     
     # Filter events
     filtered_events = events
@@ -259,7 +392,7 @@ def main():
     # Apply date filter
     filtered_events = [
         event for event in filtered_events
-        if parse_date(event["date"]) and start_date <= parse_date(event["date"]) <= end_date
+        if parse_date(event["date"]) and start_date <= parse_date(event["date"]).date() <= end_date
     ]
     
     # Sort events by date
@@ -297,7 +430,7 @@ def main():
             
             # Supporting Documents section
             if event.get("pdf_name") or event.get("source_text"):
-                st.markdown("### Supporting Documents")
+                st.markdown("### 📄 Supporting Documents")
                 
                 for i, pdf_name in enumerate(event.get("pdf_name", [])):
                     source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
@@ -318,7 +451,7 @@ def main():
                     """, unsafe_allow_html=True)
             
             # Submissions section
-            st.markdown("### Submissions")
+            st.markdown("### 📝 Submissions")
             
             # Two-column layout for claimant and respondent
             col1, col2 = st.columns(2)
