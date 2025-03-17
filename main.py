@@ -9,46 +9,40 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Use custom CSS for consistent colors
+# Add custom CSS for blue and red styling
 st.markdown("""
 <style>
-    .claimant-active {
+    .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-weight: bold;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-weight: 500;
+        display: inline-block;
     }
-    .claimant-inactive {
-        background-color: #F5F5F5;
-        color: #9E9E9E;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-weight: bold;
-    }
-    .respondent-active {
+    .red-pill {
         background-color: #FFEBEE;
         color: #C62828;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-weight: bold;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-weight: 500;
+        display: inline-block;
     }
-    .respondent-inactive {
+    .gray-pill {
         background-color: #F5F5F5;
         color: #9E9E9E;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-weight: bold;
+        border-radius: 12px;
+        padding: 4px 12px;
+        font-weight: 500;
+        display: inline-block;
     }
-    .claimant-header {
+    .blue-header {
         color: #1565C0;
-        font-weight: bold;
-        font-size: 1.1em;
+        font-weight: 600;
     }
-    .respondent-header {
+    .red-header {
         color: #C62828;
-        font-weight: bold;
-        font-size: 1.1em;
+        font-weight: 600;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -290,22 +284,30 @@ def main():
             has_claimant = claimant_count > 0
             has_respondent = respondent_count > 0
             
-            # Citation counter and badges using a mix of Streamlit and minimal HTML
+            # Citation counter and badges
             st.markdown("---")
             citation_cols = st.columns([1, 3])
             
             with citation_cols[0]:
-                st.metric("Citations", total_count)
+                # Number with label
+                st.container().markdown(f"""
+                <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; 
+                     padding: 4px 8px; text-align: center; width: fit-content;">
+                    <div style="font-size: 18px; font-weight: bold; color: #1E88E5;">{total_count}</div>
+                    <div style="font-size: 12px; color: #757575;">Citations</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             with citation_cols[1]:
-                st.markdown("**Addressed by:**")
-                status_cols = st.columns(2)
-                with status_cols[0]:
-                    claimant_class = "claimant-active" if has_claimant else "claimant-inactive"
-                    st.markdown(f'<span class="{claimant_class}">Claimant</span>', unsafe_allow_html=True)
-                with status_cols[1]:
-                    respondent_class = "respondent-active" if has_respondent else "respondent-inactive"
-                    st.markdown(f'<span class="{respondent_class}">Respondent</span>', unsafe_allow_html=True)
+                # Party badges
+                st.markdown("<span style='font-size: 14px; color: #555; margin-right: 10px;'>Addressed by:</span>", unsafe_allow_html=True)
+                claimant_class = "blue-pill" if has_claimant else "gray-pill"
+                respondent_class = "red-pill" if has_respondent else "gray-pill"
+                
+                st.markdown(f"""
+                <span class="{claimant_class}">Claimant</span> 
+                <span class="{respondent_class}">Respondent</span>
+                """, unsafe_allow_html=True)
             
             st.markdown("---")
             
@@ -319,7 +321,7 @@ def main():
                     with st.container():
                         st.markdown(f"**{pdf_name}**")
                         st.caption(source_text)
-                        st.button("Open Document", key=f"doc_{event['date']}_{i}")
+                        st.button("📄 Open Document", key=f"doc_{event['date']}_{i}")
                     st.markdown("---")
             
             # Submissions section
@@ -330,7 +332,7 @@ def main():
             
             # Claimant submissions
             with claimant_col:
-                st.markdown('<p class="claimant-header">Claimant</p>', unsafe_allow_html=True)
+                st.markdown("<span class='blue-header'>Claimant</span>", unsafe_allow_html=True)
                 
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
@@ -343,7 +345,7 @@ def main():
             
             # Respondent submissions
             with respondent_col:
-                st.markdown('<p class="respondent-header">Respondent</p>', unsafe_allow_html=True)
+                st.markdown("<span class='red-header'>Respondent</span>", unsafe_allow_html=True)
                 
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
