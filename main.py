@@ -46,24 +46,27 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* Make event titles bigger and bolder */
-    .event-title {
-        font-size: 18px;
-        font-weight: 700;
-    }
-    .event-date {
-        font-weight: 700;
+    /* Directly target Streamlit's expander headers to make them bigger and bolder */
+    .st-emotion-cache-1aumxhk {
+        font-size: 18px !important;
+        font-weight: 700 !important;
     }
     
-    /* Override Streamlit's default expander styling */
+    /* Alternative selectors in case the above doesn't work in all Streamlit versions */
     .streamlit-expanderHeader {
         font-size: 18px !important;
         font-weight: 700 !important;
     }
     
-    /* Make sure the styling is applied to expander content */
-    .streamlit-expanderContent {
-        font-size: 16px;
+    /* These are other potential Streamlit selectors */
+    button[kind="secondary"] p {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+    }
+    
+    div[data-testid="stExpander"] div[role="button"] p {
+        font-size: 18px !important;
+        font-weight: 700 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -293,17 +296,11 @@ def main():
     for i, event in enumerate(filtered_events):
         date_formatted = format_date(event["date"])
         
-        # Format the title with HTML to make it bigger and bolder
-        title_html = f"""
-        <div class="event-title">
-            <span class="event-date">{date_formatted}:</span> {event['event']}
-        </div>
-        """
+        # Format the event title with bold date
+        title_text = f"**{date_formatted}**: {event['event']}"
         
-        # Create expander for each event
-        # Since we can't directly style the expander label in Streamlit, 
-        # we'll use a workaround by creating a unique label identifier
-        with st.expander(title_html, expanded=False):
+        # Create expander for each event - using markdown in the title for basic styling
+        with st.expander(title_text, expanded=False):
             # Calculate citation counts
             claimant_count = len(event.get("claimant_arguments", []))
             respondent_count = len(event.get("respondent_arguments", []))
@@ -385,6 +382,14 @@ def main():
                         st.markdown("---")
                 else:
                     st.caption("No respondent submissions")
+
+# Add a custom banner at the top that explains the styling approach
+st.markdown("""
+<div style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-size: 14px;">
+⚠️ <strong>Note:</strong> This version uses CSS to target Streamlit's expander elements directly. 
+If the event titles don't appear larger in your Streamlit environment, you may need to inspect and adjust the CSS selectors.
+</div>
+""", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
