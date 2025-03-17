@@ -9,6 +9,35 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Add minimal custom CSS for colors only
+st.markdown("""
+<style>
+    .blue-pill {
+        background-color: #E3F2FD;
+        color: #1565C0;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: 500;
+    }
+    
+    .red-pill {
+        background-color: #FFEBEE;
+        color: #C62828;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: 500;
+    }
+    
+    .gray-pill {
+        background-color: #F5F5F5;
+        color: #9E9E9E;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-weight: 500;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Load the data directly in Python without JSON parsing
 @st.cache_data
 def load_data():
@@ -246,26 +275,22 @@ def main():
             has_claimant = claimant_count > 0
             has_respondent = respondent_count > 0
             
-            # Citation counter and badges using pure Streamlit
+            # Citation counter and badges using pure Streamlit with minimal HTML for colors
             st.markdown("---")
-            citation_cols = st.columns([1, 3])
             
-            with citation_cols[0]:
+            # Citation counter
+            col1, col2 = st.columns([1, 4])
+            with col1:
                 st.metric("Citations", total_count)
             
-            with citation_cols[1]:
-                st.markdown("**Addressed by:**")
-                status_cols = st.columns(2)
-                with status_cols[0]:
-                    if has_claimant:
-                        st.success("Claimant")
-                    else:
-                        st.info("Claimant")
-                with status_cols[1]:
-                    if has_respondent:
-                        st.error("Respondent")
-                    else:
-                        st.info("Respondent")
+            with col2:
+                st.write("**Addressed by:**")
+                
+                # Custom badges with proper colors
+                claimant_badge = f"<span class=\"{'blue-pill' if has_claimant else 'gray-pill'}\">Claimant</span>"
+                respondent_badge = f"<span class=\"{'red-pill' if has_respondent else 'gray-pill'}\">Respondent</span>"
+                
+                st.markdown(f"{claimant_badge} {respondent_badge}", unsafe_allow_html=True)
             
             st.markdown("---")
             
@@ -288,9 +313,9 @@ def main():
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
             
-            # Claimant submissions
+            # Claimant submissions - with blue styling
             with claimant_col:
-                st.markdown("**Claimant**")
+                st.markdown("<span style='color: #1565C0; font-weight: 500;'>Claimant</span>", unsafe_allow_html=True)
                 
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
@@ -301,9 +326,9 @@ def main():
                 else:
                     st.caption("No claimant submissions")
             
-            # Respondent submissions
+            # Respondent submissions - with red styling
             with respondent_col:
-                st.markdown("**Respondent**")
+                st.markdown("<span style='color: #C62828; font-weight: 500;'>Respondent</span>", unsafe_allow_html=True)
                 
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
