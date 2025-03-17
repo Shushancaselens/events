@@ -1,454 +1,357 @@
 import streamlit as st
-import pandas as pd
 import json
+import pandas as pd
 from datetime import datetime
-import base64
+import pyperclip
 from io import StringIO
-import re
 
+# Set page configuration
 st.set_page_config(
-    page_title="CaseLens - Legal Timeline",
-    page_icon="⚖️",
-    layout="wide"
+    page_title="CaseLens Timeline",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# Custom CSS for styling
+# Custom CSS to match the design
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 28px;
-        font-weight: 700;
+    .main-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
         margin-bottom: 20px;
     }
     .event-card {
-        border: 1px solid #e0e0e0;
+        border: 1px solid #ddd;
         border-radius: 8px;
-        padding: 16px;
         margin-bottom: 16px;
         background-color: white;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
     }
     .event-header {
+        padding: 16px;
         cursor: pointer;
-        display: flex;
-        justify-content: space-between;
+    }
+    .event-header:hover {
+        background-color: #f9f9f9;
     }
     .event-date {
-        font-weight: 700;
+        font-weight: bold;
+    }
+    .event-content {
+        padding: 16px;
+        border-top: 1px solid #eee;
+        background-color: #f9f9f9;
     }
     .citation-counter {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        background-color: #f5f5f5;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+    .counter-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         background-color: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 4px 12px;
-        font-weight: 700;
-        color: #1E88E5;
-        display: inline-block;
-        text-align: center;
-    }
-    .party-tag {
-        padding: 4px 10px;
+        border: 1px solid #ddd;
         border-radius: 4px;
-        font-size: 14px;
-        font-weight: 500;
+        padding: 4px 8px;
+        margin-right: 16px;
     }
-    .claimant-tag {
+    .counter-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #1E88E5;
+    }
+    .counter-label {
+        font-size: 12px;
+        color: #757575;
+    }
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 5px;
+    }
+    .badge-active-claimant {
         background-color: #E3F2FD;
         color: #1565C0;
     }
-    .respondent-tag {
+    .badge-active-respondent {
         background-color: #FFEBEE;
         color: #C62828;
     }
-    .inactive-tag {
+    .badge-inactive {
         background-color: #F5F5F5;
-        color: #9E9E9E;
+        color: #BDBDBD;
     }
     .document-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 10px;
         background-color: white;
-    }
-    .document-title {
-        font-weight: 500;
-        margin-bottom: 6px;
-    }
-    .document-context {
-        font-size: 14px;
-        color: #616161;
-    }
-    .section-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 16px 0 12px 0;
-    }
-    .sidebar-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-    .open-doc-button {
-        background-color: #E3F2FD;
-        color: #1565C0;
-        padding: 6px 12px;
-        border-radius: 6px;
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        font-size: 14px;
-        cursor: pointer;
-        text-decoration: none;
-        margin-top: 8px;
-    }
-    .open-doc-button:hover {
-        background-color: #BBDEFB;
-    }
-    .doc-icon {
-        margin-right: 6px;
-    }
-    .evidence-summary {
-        background-color: #F5F5F5;
+        border: 1px solid #ddd;
         border-radius: 8px;
         padding: 12px;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
+        margin-bottom: 12px;
     }
-    .divider {
-        height: 24px;
-        width: 1px;
-        background-color: #e0e0e0;
-        margin: 0 12px;
-    }
-    .copy-button {
-        background-color: #1976D2;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 6px;
-        border: none;
+    .document-link {
         display: inline-flex;
         align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background-color: #E3F2FD;
+        color: #1565C0;
+        border-radius: 6px;
+        text-decoration: none;
         font-size: 14px;
-        cursor: pointer;
-    }
-    .copy-icon {
-        margin-right: 6px;
-    }
-    .source-text {
-        font-size: 14px;
-        font-style: italic;
-        color: #616161;
-        background-color: #F5F5F5;
-        padding: 8px;
-        border-radius: 4px;
         margin-top: 8px;
     }
-    .argument-card {
-        border-left: 4px solid;
-        padding: 10px;
-        margin-bottom: 10px;
-        background-color: #FAFAFA;
+    .claimant-header {
+        color: #1565C0;
+        font-weight: 500;
+        margin-bottom: 8px;
     }
-    .argument-claimant {
-        border-left-color: #1565C0;
+    .respondent-header {
+        color: #C62828;
+        font-weight: 500;
+        margin-bottom: 8px;
     }
-    .argument-respondent {
-        border-left-color: #C62828;
+    .sidebar-title {
+        font-size: 20px;
+        font-weight: bold;
+        color: #1E88E5;
+        margin-left: 10px;
+    }
+    .sidebar-icon {
+        background-color: #1E88E5;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Function to load JSON data
-def load_sample_data():
-    """Load sample timeline data if no file is uploaded"""
-    return {
-        "events": [
-            {
-                "date": "2007-12-28",
-                "end_date": None,
-                "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                "source_text": [
-                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL -USE MATERIAL"
-                ],
-                "page": [
-                    "1"
-                ],
-                "pdf_name": [
-                    "RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"
-                ],
-                "doc_name": [
-                    "name of the document"
-                ],
-                "doc_sum": [
-                    "summary of the document"
-                ],
-                "claimant_arguments": [],
-                "respondent_arguments": [
-                    {
-                        "fragment_start": "LAW DECREE",
-                        "fragment_end": "Claimant's investment.",
-                        "page": "13",
-                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                        "source_text": "LAW DECREE 53/2007,11 that is, Dual-Use Regulation, has been promulgated on 28 December 2007, which is the basis for judging the legitimacy of Claimant's investment."
-                    }
-                ]
-            }
-        ]
-    }
+# Load the JSON data
+@st.cache_data
+def load_data(json_string=None):
+    if json_string:
+        return json.loads(json_string)
+    else:
+        # In a real application, you might load from a file
+        # For this example, we'll use the provided JSON
+        with open("json_structure.json", "r") as f:
+            return json.load(f)
 
-# Function to parse date formats
+# Function to parse date
 def parse_date(date_str):
-    """Parse different date formats"""
-    if not date_str or date_str == "null" or date_str is None:
+    if not date_str or date_str == "null":
         return None
     
-    # Handle year-only dates
-    if re.match(r'^\d{4}-00-00$', date_str):
-        return datetime.strptime(date_str[:4], '%Y')
+    # Handle cases like "2016-00-00"
+    if "-00-00" in date_str:
+        date_str = date_str.replace("-00-00", "-01-01")
+    elif "-00" in date_str:
+        date_str = date_str.replace("-00", "-01")
     
-    # Handle year-month dates
-    if re.match(r'^\d{4}-\d{2}-00$', date_str):
-        return datetime.strptime(date_str[:7], '%Y-%m')
-    
-    # Standard date format
     try:
-        return datetime.strptime(date_str, '%Y-%m-%d')
-    except ValueError:
-        try:
-            return datetime.strptime(date_str, '%d %B %Y')
-        except ValueError:
-            # Return a default date if parsing fails
-            return datetime(1900, 1, 1)
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except:
+        return None
 
 # Function to format date for display
-def format_date_for_display(date_str):
-    """Format date string for display"""
-    if not date_str or date_str == "null" or date_str is None:
-        return ""
+def format_date(date_str):
+    date = parse_date(date_str)
+    if not date:
+        return "Unknown date"
     
-    parsed_date = parse_date(date_str)
-    if not parsed_date:
-        return ""
-    
-    # Handle year-only dates
-    if date_str.endswith("-00-00"):
-        return parsed_date.strftime('%Y')
-    
-    # Handle year-month dates
-    if date_str.endswith("-00"):
-        return parsed_date.strftime('%B %Y')
-    
-    # Full dates
-    return parsed_date.strftime('%d %B %Y')
+    # If we have only the year (original had -00-00)
+    if "-00-00" in date_str:
+        return date.strftime("%Y")
+    # If we have year and month (original had -00)
+    elif "-00" in date_str:
+        return date.strftime("%B %Y")
+    # Full date
+    else:
+        return date.strftime("%d %B %Y")
 
-# Function to create downloadable text
-def get_download_link(text, filename, link_text):
-    """Generate a link to download text content as a file"""
-    b64 = base64.b64encode(text.encode()).decode()
-    href = f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="copy-button">{link_text}</a>'
-    return href
+# Function to generate timeline text for copying
+def generate_timeline_text(events):
+    text = ""
+    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+        # Format the event text with date in bold
+        date_formatted = format_date(event["date"])
+        text += f"**{date_formatted}** {event['event']}[1]\n\n"
+        
+        # Sources for footnote
+        sources = []
+        if event.get("claimant_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+        if event.get("respondent_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+        if event.get("pdf_name"):
+            sources.extend(event["pdf_name"])
+        
+        if sources:
+            text += f"[1] {'; '.join(sources)}\n\n"
+    
+    return text
 
-# Function to format timeline for export
-def format_timeline_for_export(timeline_data):
-    """Format timeline data for text export"""
-    export_text = ""
+# Main app function
+def main():
+    # Load data
+    data = load_data()
+    events = data["events"]
+    
+    # Sidebar - Logo and title
+    st.sidebar.markdown("""
+    <div style="display: flex; align-items: center; margin-bottom: 24px;">
+        <div class="sidebar-icon">
+            <svg width="20" height="20" viewBox="0 0 101 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M100.367 21.7435C89.6483 8.05273 73.7208 0.314453 56.3045 0.314453C26.2347 0.314453 1.52391 24.8686 1.52391 54.7799C1.52391 64.6651 4.18587 73.8971 8.83697 81.8449L8.69251 81.7082L0.917969 109.7L28.5411 101.473C36.8428 106.321 46.5458 109.097 56.8997 109.097C74.6142 109.097 90.6914 100.465 100.664 87.3699L77.2936 69.3636C72.5301 76.2088 64.7894 79.9291 56.4531 79.9291C42.4603 79.9291 30.9982 68.6194 30.9982 54.7799C30.9982 40.6427 42.6093 29.4818 56.751 29.4818C65.2359 29.4818 72.679 33.6486 77.2936 40.0474L100.367 21.7435Z" fill="white"/>
+            </svg>
+        </div>
+        <span class="sidebar-title">CaseLens</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar - Search
+    st.sidebar.markdown("### Search Events")
+    search_query = st.sidebar.text_input("", placeholder="Search...", label_visibility="collapsed")
+    
+    # Sidebar - Date Range
+    st.sidebar.markdown("### Date Range")
+    
+    # Get min and max dates
+    valid_dates = [parse_date(event["date"]) for event in events if parse_date(event["date"])]
+    min_date = min(valid_dates) if valid_dates else datetime(2000, 1, 1)
+    max_date = max(valid_dates) if valid_dates else datetime(2025, 1, 1)
+    
+    start_date = st.sidebar.date_input("Start Date", min_date)
+    end_date = st.sidebar.date_input("End Date", max_date)
+    
+    # Main content area
+    st.markdown("<h1 class='main-title'>Desert Line Projects (DLP) and The Republic of Yemen</h1>", unsafe_allow_html=True)
+    
+    # Button to copy timeline
+    if st.button("Copy Timeline", type="primary"):
+        timeline_text = generate_timeline_text(events)
+        try:
+            pyperclip.copy(timeline_text)
+            st.success("Timeline copied to clipboard!")
+        except:
+            st.code(timeline_text, language="markdown")
+            st.info("Copy the text above manually (pyperclip not available in this environment)")
+    
+    # Filter events
+    filtered_events = events
+    
+    # Apply search filter
+    if search_query:
+        filtered_events = [event for event in filtered_events 
+                         if search_query.lower() in event["event"].lower()]
+    
+    # Apply date filter
+    filtered_events = [
+        event for event in filtered_events
+        if parse_date(event["date"]) and start_date <= parse_date(event["date"]) <= end_date
+    ]
     
     # Sort events by date
-    sorted_events = sorted(
-        timeline_data["events"], 
-        key=lambda x: parse_date(x["date"]) if x["date"] else datetime(1900, 1, 1)
-    )
+    filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
-    for event in sorted_events:
-        # Format date
-        formatted_date = format_date_for_display(event["date"])
+    # Display events
+    for event in filtered_events:
+        date_formatted = format_date(event["date"])
         
-        # Main text with date
-        timeline_text = f"**{formatted_date}** - {event['event']}"
-        
-        # Add source references
-        if event.get("pdf_name") and len(event["pdf_name"]) > 0:
-            pdf_refs = "; ".join([pdf for pdf in event["pdf_name"] if pdf])
-            timeline_text += f"\nSource: {pdf_refs}"
-        
-        # Add arguments
-        has_arguments = False
-        
-        if event.get("claimant_arguments") and len(event["claimant_arguments"]) > 0:
-            has_arguments = True
-            timeline_text += "\n\nClaimant Arguments:"
-            for arg in event["claimant_arguments"]:
-                timeline_text += f"\n- {arg['source_text']}"
-        
-        if event.get("respondent_arguments") and len(event["respondent_arguments"]) > 0:
-            has_arguments = True
-            timeline_text += "\n\nRespondent Arguments:"
-            for arg in event["respondent_arguments"]:
-                timeline_text += f"\n- {arg['source_text']}"
-        
-        export_text += f"{timeline_text}\n\n{'=' * 50}\n\n"
-    
-    return export_text
-
-# Sidebar
-with st.sidebar:
-    st.title("CaseLens")
-    
-    # File uploader for JSON data
-    uploaded_file = st.file_uploader("Upload Timeline JSON", type=["json"])
-    
-    st.markdown("<div class='sidebar-title'>Search Events</div>", unsafe_allow_html=True)
-    search_query = st.text_input("", placeholder="Search...", label_visibility="collapsed")
-    
-    st.markdown("<div class='sidebar-title'>Date Range</div>", unsafe_allow_html=True)
-    start_date = st.date_input("Start Date", value=None, label_visibility="collapsed")
-    end_date = st.date_input("End Date", value=None, label_visibility="collapsed")
-    
-    st.markdown("<div class='sidebar-title'>Filter by Party</div>", unsafe_allow_html=True)
-    show_claimant = st.checkbox("Claimant Arguments", value=True)
-    show_respondent = st.checkbox("Respondent Arguments", value=True)
-
-# Main content
-st.markdown("<h1 class='main-header'>Legal Case Timeline</h1>", 
-            unsafe_allow_html=True)
-
-# Load data
-if uploaded_file is not None:
-    timeline_data = json.load(uploaded_file)
-else:
-    # Use the provided JSON structure from the document
-    with open('json_structure.json', 'r') as f:
-        timeline_data = json.load(f)
-
-# Export functionality
-export_text = format_timeline_for_export(timeline_data)
-st.markdown(
-    get_download_link(export_text, "timeline_export.txt", "📋 Export Timeline"),
-    unsafe_allow_html=True
-)
-
-# Process and display timeline events
-events = timeline_data["events"]
-
-# Apply filters if needed
-if search_query:
-    events = [e for e in events if search_query.lower() in e["event"].lower()]
-
-# Apply party filters
-if not show_claimant and not show_respondent:
-    # If both are unchecked, show all events anyway
-    filtered_events = events
-elif not show_claimant:
-    # Show only events with respondent arguments
-    filtered_events = [e for e in events if e.get("respondent_arguments") and len(e["respondent_arguments"]) > 0]
-elif not show_respondent:
-    # Show only events with claimant arguments
-    filtered_events = [e for e in events if e.get("claimant_arguments") and len(e["claimant_arguments"]) > 0]
-else:
-    # Show all events
-    filtered_events = events
-
-# Sort events by date
-try:
-    sorted_events = sorted(
-        filtered_events, 
-        key=lambda x: parse_date(x["date"]) if x["date"] else datetime(1900, 1, 1)
-    )
-except Exception as e:
-    st.error(f"Error sorting events: {e}")
-    sorted_events = filtered_events
-
-# Display events
-for event in sorted_events:
-    # Format date for display
-    formatted_date = format_date_for_display(event["date"])
-    
-    # Count arguments
-    claimant_arg_count = len(event.get("claimant_arguments", []))
-    respondent_arg_count = len(event.get("respondent_arguments", []))
-    total_arg_count = claimant_arg_count + respondent_arg_count
-    
-    # Determine if each party has arguments
-    has_claimant_arguments = claimant_arg_count > 0
-    has_respondent_arguments = respondent_arg_count > 0
-    
-    # Create expander for each event
-    with st.expander(f"**{formatted_date}** - {event['event']}", expanded=False):
-        # Evidence summary
-        st.markdown(
-            f"""
-            <div class="evidence-summary">
-                <div class="citation-counter">{total_arg_count}<br><span style="font-size:12px;">Arguments</span></div>
-                <div class="divider"></div>
-                <div>
-                    <span style="font-size:12px; text-transform:uppercase; font-weight:500; margin-right:8px;">Addressed by:</span>
-                    <span class="party-tag {'claimant-tag' if has_claimant_arguments else 'inactive-tag'}">Claimant</span>
-                    <span class="party-tag {'respondent-tag' if has_respondent_arguments else 'inactive-tag'}">Respondent</span>
+        # Create expander for each event
+        with st.expander(f"{date_formatted}: {event['event']}"):
+            # Calculate citation counts
+            claimant_count = len(event.get("claimant_arguments", []))
+            respondent_count = len(event.get("respondent_arguments", []))
+            doc_count = len(event.get("pdf_name", []))
+            total_count = claimant_count + respondent_count + doc_count
+            
+            # Determine if each party has addressed this event
+            has_claimant = claimant_count > 0
+            has_respondent = respondent_count > 0
+            
+            # Citations counter and party badges
+            st.markdown(f"""
+            <div class="citation-counter">
+                <div class="counter-box">
+                    <span class="counter-value">{total_count}</span>
+                    <span class="counter-label">Citations</span>
                 </div>
+                <div style="border-left: 1px solid #ddd; height: 24px; margin: 0 16px;"></div>
+                <span style="font-size: 12px; text-transform: uppercase; color: #757575; font-weight: 500; margin-right: 10px;">Addressed by:</span>
+                <span class="badge {'badge-active-claimant' if has_claimant else 'badge-inactive'}">Claimant</span>
+                <span class="badge {'badge-active-respondent' if has_respondent else 'badge-inactive'}">Respondent</span>
             </div>
-            """, 
-            unsafe_allow_html=True
-        )
-        
-        # Source Documents
-        if event.get("source_text") and event.get("pdf_name"):
-            st.markdown("<div class='section-title'>Source Documents</div>", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            for i, (source, pdf, page) in enumerate(zip(
-                event.get("source_text", []), 
-                event.get("pdf_name", []), 
-                event.get("page", [""])
-            )):
-                if source and pdf:
-                    st.markdown(
-                        f"""
-                        <div class="document-card">
-                            <div class="document-title">{pdf}</div>
-                            <div class="document-context">Page: {page}</div>
-                            <div class="source-text">{source}</div>
-                            <a href="#" class="open-doc-button"><span class="doc-icon">📄</span> Open Document</a>
-                        </div>
-                        """, 
-                        unsafe_allow_html=True
-                    )
-        
-        # Arguments section
-        if has_claimant_arguments or has_respondent_arguments:
-            st.markdown("<div class='section-title'>Arguments</div>", unsafe_allow_html=True)
+            # Supporting Documents section
+            if event.get("pdf_name") or event.get("source_text"):
+                st.markdown("### Supporting Documents")
+                
+                for i, pdf_name in enumerate(event.get("pdf_name", [])):
+                    source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
+                    
+                    st.markdown(f"""
+                    <div class="document-card">
+                        <div style="font-weight: 500;">{pdf_name}</div>
+                        <div style="font-size: 14px; color: #616161; margin-top: 4px;">{source_text}</div>
+                        <a href="#" class="document-link">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                            Open Document
+                        </a>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            # Create two columns for claimant and respondent
+            # Submissions section
+            st.markdown("### Submissions")
+            
+            # Two-column layout for claimant and respondent
             col1, col2 = st.columns(2)
             
+            # Claimant submissions
             with col1:
-                st.markdown("<div style='color:#1565C0; font-weight:500; margin-bottom:8px;'>Claimant Arguments</div>", unsafe_allow_html=True)
-                if has_claimant_arguments:
-                    for arg in event.get("claimant_arguments", []):
-                        st.markdown(
-                            f"""
-                            <div class="argument-card argument-claimant">
-                                <div class="document-context">Page: {arg.get('page', 'N/A')}</div>
-                                <div class="source-text">{arg.get('source_text', '')}</div>
-                            </div>
-                            """, 
-                            unsafe_allow_html=True
-                        )
+                st.markdown("<div class='claimant-header'>Claimant</div>", unsafe_allow_html=True)
+                
+                if event.get("claimant_arguments"):
+                    for arg in event["claimant_arguments"]:
+                        st.markdown(f"""
+                        <div class="document-card">
+                            <div style="font-weight: 500;">Page {arg['page']}</div>
+                            <div style="font-size: 14px; color: #616161; margin-top: 4px;">{arg['source_text']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.markdown("<em>No claimant arguments for this event</em>", unsafe_allow_html=True)
+                    st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No claimant submissions</div>", unsafe_allow_html=True)
             
+            # Respondent submissions
             with col2:
-                st.markdown("<div style='color:#C62828; font-weight:500; margin-bottom:8px;'>Respondent Arguments</div>", unsafe_allow_html=True)
-                if has_respondent_arguments:
-                    for arg in event.get("respondent_arguments", []):
-                        st.markdown(
-                            f"""
-                            <div class="argument-card argument-respondent">
-                                <div class="document-context">Page: {arg.get('page', 'N/A')}</div>
-                                <div class="source-text">{arg.get('source_text', '')}</div>
-                            </div>
-                            """, 
-                            unsafe_allow_html=True
-                        )
+                st.markdown("<div class='respondent-header'>Respondent</div>", unsafe_allow_html=True)
+                
+                if event.get("respondent_arguments"):
+                    for arg in event["respondent_arguments"]:
+                        st.markdown(f"""
+                        <div class="document-card">
+                            <div style="font-weight: 500;">Page {arg['page']}</div>
+                            <div style="font-size: 14px; color: #616161; margin-top: 4px;">{arg['source_text']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.markdown("<em>No respondent arguments for this event</em>", unsafe_allow_html=True)
+                    st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No respondent submissions</div>", unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
