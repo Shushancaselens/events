@@ -9,10 +9,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Add custom CSS for styling
+# Add custom CSS for blue and red styling
 st.markdown("""
 <style>
-    /* Color styling for parties */
     .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
@@ -44,28 +43,6 @@ st.markdown("""
     .red-header {
         color: #C62828;
         font-weight: 600;
-    }
-    
-    /* Bigger event titles */
-    .event-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #333;
-        margin-bottom: 12px;
-        display: block;
-    }
-    
-    /* Style for Streamlit expanders */
-    .st-emotion-cache-0.e1f1d6gn0 {
-        border-radius: 8px;
-        margin-bottom: 12px;
-        background-color: white;
-        border: 1px solid #E0E0E0;
-    }
-    
-    /* Make event date bold */
-    .date-bold {
-        font-weight: 700;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -292,15 +269,11 @@ def main():
     filtered_events = sorted(filtered_events, key=lambda x: parse_date(x["date"]) or datetime.min)
     
     # Display events
-    for i, event in enumerate(filtered_events):
+    for event in filtered_events:
         date_formatted = format_date(event["date"])
         
-        # Create the event title with bigger formatting
-        event_title = f'<span class="event-title"><span class="date-bold">{date_formatted}:</span> {event["event"]}</span>'
-        
-        # Use raw HTML for title to ensure styling works
-        with st.expander(unsafe_allow_html=True):  # Expand first item by default
-            st.markdown(event_title, unsafe_allow_html=True)
+        # Create expander for each event
+        with st.expander(f"{date_formatted}: {event['event']}"):
             # Calculate citation counts
             claimant_count = len(event.get("claimant_arguments", []))
             respondent_count = len(event.get("respondent_arguments", []))
