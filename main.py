@@ -269,124 +269,126 @@ def main():
     if not filtered_events:
         st.warning("No events match your search criteria. Try adjusting your search or date range.")
     
-    for i, event in enumerate(filtered_events):
-        date_formatted = format_date(event["date"])
-        
-        # Make event titles bigger by using a header above the expander
-        st.header(f"📅 {date_formatted}")
-        
-        # Create expander with just the event text (no date)
-        with st.expander(f"{event['event']}", expanded=True):
-            # Calculate citation counts
-            claimant_count = len(event.get("claimant_arguments", []))
-            respondent_count = len(event.get("respondent_arguments", []))
-            doc_count = len(event.get("pdf_name", []))
-            total_count = claimant_count + respondent_count + doc_count
+    # Make a container with larger space for the timeline
+    timeline_container = st.container()
+    
+    with timeline_container:
+        for event in filtered_events:
+            date_formatted = format_date(event["date"])
             
-            # Determine if each party has addressed this event
-            has_claimant = claimant_count > 0
-            has_respondent = respondent_count > 0
-            
-            # Citation counter and badges using pure Streamlit
-            st.divider()
-            
-            # Citation counter
-            col1, col2 = st.columns([1, 4])
-            with col1:
-                st.metric("Citations", total_count)
-            
-            with col2:
-                st.write("**Addressed by:**")
+            # Create expander with larger, bolder event title
+            with st.expander(f"### {date_formatted}: {event['event']}"):
+                # Use a container to give more space
+                event_container = st.container()
                 
-                # Use pure Streamlit components for badges
-                badge_cols = st.columns(2)
-                with badge_cols[0]:
-                    if has_claimant:
-                        st.info("Claimant")
-                    else:
-                        st.text("Claimant")
-                with badge_cols[1]:
-                    if has_respondent:
-                        st.error("Respondent")
-                    else:
-                        st.text("Respondent")
-            
-            st.divider()
-            
-            # Supporting Documents section
-            if event.get("pdf_name") or event.get("source_text"):
-                st.subheader("📄 Supporting Documents")
-                
-                for i, pdf_name in enumerate(event.get("pdf_name", [])):
-                    source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
+                with event_container:
+                    # Calculate citation counts
+                    claimant_count = len(event.get("claimant_arguments", []))
+                    respondent_count = len(event.get("respondent_arguments", []))
+                    doc_count = len(event.get("pdf_name", []))
+                    total_count = claimant_count + respondent_count + doc_count
                     
-                    # Use color to indicate search matches
-                    with st.container():
-                        if search_query and search_query.lower() in pdf_name.lower():
-                            st.success(f"**{pdf_name}**")
-                        else:
-                            st.write(f"**{pdf_name}**")
-                            
-                        if search_query and search_query.lower() in source_text.lower():
-                            st.success(source_text)
-                        else:
-                            st.caption(source_text)
-                            
-                        st.button("Open Document", key=f"doc_{event['date']}_{i}")
+                    # Determine if each party has addressed this event
+                    has_claimant = claimant_count > 0
+                    has_respondent = respondent_count > 0
+                    
+                    # Citation counter and badges using pure Streamlit
                     st.divider()
-            
-            # Submissions section
-            st.subheader("📝 Submissions")
-            
-            # Two-column layout for claimant and respondent
-            claimant_col, respondent_col = st.columns(2)
-            
-            # Claimant submissions - with Streamlit colors
-            with claimant_col:
-                # Use info color for claimant
-                st.info("**Claimant**")
-                
-                if event.get("claimant_arguments"):
-                    for idx, arg in enumerate(event["claimant_arguments"]):
-                        source_text = arg.get('source_text', '')
-                        
-                        with st.container():
-                            st.write(f"**Page {arg['page']}**")
-                            
-                            # Highlight matched search terms with success color
-                            if search_query and search_query.lower() in source_text.lower():
-                                st.success(source_text)
-                            else:
-                                st.caption(source_text)
-                                
-                        st.divider()
-                else:
-                    st.caption("No claimant submissions")
-            
-            # Respondent submissions - with Streamlit colors
-            with respondent_col:
-                # Use error color for respondent
-                st.error("**Respondent**")
-                
-                if event.get("respondent_arguments"):
-                    for idx, arg in enumerate(event["respondent_arguments"]):
-                        source_text = arg.get('source_text', '')
-                        
-                        with st.container():
-                            st.write(f"**Page {arg['page']}**")
-                            
-                            # Highlight matched search terms with success color
-                            if search_query and search_query.lower() in source_text.lower():
-                                st.success(source_text)
-                            else:
-                                st.caption(source_text)
-                                
-                        st.divider()
-                else:
-                    st.caption("No respondent submissions")
                     
-        # Add space between events
-        st.write("")
+                    # Citation counter with larger text
+                    col1, col2 = st.columns([1, 4])
+                    with col1:
+                        st.metric("Citations", total_count, delta=None, delta_color="normal", help=None)
+                    
+                    with col2:
+                        st.header("Addressed by:")
+                        
+                        # Use pure Streamlit components for badges
+                        badge_cols = st.columns(2)
+                        with badge_cols[0]:
+                            if has_claimant:
+                                st.info("### Claimant")
+                            else:
+                                st.text("### Claimant")
+                        with badge_cols[1]:
+                            if has_respondent:
+                                st.error("### Respondent")
+                            else:
+                                st.text("### Respondent")
+                    
+                    st.divider()
+                    
+                    # Supporting Documents section with larger text
+                    if event.get("pdf_name") or event.get("source_text"):
+                        st.header("📄 Supporting Documents")
+                        
+                        for i, pdf_name in enumerate(event.get("pdf_name", [])):
+                            source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
+                            
+                            # Use color to indicate search matches
+                            with st.container():
+                                if search_query and search_query.lower() in pdf_name.lower():
+                                    st.success(f"## {pdf_name}")
+                                else:
+                                    st.markdown(f"## {pdf_name}")
+                                    
+                                if search_query and search_query.lower() in source_text.lower():
+                                    st.success(f"#### {source_text}")
+                                else:
+                                    st.markdown(f"#### {source_text}")
+                                    
+                                st.button("Open Document", key=f"doc_{event['date']}_{i}", use_container_width=True)
+                            st.divider()
+                    
+                    # Submissions section with larger text
+                    st.header("📝 Submissions")
+                    
+                    # Two-column layout for claimant and respondent
+                    claimant_col, respondent_col = st.columns(2)
+                    
+                    # Claimant submissions - with Streamlit colors
+                    with claimant_col:
+                        # Use info color for claimant
+                        st.info("## Claimant")
+                        
+                        if event.get("claimant_arguments"):
+                            for idx, arg in enumerate(event["claimant_arguments"]):
+                                source_text = arg.get('source_text', '')
+                                
+                                with st.container():
+                                    st.markdown(f"### Page {arg['page']}")
+                                    
+                                    # Highlight matched search terms with success color
+                                    if search_query and search_query.lower() in source_text.lower():
+                                        st.success(f"#### {source_text}")
+                                    else:
+                                        st.markdown(f"#### {source_text}")
+                                        
+                                st.divider()
+                        else:
+                            st.markdown("#### No claimant submissions")
+                    
+                    # Respondent submissions - with Streamlit colors
+                    with respondent_col:
+                        # Use error color for respondent
+                        st.error("## Respondent")
+                        
+                        if event.get("respondent_arguments"):
+                            for idx, arg in enumerate(event["respondent_arguments"]):
+                                source_text = arg.get('source_text', '')
+                                
+                                with st.container():
+                                    st.markdown(f"### Page {arg['page']}")
+                                    
+                                    # Highlight matched search terms with success color
+                                    if search_query and search_query.lower() in source_text.lower():
+                                        st.success(f"#### {source_text}")
+                                    else:
+                                        st.markdown(f"#### {source_text}")
+                                        
+                                st.divider()
+                        else:
+                            st.markdown("#### No respondent submissions")
 
 if __name__ == "__main__":
     main()
