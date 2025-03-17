@@ -12,37 +12,98 @@ st.set_page_config(
 # Add custom CSS for blue and red styling
 st.markdown("""
 <style>
+    /* Pill/badge styles */
     .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
         border-radius: 12px;
-        padding: 4px 12px;
+        padding: 6px 14px;
         font-weight: 500;
+        font-size: 16px;
         display: inline-block;
     }
     .red-pill {
         background-color: #FFEBEE;
         color: #C62828;
         border-radius: 12px;
-        padding: 4px 12px;
+        padding: 6px 14px;
         font-weight: 500;
+        font-size: 16px;
         display: inline-block;
     }
     .gray-pill {
         background-color: #F5F5F5;
         color: #9E9E9E;
         border-radius: 12px;
-        padding: 4px 12px;
+        padding: 6px 14px;
         font-weight: 500;
+        font-size: 16px;
         display: inline-block;
     }
+    
+    /* Header styles */
     .blue-header {
         color: #1565C0;
         font-weight: 600;
+        font-size: 24px;
+        margin-bottom: 12px;
     }
     .red-header {
         color: #C62828;
         font-weight: 600;
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+    
+    /* Section titles */
+    .section-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-top: 20px;
+        margin-bottom: 16px;
+    }
+    
+    /* Make the main title larger */
+    .main-title {
+        font-size: 32px !important;
+        font-weight: 700 !important;
+        color: #333;
+        margin-bottom: 30px !important;
+    }
+    
+    /* Document titles */
+    .document-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    /* Page reference */
+    .page-ref {
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    /* Citations counter */
+    .counter-value {
+        font-size: 22px !important;
+        font-weight: bold;
+        color: #1E88E5;
+    }
+    .counter-label {
+        font-size: 14px;
+        color: #757575;
+    }
+    
+    /* Addressed by text */
+    .addressed-by {
+        font-size: 16px;
+        color: #555;
+        margin-right: 12px;
+    }
+    
+    /* Make the event titles in expanders larger */
+    .css-1fcdlhc {
+        font-size: 20px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -223,11 +284,11 @@ def main():
         st.divider()
         
         # Search
-        st.subheader("Search Events")
+        st.header("Search Events")
         search_query = st.text_input("", placeholder="Search...", label_visibility="collapsed")
         
         # Date Range
-        st.subheader("Date Range")
+        st.header("Date Range")
         
         # Get min and max dates
         valid_dates = [parse_date(event["date"]) for event in events if parse_date(event["date"])]
@@ -238,10 +299,10 @@ def main():
         end_date = st.date_input("End Date", max_date)
     
     # Main content area
-    st.title("Desert Line Projects (DLP) and The Republic of Yemen")
+    st.markdown("<h1 class='main-title'>Desert Line Projects (DLP) and The Republic of Yemen</h1>", unsafe_allow_html=True)
     
     # Button to copy timeline
-    if st.button("📋 Copy Timeline", type="primary"):
+    if st.button("📋 Copy Timeline", type="primary", use_container_width=True):
         timeline_text = generate_timeline_text(events)
         st.code(timeline_text, language="markdown")
         st.download_button(
@@ -249,6 +310,7 @@ def main():
             data=timeline_text,
             file_name="timeline.md",
             mime="text/markdown",
+            use_container_width=True
         )
     
     # Filter events
@@ -292,15 +354,15 @@ def main():
                 # Number with label
                 st.container().markdown(f"""
                 <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; 
-                     padding: 4px 8px; text-align: center; width: fit-content;">
-                    <div style="font-size: 18px; font-weight: bold; color: #1E88E5;">{total_count}</div>
-                    <div style="font-size: 12px; color: #757575;">Citations</div>
+                     padding: 8px 16px; text-align: center; width: fit-content;">
+                    <div class="counter-value">{total_count}</div>
+                    <div class="counter-label">Citations</div>
                 </div>
                 """, unsafe_allow_html=True)
             
             with citation_cols[1]:
                 # Party badges
-                st.markdown("<span style='font-size: 14px; color: #555; margin-right: 10px;'>Addressed by:</span>", unsafe_allow_html=True)
+                st.markdown("<span class='addressed-by'>Addressed by:</span>", unsafe_allow_html=True)
                 claimant_class = "blue-pill" if has_claimant else "gray-pill"
                 respondent_class = "red-pill" if has_respondent else "gray-pill"
                 
@@ -312,20 +374,20 @@ def main():
             st.markdown("---")
             
             # Supporting Documents section
+            st.markdown("<div class='section-title'>📄 Supporting Documents</div>", unsafe_allow_html=True)
+            
             if event.get("pdf_name") or event.get("source_text"):
-                st.subheader("📄 Supporting Documents")
-                
                 for i, pdf_name in enumerate(event.get("pdf_name", [])):
                     source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
                     
                     with st.container():
-                        st.markdown(f"**{pdf_name}**")
+                        st.markdown(f"<div class='document-title'>{pdf_name}</div>", unsafe_allow_html=True)
                         st.caption(source_text)
-                        st.button("📄 Open Document", key=f"doc_{event['date']}_{i}")
+                        st.button("📄 Open Document", key=f"doc_{event['date']}_{i}", use_container_width=True)
                     st.markdown("---")
             
             # Submissions section
-            st.subheader("📝 Submissions")
+            st.markdown("<div class='section-title'>📝 Submissions</div>", unsafe_allow_html=True)
             
             # Two-column layout for claimant and respondent
             claimant_col, respondent_col = st.columns(2)
@@ -337,7 +399,7 @@ def main():
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
                         with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
+                            st.markdown(f"<div class='page-ref'>Page {arg['page']}</div>", unsafe_allow_html=True)
                             st.caption(arg['source_text'])
                         st.markdown("---")
                 else:
@@ -350,7 +412,7 @@ def main():
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
                         with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
+                            st.markdown(f"<div class='page-ref'>Page {arg['page']}</div>", unsafe_allow_html=True)
                             st.caption(arg['source_text'])
                         st.markdown("---")
                 else:
