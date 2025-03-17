@@ -12,6 +12,7 @@ st.set_page_config(
 # Add custom CSS for blue and red styling
 st.markdown("""
 <style>
+    /* Colors for parties */
     .blue-pill {
         background-color: #E3F2FD;
         color: #1565C0;
@@ -43,6 +44,20 @@ st.markdown("""
     .red-header {
         color: #C62828;
         font-weight: 600;
+    }
+    
+    /* Make timeline event titles 20px */
+    .streamlit-expanderHeader {
+        font-size: 20px !important;
+    }
+    
+    /* Custom card for documents */
+    .document-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background-color: white;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -211,6 +226,17 @@ def generate_timeline_text(events):
     
     return text
 
+# Function to create a nicely formatted document card
+def document_card(title, content, button_text="Open Document", key=None):
+    with st.container():
+        st.markdown(f"""
+        <div class="document-card">
+            <div style="font-weight: 500;">{title}</div>
+            <div style="font-size: 14px; color: #616161; margin-top: 8px;">{content}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button(f"📄 {button_text}", key=key)
+
 # Main app function
 def main():
     # Load data
@@ -317,12 +343,7 @@ def main():
                 
                 for i, pdf_name in enumerate(event.get("pdf_name", [])):
                     source_text = event.get("source_text", [""])[i] if i < len(event.get("source_text", [])) else ""
-                    
-                    with st.container():
-                        st.markdown(f"**{pdf_name}**")
-                        st.caption(source_text)
-                        st.button("📄 Open Document", key=f"doc_{event['date']}_{i}")
-                    st.markdown("---")
+                    document_card(pdf_name, source_text, key=f"doc_{event['date']}_{i}")
             
             # Submissions section
             st.subheader("📝 Submissions")
@@ -336,10 +357,7 @@ def main():
                 
                 if event.get("claimant_arguments"):
                     for idx, arg in enumerate(event["claimant_arguments"]):
-                        with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
-                            st.caption(arg['source_text'])
-                        st.markdown("---")
+                        document_card(f"Page {arg['page']}", arg['source_text'], key=f"claim_{event['date']}_{idx}")
                 else:
                     st.caption("No claimant submissions")
             
@@ -349,10 +367,7 @@ def main():
                 
                 if event.get("respondent_arguments"):
                     for idx, arg in enumerate(event["respondent_arguments"]):
-                        with st.container():
-                            st.markdown(f"**Page {arg['page']}**")
-                            st.caption(arg['source_text'])
-                        st.markdown("---")
+                        document_card(f"Page {arg['page']}", arg['source_text'], key=f"resp_{event['date']}_{idx}")
                 else:
                     st.caption("No respondent submissions")
 
