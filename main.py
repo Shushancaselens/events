@@ -1,5 +1,4 @@
 import streamlit as st
-import json
 import pandas as pd
 from datetime import datetime
 from io import StringIO
@@ -136,52 +135,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load the JSON data
+# Load the data directly in Python without JSON parsing
 @st.cache_data
 def load_data():
-    # For this example, we'll use the provided JSON structure
-    json_data = """
-    {
+    # Create the data structure directly
+    data = {
         "events": [
             {
                 "date": "1965-00-00",
-                "end_date": null,
+                "end_date": None,
                 "event": "Martineek Herald began publishing reliable everyday news.",
                 "source_text": [
-                    "FDI Moot™ CENTER FOR INTERNATIONAL LEGAL STUDIES <LINE: 415> CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022 VOL. XXIX NO. 83 MONDAY, DECEMBER 19, 2022 MARTINEEK HERALD RELIABLE EVERYDAY NEWS"
+                    "FDI Moot CENTER FOR INTERNATIONAL LEGAL STUDIES <LINE: 415> CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022 VOL. XXIX NO. 83 MONDAY, DECEMBER 19, 2022 MARTINEEK HERALD RELIABLE EVERYDAY NEWS"
                 ],
-                "page": [
-                    "1"
-                ],
-                "pdf_name": [
-                    "CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022.pdf"
-                ],
-                "doc_name": [
-                    "name of the document"
-                ],
-                "doc_sum": [
-                    "summary of the document"
-                ]
+                "page": ["1"],
+                "pdf_name": ["CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"]
             },
             {
                 "date": "2007-12-28",
-                "end_date": null,
+                "end_date": None,
                 "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
                 "source_text": [
-                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL -USE MATERIAL"
+                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL-USE MATERIAL"
                 ],
-                "page": [
-                    "1"
-                ],
-                "pdf_name": [
-                    "RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"
-                ],
-                "doc_name": [
-                    "name of the document"
-                ],
-                "doc_sum": [
-                    "summary of the document"
-                ],
+                "page": ["1"],
+                "pdf_name": ["RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
                 "claimant_arguments": [],
                 "respondent_arguments": [
                     {
@@ -209,23 +191,15 @@ def load_data():
             },
             {
                 "date": "2013-06-28",
-                "end_date": null,
+                "end_date": None,
                 "event": "The Martineek-Albion BIT was ratified.",
                 "source_text": [
-                    "rtineek and Albion terminated the 1993 Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion and replaced it with a revised Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion (the "Martineek-Albion BIT"). The Martineek-Albion BIT was ratified on"
+                    "rtineek and Albion terminated the 1993 Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion and replaced it with a revised Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion (the 'Martineek-Albion BIT'). The Martineek-Albion BIT was ratified on"
                 ],
-                "page": [
-                    "1"
-                ],
-                "pdf_name": [
-                    "Statement of Uncontested Facts.pdf"
-                ],
-                "doc_name": [
-                    "name of the document"
-                ],
-                "doc_sum": [
-                    "summary of the document"
-                ],
+                "page": ["1"],
+                "pdf_name": ["Statement of Uncontested Facts.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
                 "claimant_arguments": [
                     {
                         "fragment_start": "Martineek and",
@@ -239,23 +213,15 @@ def load_data():
             },
             {
                 "date": "2016-00-00",
-                "end_date": null,
+                "end_date": None,
                 "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
                 "source_text": [
                     "6. In late 2016, with technological advances in the Archipelago, Martineek became one of the world's leading manufacturers of industrial robots."
                 ],
-                "page": [
-                    "1"
-                ],
-                "pdf_name": [
-                    "Statement of Uncontested Facts.pdf"
-                ],
-                "doc_name": [
-                    "name of the document"
-                ],
-                "doc_sum": [
-                    "summary of the document"
-                ],
+                "page": ["1"],
+                "pdf_name": ["Statement of Uncontested Facts.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
                 "claimant_arguments": [
                     {
                         "fragment_start": "In late",
@@ -277,8 +243,7 @@ def load_data():
             }
         ]
     }
-    """
-    return json.loads(json_data)
+    return data
 
 # Function to parse date
 def parse_date(date_str):
