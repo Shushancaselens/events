@@ -240,16 +240,26 @@ def main():
     # Main content area
     st.title("Desert Line Projects (DLP) and The Republic of Yemen")
     
-    # Button to copy timeline
-    if st.button("📋 Copy Timeline", type="primary"):
-        timeline_text = generate_timeline_text(events)
-        st.code(timeline_text, language="markdown")
-        st.download_button(
-            label="Download Timeline as Text",
-            data=timeline_text,
-            file_name="timeline.md",
-            mime="text/markdown",
-        )
+    # Generate timeline text
+    timeline_text = generate_timeline_text(events)
+    
+    # Timeline actions in columns for better layout
+    col1, col2 = st.columns(2)
+    
+    # Show timeline text when button is clicked
+    if col1.button("📋 View Timeline Text", type="primary"):
+        # Show collapsible code block for easy copying
+        with st.expander("Timeline Text (Click to expand/collapse)", expanded=True):
+            st.code(timeline_text, language="markdown")
+            st.info("⚠️ Select the text above and use Ctrl+C (or Cmd+C on Mac) to copy it to your clipboard.")
+    
+    # Download button is always available
+    col2.download_button(
+        label="💾 Download Timeline",
+        data=timeline_text,
+        file_name="timeline.md",
+        mime="text/markdown",
+    )
     
     # Filter events
     filtered_events = events
