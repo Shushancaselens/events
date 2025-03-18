@@ -168,77 +168,60 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate Word document with footnotes
+# Function to generate timeline Word document with footnotes
 def generate_timeline_text(events):
-    try:
-        from docx import Document
-        from docx.shared import Pt, RGBColor
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx import Document
+    from docx.shared import Pt
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    
+    # Create a new Word document
+    doc = Document()
+    
+    # Add a title
+    title = doc.add_heading('Arbitral Event Timeline', level=1)
+    title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    
+    # Add events with footnotes
+    footnote_counter = 1
+    
+    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+        # Format the event text with date
+        date_formatted = format_date(event["date"])
         
-        # Create a new Document
-        doc = Document()
+        # Add paragraph for the event
+        para = doc.add_paragraph()
+        date_run = para.add_run(f"{date_formatted}: ")
+        date_run.bold = True
+        para.add_run(f"{event['event']}")
         
-        # Add a title
-        title = doc.add_heading('Arbitral Event Timeline', level=1)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Sources for footnote
+        sources = []
+        if event.get("claimant_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+        if event.get("respondent_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+        if event.get("doc_name"):
+            sources.extend(event["doc_name"])
         
-        # Add events with footnotes
-        for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-            date_formatted = format_date(event["date"])
+        if sources:
+            # Add footnote reference
+            ref_run = para.add_run(f" [{footnote_counter}]")
+            ref_run.font.superscript = True
             
-            # Add paragraph with event info
-            p = doc.add_paragraph()
-            date_run = p.add_run(f"{date_formatted}: ")
-            date_run.bold = True
-            
-            # Add event text with footnote reference
-            event_run = p.add_run(f"{event['event']}")
-            
-            # Collect sources for footnote
-            sources = []
-            if event.get("claimant_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
-            if event.get("respondent_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
-            if event.get("doc_name"):
-                sources.extend(event["doc_name"])
-            
-            # Add footnote if sources exist
-            if sources:
-                footnote_text = '; '.join(sources)
-                p.add_run().add_footnote(footnote_text)
-            
-            # Add a spacer after each event
-            if i < len(events) - 1:
-                doc.add_paragraph()
+            # Add footnote at the bottom
+            footnote = doc.add_paragraph(f"[{footnote_counter}] {'; '.join(sources)}")
+            footnote.style = 'Footnote Text'
+            footnote_counter += 1
         
-        # Save to a BytesIO object for download
-        from io import BytesIO
-        docx_stream = BytesIO()
-        doc.save(docx_stream)
-        docx_stream.seek(0)
-        
-        return docx_stream
-    except ImportError:
-        # Fallback to plain text if python-docx is not available
-        text = ""
-        for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
-            date_formatted = format_date(event["date"])
-            text += f"**{date_formatted}** {event['event']}[1]\n\n"
-            
-            # Sources for footnote
-            sources = []
-            if event.get("claimant_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
-            if event.get("respondent_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
-            if event.get("doc_name"):
-                sources.extend(event["doc_name"])
-            
-            if sources:
-                text += f"[1] {'; '.join(sources)}\n\n"
-        
-        return text
+        # Add a space between events
+        doc.add_paragraph()
+    
+    # Save to a temporary file
+    temp_file = "timeline_export.docx"
+    doc.save(temp_file)
+    
+    # Return the filename for download
+    return temp_file
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -281,36 +264,23 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Button to copy timeline
-    if st.button("📋 Generate Timeline Document", type="primary", key=f"copy_timeline_{unique_id}"):
-        try:
-            # Generate Word document
-            docx_data = generate_timeline_text(events)
+    # Button to generate and download Word document
+    if st.button("📋 Export Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
+        with st.spinner("Generating Word document..."):
+            word_file = generate_timeline_text(events)
             
-            # Check if docx_data is a BytesIO object (Word document) or a string (fallback text)
-            if hasattr(docx_data, 'getvalue'):
-                st.success("Word document generated successfully!")
-                st.download_button(
-                    label="Download Timeline as Word Document",
-                    data=docx_data.getvalue(),
-                    file_name="timeline.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    key=f"download_docx_{unique_id}"
-                )
-            else:
-                # Fallback to text if python-docx is not available
-                st.warning("python-docx library not found. Generating markdown text instead.")
-                st.code(docx_data, language="markdown")
-                st.download_button(
-                    label="Download Timeline as Text",
-                    data=docx_data,
-                    file_name="timeline.md",
-                    mime="text/markdown",
-                    key=f"download_timeline_{unique_id}"
-                )
-        except Exception as e:
-            st.error(f"Error generating document: {str(e)}")
-            st.info("Make sure you have the python-docx library installed: `pip install python-docx`")
+            # Read the file back as bytes for download
+            with open(word_file, "rb") as f:
+                word_bytes = f.read()
+            
+            st.success("Word document generated successfully!")
+            st.download_button(
+                label="Download Timeline as Word Document",
+                data=word_bytes,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
