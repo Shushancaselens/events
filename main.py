@@ -231,16 +231,16 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Download timeline button
-    if st.button("📥 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        timeline_text = generate_timeline_text(events)
-        st.download_button(
-            label="Download Timeline as Word Document",
-            data=timeline_text,
-            file_name="timeline.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            key=f"download_timeline_doc_{unique_id}"
-        )
+    # Direct download button for timeline
+    timeline_text = generate_timeline_text(events)
+    st.download_button(
+        label="📥 Download Timeline",
+        data=timeline_text,
+        file_name="timeline.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        type="primary",
+        key=f"download_timeline_{unique_id}"
+    )
     
     # Filter events
     filtered_events = events
