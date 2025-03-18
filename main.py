@@ -168,31 +168,36 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate timeline Word document with footnotes
+# Function to generate timeline text with HTML for Word-compatible format
 def generate_timeline_text(events):
-    from docx import Document
-    from docx.shared import Pt
-    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
-    
-    # Create a new Word document
-    doc = Document()
-    
-    # Add a title
-    title = doc.add_heading('Arbitral Event Timeline', level=1)
-    title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    # Create HTML that can be opened in Word
+    html = """
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { text-align: center; }
+            .event { margin-bottom: 20px; }
+            .date { font-weight: bold; }
+            .footnote { font-size: 10pt; margin-top: 5px; border-top: 1px solid #ccc; padding-top: 5px; }
+        </style>
+    </head>
+    <body>
+        <h1>Arbitral Event Timeline</h1>
+    """
     
     # Add events with footnotes
-    footnote_counter = 1
-    
-    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
         # Format the event text with date
         date_formatted = format_date(event["date"])
+        footnote_num = i + 1
         
-        # Add paragraph for the event
-        para = doc.add_paragraph()
-        date_run = para.add_run(f"{date_formatted}: ")
-        date_run.bold = True
-        para.add_run(f"{event['event']}")
+        # Add event with superscript footnote reference
+        html += f"""
+        <div class="event">
+            <span class="date">{date_formatted}:</span> {event['event']}<sup>{footnote_num}</sup>
+        </div>
+        """
         
         # Sources for footnote
         sources = []
@@ -204,24 +209,19 @@ def generate_timeline_text(events):
             sources.extend(event["doc_name"])
         
         if sources:
-            # Add footnote reference
-            ref_run = para.add_run(f" [{footnote_counter}]")
-            ref_run.font.superscript = True
-            
-            # Add footnote at the bottom
-            footnote = doc.add_paragraph(f"[{footnote_counter}] {'; '.join(sources)}")
-            footnote.style = 'Footnote Text'
-            footnote_counter += 1
-        
-        # Add a space between events
-        doc.add_paragraph()
+            html += f"""
+            <div class="footnote">
+                <sup>{footnote_num}</sup> {'; '.join(sources)}
+            </div>
+            """
     
-    # Save to a temporary file
-    temp_file = "timeline_export.docx"
-    doc.save(temp_file)
+    # Close HTML
+    html += """
+    </body>
+    </html>
+    """
     
-    # Return the filename for download
-    return temp_file
+    return html
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -264,23 +264,21 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Button to generate and download Word document
+    # Button to export timeline as HTML (which can be opened in Word)
     if st.button("📋 Export Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
-        with st.spinner("Generating Word document..."):
-            word_file = generate_timeline_text(events)
-            
-            # Read the file back as bytes for download
-            with open(word_file, "rb") as f:
-                word_bytes = f.read()
-            
-            st.success("Word document generated successfully!")
-            st.download_button(
-                label="Download Timeline as Word Document",
-                data=word_bytes,
-                file_name="timeline.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"download_timeline_{unique_id}"
-            )
+        html_content = generate_timeline_text(events)
+        
+        st.download_button(
+            label="Download Timeline (Word-Compatible)",
+            data=html_content,
+            file_name="timeline.html",
+            mime="text/html",
+            key=f"download_timeline_{unique_id}"
+        )
+        
+        # Also show preview
+        st.markdown("### Preview:")
+        st.components.v1.html(html_content, height=400, scrolling=True)
     
     # Filter events
     filtered_events = events
