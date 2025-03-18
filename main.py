@@ -2,6 +2,10 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import StringIO
+import io
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -190,6 +194,48 @@ def generate_timeline_text(events):
     
     return text
 
+# Function to generate Word document with footnotes
+def generate_word_document(events):
+    doc = Document()
+    
+    # Set document title
+    title = doc.add_heading('Arbitral Event Timeline', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Sort events by date
+    sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
+    
+    # Add each event with footnotes
+    for event in sorted_events:
+        date_formatted = format_date(event["date"])
+        
+        # Add event paragraph
+        p = doc.add_paragraph()
+        date_run = p.add_run(f"{date_formatted}: ")
+        date_run.bold = True
+        p.add_run(f"{event['event']}")
+        
+        # Collect sources for footnote
+        sources = []
+        if event.get("claimant_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+        if event.get("respondent_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+        if event.get("doc_name"):
+            sources.extend(event["doc_name"])
+        
+        # Add footnote if sources exist
+        if sources:
+            footnote_text = '; '.join(sources)
+            p.add_run().add_footnote(footnote_text)
+    
+    # Save document to bytes buffer
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    
+    return buffer
+
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
     st.sidebar.markdown("""
@@ -231,15 +277,15 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Button to copy timeline
+    # Button to generate Word document
     if st.button("📋 Copy Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
-        timeline_text = generate_timeline_text(events)
-        st.code(timeline_text, language="markdown")
+        word_doc = generate_word_document(events)
+        st.success("Word document with footnotes has been generated. Click below to download.")
         st.download_button(
-            label="Download Timeline as Text",
-            data=timeline_text,
-            file_name="timeline.md",
-            mime="text/markdown",
+            label="Download Timeline as Word Document",
+            data=word_doc,
+            file_name="timeline.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             key=f"download_timeline_{unique_id}"
         )
     
@@ -357,3 +403,5 @@ def visualize(data, unique_id="", sidebar_values=None):
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No respondent submissions</div>", unsafe_allow_html=True)
+
+# VISUALIZE END #####################
