@@ -168,36 +168,13 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate timeline text with HTML for Word-compatible format
+# Function to generate timeline text for copying
 def generate_timeline_text(events):
-    # Create HTML that can be opened in Word
-    html = """
-    <html>
-    <head>
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; }
-            h1 { text-align: center; }
-            .event { margin-bottom: 20px; }
-            .date { font-weight: bold; }
-            .footnote { font-size: 10pt; margin-top: 5px; border-top: 1px solid #ccc; padding-top: 5px; }
-        </style>
-    </head>
-    <body>
-        <h1>Arbitral Event Timeline</h1>
-    """
-    
-    # Add events with footnotes
-    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-        # Format the event text with date
+    text = ""
+    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+        # Format the event text with date in bold
         date_formatted = format_date(event["date"])
-        footnote_num = i + 1
-        
-        # Add event with superscript footnote reference
-        html += f"""
-        <div class="event">
-            <span class="date">{date_formatted}:</span> {event['event']}<sup>{footnote_num}</sup>
-        </div>
-        """
+        text += f"**{date_formatted}** {event['event']}[1]\n\n"
         
         # Sources for footnote
         sources = []
@@ -209,19 +186,9 @@ def generate_timeline_text(events):
             sources.extend(event["doc_name"])
         
         if sources:
-            html += f"""
-            <div class="footnote">
-                <sup>{footnote_num}</sup> {'; '.join(sources)}
-            </div>
-            """
+            text += f"[1] {'; '.join(sources)}\n\n"
     
-    # Close HTML
-    html += """
-    </body>
-    </html>
-    """
-    
-    return html
+    return text
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -264,21 +231,16 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Button to export timeline as HTML (which can be opened in Word)
-    if st.button("📋 Export Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
-        html_content = generate_timeline_text(events)
-        
+    # Download timeline button
+    if st.button("📥 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
+        timeline_text = generate_timeline_text(events)
         st.download_button(
-            label="Download Timeline (Word-Compatible)",
-            data=html_content,
-            file_name="timeline.html",
-            mime="text/html",
-            key=f"download_timeline_{unique_id}"
+            label="Download Timeline as Word Document",
+            data=timeline_text,
+            file_name="timeline.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key=f"download_timeline_doc_{unique_id}"
         )
-        
-        # Also show preview
-        st.markdown("### Preview:")
-        st.components.v1.html(html_content, height=400, scrolling=True)
     
     # Filter events
     filtered_events = events
