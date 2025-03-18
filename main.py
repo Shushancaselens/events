@@ -357,6 +357,3 @@ def visualize(data, unique_id="", sidebar_values=None):
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No respondent submissions</div>", unsafe_allow_html=True)
-
-# VISUALIZE END #####################
-
