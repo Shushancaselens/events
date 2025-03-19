@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO, BytesIO
+from io import StringIO
+import io
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -171,96 +172,17 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate formatted HTML for the timeline
-def generate_timeline_html(events):
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Arbitral Event Timeline</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                margin: 40px;
-                max-width: 800px;
-                margin: 0 auto;
-                padding: 20px;
-            }
-            h1 {
-                text-align: center;
-                color: #333;
-                margin-bottom: 30px;
-            }
-            .event {
-                margin-bottom: 20px;
-                padding-bottom: 20px;
-                border-bottom: 1px solid #eee;
-            }
-            .event-date {
-                font-weight: bold;
-            }
-            .footnote {
-                font-size: 0.9em;
-                color: #555;
-                margin-left: 20px;
-                margin-top: 5px;
-            }
-            .footnote-marker {
-                vertical-align: super;
-                font-size: 0.8em;
-                color: #0066cc;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Arbitral Event Timeline</h1>
-    """
-    
-    # Add events in chronological order
-    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-        # Format the date
-        date_formatted = format_date(event["date"])
-        
-        # Start event div
-        html += f'<div class="event">\n'
-        html += f'<p><span class="event-date">{date_formatted}:</span> {event["event"]}<span class="footnote-marker">[{i+1}]</span></p>\n'
-        
-        # Collect sources for footnote
-        sources = []
-        if event.get("claimant_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
-        if event.get("respondent_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
-        if event.get("doc_name"):
-            sources.extend(event["doc_name"])
-        
-        # Add the footnote
-        if sources:
-            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> {"; ".join(sources)}</p>\n'
-        else:
-            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> No sources available</p>\n'
-        
-        # Close event div
-        html += '</div>\n'
-    
-    # Close the HTML document
-    html += """
-    </body>
-    </html>
-    """
-    
-    return html
-
-# Function to generate a Word document for the timeline with proper footnotes
+# Function to generate Word document with footnotes for the timeline
 def generate_timeline_docx(events):
-    # Create a new Word document
     doc = Document()
     
-    # Set document properties
-    doc.styles['Normal'].font.name = 'Times New Roman'
-    doc.styles['Normal'].font.size = Pt(12)
+    # Set document margins
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Inches(1)
+        section.bottom_margin = Inches(1)
+        section.left_margin = Inches(1)
+        section.right_margin = Inches(1)
     
     # Add title
     title = doc.add_heading('Arbitral Event Timeline', level=1)
@@ -271,54 +193,50 @@ def generate_timeline_docx(events):
         # Format the date
         date_formatted = format_date(event["date"])
         
-        # Add event text with date
+        # Add event text
         p = doc.add_paragraph()
         p.add_run(f"{date_formatted}: ").bold = True
-        p.add_run(f"{event['event']}")
+        run = p.add_run(f"{event['event']}")
+        
+        # Collect sources for footnote
+        claimant_args = event.get("claimant_arguments", [])
+        respondent_args = event.get("respondent_arguments", [])
+        doc_names = event.get("doc_name", [])
         
         # Prepare footnote text
-        footnote_text = ""
+        footnote_text = f"On {date_formatted}, special vehicle was incorporated. "
         
-        # Add exhibits references
-        if event.get("doc_name"):
-            for i, doc_name in enumerate(event.get("doc_name", [])):
-                if i > 0:
-                    footnote_text += "; "
-                footnote_text += f"{doc_name}"
-        
-        # Add claimant arguments
-        if event.get("claimant_arguments"):
-            if footnote_text:
-                footnote_text += "; "
-            claimant_refs = []
-            for arg in event["claimant_arguments"]:
-                claimant_refs.append(f"Claimant Memorial p.{arg['page']}")
-            footnote_text += "; ".join(claimant_refs)
-        
-        # Add respondent arguments
-        if event.get("respondent_arguments"):
-            if footnote_text:
-                footnote_text += "; "
-            respondent_refs = []
-            for arg in event["respondent_arguments"]:
-                respondent_refs.append(f"Respondent Memorial p.{arg['page']}")
-            footnote_text += "; ".join(respondent_refs)
-        
-        # Add footnote
-        if footnote_text:
-            footnote = p.add_footnote(footnote_text)
+        # Add exhibits information
+        if claimant_args or respondent_args or doc_names:
+            footnote_text += f"{len(claimant_args) + len(respondent_args) + len(doc_names)} exhibits; "
+            
+            if claimant_args:
+                footnote_text += "claimant memorial "
+            
+            if respondent_args:
+                if claimant_args:
+                    footnote_text += "and "
+                footnote_text += "respondent memorial"
+                
+            # Add specific documents if available
+            if doc_names:
+                footnote_text += f"; {', '.join(doc_names)}"
         else:
-            footnote = p.add_footnote("No exhibits available")
+            footnote_text += "No exhibits available"
+            
+        # Add the footnote to the document
+        footnote = run.add_footnote()
+        footnote.add_paragraph(footnote_text)
         
-        # Add some space between events
+        # Add a line break after each event
         doc.add_paragraph()
     
-    # Save the document to a BytesIO stream
-    docx_stream = BytesIO()
-    doc.save(docx_stream)
-    docx_stream.seek(0)
+    # Save to a BytesIO object
+    docx_file = io.BytesIO()
+    doc.save(docx_file)
+    docx_file.seek(0)
     
-    return docx_stream
+    return docx_file
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -361,39 +279,19 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Download timeline section
-    st.markdown("### 📥 Download Timeline")
-    
-    # Create columns for download options
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("📋 Download as HTML", key=f"download_timeline_html_btn_{unique_id}"):
-            # Generate HTML timeline with footnotes
-            html_content = generate_timeline_html(events)
-            
-            # Provide download button for HTML file
-            st.download_button(
-                label="Click to download HTML",
-                data=html_content,
-                file_name="timeline.html",
-                mime="text/html",
-                key=f"download_timeline_html_{unique_id}"
-            )
-    
-    with col2:
-        if st.button("📄 Download as Word", key=f"download_timeline_word_btn_{unique_id}"):
-            # Generate Word document with proper footnotes
-            docx_stream = generate_timeline_docx(events)
-            
-            # Provide download button for Word file
-            st.download_button(
-                label="Click to download Word document",
-                data=docx_stream,
-                file_name="timeline.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"download_timeline_docx_{unique_id}"
-            )
+    # Download timeline button
+    if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
+        # Generate Word document with proper footnotes
+        docx_file = generate_timeline_docx(events)
+        
+        # Provide download button for Word file
+        st.download_button(
+            label="Download Timeline as Word Document",
+            data=docx_file,
+            file_name="arbitral_timeline.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key=f"download_timeline_docx_{unique_id}"
+        )
     
     # Filter events
     filtered_events = events
