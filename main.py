@@ -303,32 +303,26 @@ def generate_timeline_docx_manual(events):
 </w:settings>"""
             docx_zip.writestr('word/settings.xml', settings_xml)
             
-            # Create the footnotes.xml file
+            # Create the footnotes.xml file - simpler structure to avoid Word repairs
             footnotes_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:footnote w:id="0">
+    <w:footnote w:id="-1" w:type="separator">
         <w:p>
+            <w:pPr>
+                <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
             <w:r>
-                <w:rPr>
-                    <w:rStyle w:val="FootnoteReference"/>
-                </w:rPr>
-                <w:footnoteRef/>
-            </w:r>
-            <w:r>
-                <w:t xml:space="preserve"> </w:t>
+                <w:separator/>
             </w:r>
         </w:p>
     </w:footnote>
-    <w:footnote w:id="1">
+    <w:footnote w:id="0" w:type="continuationSeparator">
         <w:p>
+            <w:pPr>
+                <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
+            </w:pPr>
             <w:r>
-                <w:rPr>
-                    <w:rStyle w:val="FootnoteReference"/>
-                </w:rPr>
-                <w:footnoteRef/>
-            </w:r>
-            <w:r>
-                <w:t xml:space="preserve"> </w:t>
+                <w:continuationSeparator/>
             </w:r>
         </w:p>
     </w:footnote>"""
@@ -337,7 +331,7 @@ def generate_timeline_docx_manual(events):
             sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
             
             for i, event in enumerate(sorted_events):
-                footnote_id = i + 2  # Start from 2 as 0 and 1 are reserved
+                footnote_id = i + 1  # Standard footnotes start at 1
                 
                 # Format exhibits for footnote
                 claimant_exhibits = []
@@ -355,29 +349,30 @@ def generate_timeline_docx_manual(events):
                 if event.get("doc_name"):
                     other_exhibits.extend(event.get("doc_name"))
                 
-                # Build footnote content
-                footnote_content = ""
+                # Build footnote content with simpler structure
+                footnote_parts = []
                 
-                if claimant_exhibits or respondent_exhibits or other_exhibits:
-                    if claimant_exhibits:
-                        footnote_content += "Claimant memorial: " + "; ".join(claimant_exhibits)
-                    
-                    if respondent_exhibits:
-                        if footnote_content:
-                            footnote_content += "; "
-                        footnote_content += "Respondent memorial: " + "; ".join(respondent_exhibits)
-                    
-                    if other_exhibits:
-                        if footnote_content:
-                            footnote_content += "; "
-                        footnote_content += "Exhibits: " + "; ".join(other_exhibits)
-                else:
-                    footnote_content = "No exhibits available"
+                if claimant_exhibits:
+                    footnote_parts.append("Claimant memorial: " + "; ".join(claimant_exhibits))
                 
-                # Add footnote to XML
+                if respondent_exhibits:
+                    footnote_parts.append("Respondent memorial: " + "; ".join(respondent_exhibits))
+                
+                if other_exhibits:
+                    footnote_parts.append("Exhibits: " + "; ".join(other_exhibits))
+                
+                footnote_content = "; ".join(footnote_parts) if footnote_parts else "No exhibits available"
+                
+                # Escape XML special characters
+                footnote_content = footnote_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;")
+                
+                # Add footnote to XML with simpler structure
                 footnotes_xml += f"""
     <w:footnote w:id="{footnote_id}">
         <w:p>
+            <w:pPr>
+                <w:pStyle w:val="FootnoteText"/>
+            </w:pPr>
             <w:r>
                 <w:rPr>
                     <w:rStyle w:val="FootnoteReference"/>
@@ -413,11 +408,14 @@ def generate_timeline_docx_manual(events):
             for i, event in enumerate(sorted_events):
                 # Format the date
                 date_formatted = format_date(event["date"])
-                footnote_id = i + 2  # Match with footnote IDs
+                footnote_id = i + 1  # Match with footnote IDs
                 
                 # Add event paragraph with date in bold and properly referenced footnote
                 document_xml += f"""
         <w:p>
+            <w:pPr>
+                <w:pStyle w:val="Normal"/>
+            </w:pPr>
             <w:r>
                 <w:rPr>
                     <w:b/>
@@ -434,6 +432,11 @@ def generate_timeline_docx_manual(events):
                 <w:footnoteReference w:id="{footnote_id}"/>
             </w:r>
         </w:p>"""
+            
+            # Close document
+            document_xml += """
+    </w:body>
+</w:document>"""
             
             # Close document
             document_xml += """
