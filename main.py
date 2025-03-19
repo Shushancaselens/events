@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import StringIO
-import subprocess
-import os
 import base64
 
 # VISUALIZE START #####################
@@ -171,88 +169,29 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to install docx package if not available
-def install_docx():
-    try:
-        import docx
-        return True
-    except ImportError:
-        try:
-            subprocess.check_call(["pip", "install", "python-docx"])
-            return True
-        except:
-            return False
-
-# Function to generate timeline Word document with footnotes
-def generate_timeline_docx(events):
-    try:
-        # Try to import docx after installation
-        from docx import Document
-        from docx.shared import Pt
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        
-        doc = Document()
-        
-        # Add a title
-        title = doc.add_heading('Arbitral Event Timeline', level=1)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        # Add events in chronological order
-        for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-            # Format the date
-            date_formatted = format_date(event["date"])
-            
-            # Add the event text with date
-            p = doc.add_paragraph()
-            p.add_run(f"{date_formatted}: ").bold = True
-            event_run = p.add_run(f"{event['event']}")
-            
-            # Add footnote reference
-            footnote_ref = event_run.add_footnote()
-            
-            # Collect sources for footnote
-            sources = []
-            if event.get("claimant_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
-            if event.get("respondent_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
-            if event.get("doc_name"):
-                sources.extend(event["doc_name"])
-            
-            # Add the sources to the footnote
-            if sources:
-                footnote_ref.add_run('; '.join(sources))
-            else:
-                footnote_ref.add_run("No sources available")
-        
-        # Save the document to a temporary file
-        temp_file = "temp_timeline.docx"
-        doc.save(temp_file)
-        
-        # Read the file back as bytes
-        with open(temp_file, "rb") as file:
-            docx_bytes = file.read()
-        
-        # Clean up
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-            
-        return docx_bytes
-    except Exception as e:
-        st.error(f"Error creating Word document: {str(e)}")
-        return None
-
-# Function to generate formatted plain text for the timeline
-def generate_timeline_text(events):
-    text = "ARBITRAL EVENT TIMELINE\n\n"
+# Function to generate an RTF (Rich Text Format) document with footnotes
+# RTF can be opened directly in Microsoft Word
+def generate_timeline_rtf(events):
+    # RTF header
+    rtf = r"{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fcharset0 Arial;}}"
     
+    # Add title centered
+    rtf += r"{\pard\qc\b\fs32 Arbitral Event Timeline\par}\par\pard\plain\fs24"
+    
+    # Add events in chronological order
     for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
         # Format the date
         date_formatted = format_date(event["date"])
         
-        # Add the event with footnote reference
-        text += f"{date_formatted}: {event['event']} [{i+1}]\n"
+        # Add event with footnote reference
+        rtf += r"{\b " + date_formatted + r":} " + event["event"] + r"\super " + str(i+1) + r"\nosupersub\par\par"
         
+    # Add footnotes section
+    rtf += r"{\pard\fs20\brdrb\brdrs\brdrw10\brsp20 \par}\par"
+    rtf += r"{\fs20 " + r"Footnotes:\par\par" + r"}"
+    
+    # Add each footnote
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
         # Collect sources for footnote
         sources = []
         if event.get("claimant_arguments"):
@@ -262,15 +201,14 @@ def generate_timeline_text(events):
         if event.get("doc_name"):
             sources.extend(event["doc_name"])
         
-        # Add the footnote
-        if sources:
-            text += f"[{i+1}] {'; '.join(sources)}\n"
-        else:
-            text += f"[{i+1}] No sources available\n"
-        
-        text += "\n"
+        # Add formatted footnote
+        footnote_text = '; '.join(sources) if sources else "No sources available"
+        rtf += r"{\fs20 " + r"\super " + str(i+1) + r"\nosupersub " + footnote_text + r"\par\par}"
     
-    return text
+    # Close RTF document
+    rtf += r"}"
+    
+    return rtf
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -315,42 +253,18 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Try to install docx package if not available
-        docx_available = install_docx()
+        # Generate RTF (Rich Text Format) document with footnotes
+        # RTF can be opened directly by Microsoft Word
+        rtf_content = generate_timeline_rtf(events)
         
-        if docx_available:
-            # Generate Word document with proper footnotes
-            docx_bytes = generate_timeline_docx(events)
-            
-            if docx_bytes:
-                # Provide download button for the Word document
-                st.download_button(
-                    label="Download Timeline as Word Document",
-                    data=docx_bytes,
-                    file_name="timeline.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    key=f"download_timeline_docx_{unique_id}"
-                )
-            else:
-                st.error("Unable to create Word document. Providing text version instead.")
-                text_content = generate_timeline_text(events)
-                st.download_button(
-                    label="Download Timeline as Text",
-                    data=text_content,
-                    file_name="timeline.txt",
-                    mime="text/plain",
-                    key=f"download_timeline_txt_{unique_id}"
-                )
-        else:
-            st.error("Unable to install required package. Providing text version instead.")
-            text_content = generate_timeline_text(events)
-            st.download_button(
-                label="Download Timeline as Text",
-                data=text_content,
-                file_name="timeline.txt",
-                mime="text/plain",
-                key=f"download_timeline_txt_{unique_id}"
-            )
+        # Provide download button for the RTF file
+        st.download_button(
+            label="Download Timeline",
+            data=rtf_content,
+            file_name="timeline.rtf",
+            mime="application/rtf",
+            key=f"download_timeline_rtf_{unique_id}"
+        )
     
     # Filter events
     filtered_events = events
