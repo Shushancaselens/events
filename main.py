@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import StringIO
+import subprocess
+import os
+import base64
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -168,61 +171,87 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate formatted HTML for the timeline
-def generate_timeline_html(events):
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Arbitral Event Timeline</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                margin: 40px;
-                max-width: 800px;
-                margin: 0 auto;
-                padding: 20px;
-            }
-            h1 {
-                text-align: center;
-                color: #333;
-                margin-bottom: 30px;
-            }
-            .event {
-                margin-bottom: 20px;
-                padding-bottom: 20px;
-                border-bottom: 1px solid #eee;
-            }
-            .event-date {
-                font-weight: bold;
-            }
-            .footnote {
-                font-size: 0.9em;
-                color: #555;
-                margin-left: 20px;
-                margin-top: 5px;
-            }
-            .footnote-marker {
-                vertical-align: super;
-                font-size: 0.8em;
-                color: #0066cc;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>Arbitral Event Timeline</h1>
-    """
+# Function to install docx package if not available
+def install_docx():
+    try:
+        import docx
+        return True
+    except ImportError:
+        try:
+            subprocess.check_call(["pip", "install", "python-docx"])
+            return True
+        except:
+            return False
+
+# Function to generate timeline Word document with footnotes
+def generate_timeline_docx(events):
+    try:
+        # Try to import docx after installation
+        from docx import Document
+        from docx.shared import Pt
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        
+        doc = Document()
+        
+        # Add a title
+        title = doc.add_heading('Arbitral Event Timeline', level=1)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Add events in chronological order
+        for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
+            # Format the date
+            date_formatted = format_date(event["date"])
+            
+            # Add the event text with date
+            p = doc.add_paragraph()
+            p.add_run(f"{date_formatted}: ").bold = True
+            event_run = p.add_run(f"{event['event']}")
+            
+            # Add footnote reference
+            footnote_ref = event_run.add_footnote()
+            
+            # Collect sources for footnote
+            sources = []
+            if event.get("claimant_arguments"):
+                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+            if event.get("respondent_arguments"):
+                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+            if event.get("doc_name"):
+                sources.extend(event["doc_name"])
+            
+            # Add the sources to the footnote
+            if sources:
+                footnote_ref.add_run('; '.join(sources))
+            else:
+                footnote_ref.add_run("No sources available")
+        
+        # Save the document to a temporary file
+        temp_file = "temp_timeline.docx"
+        doc.save(temp_file)
+        
+        # Read the file back as bytes
+        with open(temp_file, "rb") as file:
+            docx_bytes = file.read()
+        
+        # Clean up
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            
+        return docx_bytes
+    except Exception as e:
+        st.error(f"Error creating Word document: {str(e)}")
+        return None
+
+# Function to generate formatted plain text for the timeline
+def generate_timeline_text(events):
+    text = "ARBITRAL EVENT TIMELINE\n\n"
     
-    # Add events in chronological order
     for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
         # Format the date
         date_formatted = format_date(event["date"])
         
-        # Start event div
-        html += f'<div class="event">\n'
-        html += f'<p><span class="event-date">{date_formatted}:</span> {event["event"]}<span class="footnote-marker">[{i+1}]</span></p>\n'
+        # Add the event with footnote reference
+        text += f"{date_formatted}: {event['event']} [{i+1}]\n"
         
         # Collect sources for footnote
         sources = []
@@ -235,20 +264,13 @@ def generate_timeline_html(events):
         
         # Add the footnote
         if sources:
-            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> {"; ".join(sources)}</p>\n'
+            text += f"[{i+1}] {'; '.join(sources)}\n"
         else:
-            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> No sources available</p>\n'
+            text += f"[{i+1}] No sources available\n"
         
-        # Close event div
-        html += '</div>\n'
+        text += "\n"
     
-    # Close the HTML document
-    html += """
-    </body>
-    </html>
-    """
-    
-    return html
+    return text
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -293,17 +315,42 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate HTML timeline with footnotes
-        html_content = generate_timeline_html(events)
+        # Try to install docx package if not available
+        docx_available = install_docx()
         
-        # Provide download button for HTML file
-        st.download_button(
-            label="Download Timeline",
-            data=html_content,
-            file_name="timeline.html",
-            mime="text/html",
-            key=f"download_timeline_html_{unique_id}"
-        )
+        if docx_available:
+            # Generate Word document with proper footnotes
+            docx_bytes = generate_timeline_docx(events)
+            
+            if docx_bytes:
+                # Provide download button for the Word document
+                st.download_button(
+                    label="Download Timeline as Word Document",
+                    data=docx_bytes,
+                    file_name="timeline.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"download_timeline_docx_{unique_id}"
+                )
+            else:
+                st.error("Unable to create Word document. Providing text version instead.")
+                text_content = generate_timeline_text(events)
+                st.download_button(
+                    label="Download Timeline as Text",
+                    data=text_content,
+                    file_name="timeline.txt",
+                    mime="text/plain",
+                    key=f"download_timeline_txt_{unique_id}"
+                )
+        else:
+            st.error("Unable to install required package. Providing text version instead.")
+            text_content = generate_timeline_text(events)
+            st.download_button(
+                label="Download Timeline as Text",
+                data=text_content,
+                file_name="timeline.txt",
+                mime="text/plain",
+                key=f"download_timeline_txt_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
