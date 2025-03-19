@@ -1,11 +1,138 @@
-import streamlit as st
+# Respondent submissions
+            with col2:
+                st.markdown("<div class='respondent-header'>Respondent</div>", unsafe_allow_html=True)
+                
+                if event.get("respondent_arguments"):
+                    for arg in event["respondent_arguments"]:
+                        st.markdown(f"""
+                        <div class="document-card">
+                            <div style="font-weight: 500;">Page {arg['page']}</div>
+                            <div style="font-size: 14px; color: #616161; margin-top: 4px;">{arg['source_text']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No respondent submissions</div>", unsafe_allow_html=True)
+
+# VISUALIZE END #####################
+# Load the data directly in Python without JSON parsing
+@st.cache_data
+def load_data():
+    # Create the data structure directly
+    data = {
+        "events": [
+            {
+                "date": "1965-00-00",
+                "end_date": None,
+                "event": "Martineek Herald began publishing reliable everyday news.",
+                "source_text": [
+                    "FDI Moot CENTER FOR INTERNATIONAL LEGAL STUDIES <LINE: 415> CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022 VOL. XXIX NO. 83 MONDAY, DECEMBER 19, 2022 MARTINEEK HERALD RELIABLE EVERYDAY NEWS"
+                ],
+                "page": ["1"],
+                "pdf_name": ["CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"]
+            },
+            {
+                "date": "2007-12-28",
+                "end_date": None,
+                "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                "source_text": [
+                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL-USE MATERIAL"
+                ],
+                "page": ["1"],
+                "pdf_name": ["RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
+                "claimant_arguments": [],
+                "respondent_arguments": [
+                    {
+                        "fragment_start": "LAW DECREE",
+                        "fragment_end": "Claimant's investment.",
+                        "page": "13",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "LAW DECREE 53/2007,11 that is, Dual-Use Regulation, has been promulgated on 28 December 2007, which is the basis for judging the legitimacy of Claimant's investment."
+                    },
+                    {
+                        "fragment_start": "According to",
+                        "fragment_end": "Dual-Use Material33",
+                        "page": "17",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "According to the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material33"
+                    },
+                    {
+                        "fragment_start": "It was",
+                        "fragment_end": "Dual-Use Material35",
+                        "page": "17",
+                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
+                        "source_text": "It was clearly stated in the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material35"
+                    }
+                ]
+            },
+            {
+                "date": "2013-06-28",
+                "end_date": None,
+                "event": "The Martineek-Albion BIT was ratified.",
+                "source_text": [
+                    "rtineek and Albion terminated the 1993 Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion and replaced it with a revised Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion (the 'Martineek-Albion BIT'). The Martineek-Albion BIT was ratified on"
+                ],
+                "page": ["1"],
+                "pdf_name": ["Statement of Uncontested Facts.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
+                "claimant_arguments": [
+                    {
+                        "fragment_start": "Martineek and",
+                        "fragment_end": "28 June 2013.",
+                        "page": "16",
+                        "event": "The Martineek-Albion BIT was ratified.",
+                        "source_text": "Martineek and Albion ratified the BIT on 28 June 2013."
+                    }
+                ],
+                "respondent_arguments": []
+            },
+            {
+                "date": "2016-00-00",
+                "end_date": None,
+                "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                "source_text": [
+                    "6. In late 2016, with technological advances in the Archipelago, Martineek became one of the world's leading manufacturers of industrial robots."
+                ],
+                "page": ["1"],
+                "pdf_name": ["Statement of Uncontested Facts.pdf"],
+                "doc_name": ["name of the document"],
+                "doc_sum": ["summary of the document"],
+                "claimant_arguments": [
+                    {
+                        "fragment_start": "In late",
+                        "fragment_end": "competitive purposes",
+                        "page": "19",
+                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                        "source_text": "In late 2016, Martineek became one of the world's leading manufacturers of industrial robots,37 while the rapid development in technology of Albion might be in advance of Martineek's entities. Respondent's actions were more likely for competitive purposes"
+                    }
+                ],
+                "respondent_arguments": [
+                    {
+                        "fragment_start": "Through a",
+                        "fragment_end": "robotic industry.",
+                        "page": "6",
+                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
+                        "source_text": "Through a raft of major reforms, Martineek made significant efforts to attract foreign investments and became a global leader in the robotic industry."
+                    }
+                ]
+            }
+        ]
+    }
+    return data
+
+if __name__ == "__main__":
+    # Load data using the cache function for testing
+    data = load_data()
+    visualize(data)import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
-import io
-from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from io import StringIO, BytesIO
+import zipfile
+import base64
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -172,71 +299,285 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate Word document with footnotes for the timeline
-def generate_timeline_docx(events):
-    doc = Document()
+# Function to create a minimal Office Open XML (docx) file manually
+def generate_timeline_docx_manual(events):
+    # We'll create a minimal docx file with the required XML parts
+    docx_buffer = BytesIO()
     
-    # Set document margins
-    sections = doc.sections
-    for section in sections:
-        section.top_margin = Inches(1)
-        section.bottom_margin = Inches(1)
-        section.left_margin = Inches(1)
-        section.right_margin = Inches(1)
-    
-    # Add title
-    title = doc.add_heading('Arbitral Event Timeline', level=1)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
-    # Add events in chronological order
-    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
-        # Format the date
-        date_formatted = format_date(event["date"])
-        
-        # Add event text
-        p = doc.add_paragraph()
-        p.add_run(f"{date_formatted}: ").bold = True
-        run = p.add_run(f"{event['event']}")
-        
-        # Collect sources for footnote
-        claimant_args = event.get("claimant_arguments", [])
-        respondent_args = event.get("respondent_arguments", [])
-        doc_names = event.get("doc_name", [])
-        
-        # Prepare footnote text
-        footnote_text = f"On {date_formatted}, special vehicle was incorporated. "
-        
-        # Add exhibits information
-        if claimant_args or respondent_args or doc_names:
-            footnote_text += f"{len(claimant_args) + len(respondent_args) + len(doc_names)} exhibits; "
+    try:
+        with zipfile.ZipFile(docx_buffer, 'w') as docx_zip:
+            # Add required files for minimal docx
             
-            if claimant_args:
-                footnote_text += "claimant memorial "
+            # Add [Content_Types].xml
+            content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+    <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+    <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
+    <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+    <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>"""
+            docx_zip.writestr('[Content_Types].xml', content_types_xml)
             
-            if respondent_args:
-                if claimant_args:
-                    footnote_text += "and "
-                footnote_text += "respondent memorial"
+            # Add _rels/.rels
+            rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+            docx_zip.writestr('_rels/.rels', rels_xml)
+            
+            # Add docProps/app.xml
+            app_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+    <Application>Streamlit</Application>
+</Properties>"""
+            docx_zip.writestr('docProps/app.xml', app_xml)
+            
+            # Add docProps/core.xml
+            core_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Arbitral Event Timeline</dc:title>
+    <dc:creator>Streamlit App</dc:creator>
+    <dc:created>{}</dc:created>
+</cp:coreProperties>""".format(datetime.now().isoformat())
+            docx_zip.writestr('docProps/core.xml', core_xml)
+            
+            # Add word/_rels/document.xml.rels
+            document_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
+</Relationships>"""
+            docx_zip.writestr('word/_rels/document.xml.rels', document_rels_xml)
+            
+            # Add word/fontTable.xml
+            font_table_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:font w:name="Calibri">
+        <w:panose1 w:val="020F0502020204030204"/>
+        <w:charset w:val="00"/>
+        <w:family w:val="swiss"/>
+        <w:pitch w:val="variable"/>
+        <w:sig w:usb0="E10002FF" w:usb1="4000ACFF" w:usb2="00000009" w:usb3="00000000" w:csb0="0000019F" w:csb1="00000000"/>
+    </w:font>
+</w:fonts>"""
+            docx_zip.writestr('word/fontTable.xml', font_table_xml)
+            
+            # Add word/settings.xml
+            settings_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:defaultTabStop w:val="720"/>
+</w:settings>"""
+            docx_zip.writestr('word/settings.xml', settings_xml)
+            
+            # Add word/styles.xml (minimal)
+            styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:style w:type="paragraph" w:styleId="Normal">
+        <w:name w:val="Normal"/>
+        <w:pPr/>
+        <w:rPr/>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Heading1">
+        <w:name w:val="heading 1"/>
+        <w:basedOn w:val="Normal"/>
+        <w:pPr>
+            <w:jc w:val="center"/>
+        </w:pPr>
+        <w:rPr>
+            <w:b/>
+            <w:sz w:val="32"/>
+        </w:rPr>
+    </w:style>
+</w:styles>"""
+            docx_zip.writestr('word/styles.xml', styles_xml)
+            
+            # We need to add the footnotes part to content types
+            content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+    <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+    <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
+    <Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>
+    <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+    <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>"""
+            docx_zip.writestr('[Content_Types].xml', content_types_xml)
+            
+            # Update document relationships to include footnotes
+            document_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
+    <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/>
+</Relationships>"""
+            docx_zip.writestr('word/_rels/document.xml.rels', document_rels_xml)
+            
+            # Update settings to enable footnotes
+            settings_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:defaultTabStop w:val="720"/>
+    <w:footnotePr>
+        <w:pos w:val="pageBottom"/>
+        <w:numFmt w:val="decimal"/>
+    </w:footnotePr>
+</w:settings>"""
+            docx_zip.writestr('word/settings.xml', settings_xml)
+            
+            # Create the footnotes.xml file
+            footnotes_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:footnote w:id="0">
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:rStyle w:val="FootnoteReference"/>
+                </w:rPr>
+                <w:footnoteRef/>
+            </w:r>
+            <w:r>
+                <w:t xml:space="preserve"> </w:t>
+            </w:r>
+        </w:p>
+    </w:footnote>
+    <w:footnote w:id="1">
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:rStyle w:val="FootnoteReference"/>
+                </w:rPr>
+                <w:footnoteRef/>
+            </w:r>
+            <w:r>
+                <w:t xml:space="preserve"> </w:t>
+            </w:r>
+        </w:p>
+    </w:footnote>"""
+            
+            # Add custom footnotes for each event
+            sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
+            
+            for i, event in enumerate(sorted_events):
+                footnote_id = i + 2  # Start from 2 as 0 and 1 are reserved
                 
-            # Add specific documents if available
-            if doc_names:
-                footnote_text += f"; {', '.join(doc_names)}"
-        else:
-            footnote_text += "No exhibits available"
+                # Format exhibits for footnote
+                claimant_exhibits = []
+                respondent_exhibits = []
+                other_exhibits = []
+                
+                if event.get("claimant_arguments"):
+                    for arg in event.get("claimant_arguments"):
+                        claimant_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+                
+                if event.get("respondent_arguments"):
+                    for arg in event.get("respondent_arguments"):
+                        respondent_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+                
+                if event.get("doc_name"):
+                    other_exhibits.extend(event.get("doc_name"))
+                
+                # Build footnote content
+                footnote_content = ""
+                
+                if claimant_exhibits or respondent_exhibits or other_exhibits:
+                    if claimant_exhibits:
+                        footnote_content += "Claimant memorial: " + "; ".join(claimant_exhibits)
+                    
+                    if respondent_exhibits:
+                        if footnote_content:
+                            footnote_content += "; "
+                        footnote_content += "Respondent memorial: " + "; ".join(respondent_exhibits)
+                    
+                    if other_exhibits:
+                        if footnote_content:
+                            footnote_content += "; "
+                        footnote_content += "Exhibits: " + "; ".join(other_exhibits)
+                else:
+                    footnote_content = "No exhibits available"
+                
+                # Add footnote to XML
+                footnotes_xml += f"""
+    <w:footnote w:id="{footnote_id}">
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:rStyle w:val="FootnoteReference"/>
+                </w:rPr>
+                <w:footnoteRef/>
+            </w:r>
+            <w:r>
+                <w:t xml:space="preserve"> {footnote_content}</w:t>
+            </w:r>
+        </w:p>
+    </w:footnote>"""
             
-        # Add the footnote to the document
-        footnote = run.add_footnote()
-        footnote.add_paragraph(footnote_text)
+            # Close footnotes XML
+            footnotes_xml += """
+</w:footnotes>"""
+            
+            docx_zip.writestr('word/footnotes.xml', footnotes_xml)
+            
+            # Create the main document.xml with timeline content and proper footnote references
+            document_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:p>
+            <w:pPr>
+                <w:pStyle w:val="Heading1"/>
+            </w:pPr>
+            <w:r>
+                <w:t>Arbitral Event Timeline</w:t>
+            </w:r>
+        </w:p>"""
+            
+            # Add events in chronological order with proper footnotes
+            for i, event in enumerate(sorted_events):
+                # Format the date
+                date_formatted = format_date(event["date"])
+                footnote_id = i + 2  # Match with footnote IDs
+                
+                # Add event paragraph with date in bold and properly referenced footnote
+                document_xml += f"""
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                </w:rPr>
+                <w:t>{date_formatted}: </w:t>
+            </w:r>
+            <w:r>
+                <w:t>{event["event"]}</w:t>
+            </w:r>
+            <w:r>
+                <w:rPr>
+                    <w:rStyle w:val="FootnoteReference"/>
+                </w:rPr>
+                <w:footnoteReference w:id="{footnote_id}"/>
+            </w:r>
+        </w:p>"""
+            
+            # Close document
+            document_xml += """
+    </w:body>
+</w:document>"""
+            
+            docx_zip.writestr('word/document.xml', document_xml)
         
-        # Add a line break after each event
-        doc.add_paragraph()
+        # Reset buffer position to beginning
+        docx_buffer.seek(0)
+        return docx_buffer.getvalue()
     
-    # Save to a BytesIO object
-    docx_file = io.BytesIO()
-    doc.save(docx_file)
-    docx_file.seek(0)
-    
-    return docx_file
+    except Exception as e:
+        st.error(f"Error creating DOCX file: {str(e)}")
+        return None
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -281,17 +622,18 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate Word document with proper footnotes
-        docx_file = generate_timeline_docx(events)
+        # Generate DOCX file manually
+        docx_bytes = generate_timeline_docx_manual(events)
         
-        # Provide download button for Word file
-        st.download_button(
-            label="Download Timeline as Word Document",
-            data=docx_file,
-            file_name="arbitral_timeline.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            key=f"download_timeline_docx_{unique_id}"
-        )
+        if docx_bytes:
+            # Provide download button for the Word document
+            st.download_button(
+                label="Download Timeline",
+                data=docx_bytes,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
@@ -392,134 +734,3 @@ def visualize(data, unique_id="", sidebar_values=None):
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No claimant submissions</div>", unsafe_allow_html=True)
-            
-            # Respondent submissions
-            with col2:
-                st.markdown("<div class='respondent-header'>Respondent</div>", unsafe_allow_html=True)
-                
-                if event.get("respondent_arguments"):
-                    for arg in event["respondent_arguments"]:
-                        st.markdown(f"""
-                        <div class="document-card">
-                            <div style="font-weight: 500;">Page {arg['page']}</div>
-                            <div style="font-size: 14px; color: #616161; margin-top: 4px;">{arg['source_text']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.markdown("<div style='color: #BDBDBD; font-style: italic;'>No respondent submissions</div>", unsafe_allow_html=True)
-
-# VISUALIZE END #####################
-# Load the data directly in Python without JSON parsing
-@st.cache_data
-def load_data():
-    # Create the data structure directly
-    data = {
-        "events": [
-            {
-                "date": "1965-00-00",
-                "end_date": None,
-                "event": "Martineek Herald began publishing reliable everyday news.",
-                "source_text": [
-                    "FDI Moot CENTER FOR INTERNATIONAL LEGAL STUDIES <LINE: 415> CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022 VOL. XXIX NO. 83 MONDAY, DECEMBER 19, 2022 MARTINEEK HERALD RELIABLE EVERYDAY NEWS"
-                ],
-                "page": ["1"],
-                "pdf_name": ["CLAIMANT'S EXHIBIT C9 – Martineek Herald Article of 19 December 2022.pdf"],
-                "doc_name": ["name of the document"],
-                "doc_sum": ["summary of the document"]
-            },
-            {
-                "date": "2007-12-28",
-                "end_date": None,
-                "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                "source_text": [
-                    "29.12.2007 Official Journal of the Republic of Martineek L 425 LAW DECREE 53/20 07 of 28 December 2007 ON THE CONTROL OF FOREIGN TRADE IN DEFENCE AND DUAL-USE MATERIAL"
-                ],
-                "page": ["1"],
-                "pdf_name": ["RESPONDENT'S EXHIBIT R1 - Law Decree 53:2007 on the Control of Foreign Trade in Defence and Dual-Use Material.pdf"],
-                "doc_name": ["name of the document"],
-                "doc_sum": ["summary of the document"],
-                "claimant_arguments": [],
-                "respondent_arguments": [
-                    {
-                        "fragment_start": "LAW DECREE",
-                        "fragment_end": "Claimant's investment.",
-                        "page": "13",
-                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                        "source_text": "LAW DECREE 53/2007,11 that is, Dual-Use Regulation, has been promulgated on 28 December 2007, which is the basis for judging the legitimacy of Claimant's investment."
-                    },
-                    {
-                        "fragment_start": "According to",
-                        "fragment_end": "Dual-Use Material33",
-                        "page": "17",
-                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                        "source_text": "According to the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material33"
-                    },
-                    {
-                        "fragment_start": "It was",
-                        "fragment_end": "Dual-Use Material35",
-                        "page": "17",
-                        "event": "Issuance of Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material.",
-                        "source_text": "It was clearly stated in the Law Decree 53/2007 on the Control of Foreign Trade in Defence and Dual-Use Material35"
-                    }
-                ]
-            },
-            {
-                "date": "2013-06-28",
-                "end_date": None,
-                "event": "The Martineek-Albion BIT was ratified.",
-                "source_text": [
-                    "rtineek and Albion terminated the 1993 Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion and replaced it with a revised Agreement on Encouragement and Reciprocal Protection of Investments between the Republic of Martineek and the Federation of Albion (the 'Martineek-Albion BIT'). The Martineek-Albion BIT was ratified on"
-                ],
-                "page": ["1"],
-                "pdf_name": ["Statement of Uncontested Facts.pdf"],
-                "doc_name": ["name of the document"],
-                "doc_sum": ["summary of the document"],
-                "claimant_arguments": [
-                    {
-                        "fragment_start": "Martineek and",
-                        "fragment_end": "28 June 2013.",
-                        "page": "16",
-                        "event": "The Martineek-Albion BIT was ratified.",
-                        "source_text": "Martineek and Albion ratified the BIT on 28 June 2013."
-                    }
-                ],
-                "respondent_arguments": []
-            },
-            {
-                "date": "2016-00-00",
-                "end_date": None,
-                "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
-                "source_text": [
-                    "6. In late 2016, with technological advances in the Archipelago, Martineek became one of the world's leading manufacturers of industrial robots."
-                ],
-                "page": ["1"],
-                "pdf_name": ["Statement of Uncontested Facts.pdf"],
-                "doc_name": ["name of the document"],
-                "doc_sum": ["summary of the document"],
-                "claimant_arguments": [
-                    {
-                        "fragment_start": "In late",
-                        "fragment_end": "competitive purposes",
-                        "page": "19",
-                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
-                        "source_text": "In late 2016, Martineek became one of the world's leading manufacturers of industrial robots,37 while the rapid development in technology of Albion might be in advance of Martineek's entities. Respondent's actions were more likely for competitive purposes"
-                    }
-                ],
-                "respondent_arguments": [
-                    {
-                        "fragment_start": "Through a",
-                        "fragment_end": "robotic industry.",
-                        "page": "6",
-                        "event": "Martineek became one of the world's leading manufacturers of industrial robots.",
-                        "source_text": "Through a raft of major reforms, Martineek made significant efforts to attract foreign investments and became a global leader in the robotic industry."
-                    }
-                ]
-            }
-        ]
-    }
-    return data
-
-if __name__ == "__main__":
-    # Load data using the cache function for testing
-    data = load_data()
-    visualize(data)
