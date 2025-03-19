@@ -1,7 +1,13 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
+
+# Try to import python-docx for Word document generation
+try:
+    import docx
+except ImportError:
+    pass
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -171,22 +177,31 @@ def format_date(date_str):
 # Function to generate timeline text for copying
 def generate_timeline_text(events):
     text = ""
-    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+    footnotes = []
+    
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
         # Format the event text with date in bold
         date_formatted = format_date(event["date"])
-        text += f"**{date_formatted}** {event['event']}[1]\n\n"
+        footnote_num = i + 1
+        text += f"{date_formatted} {event['event']}{footnote_num}\n\n"
         
         # Sources for footnote
         sources = []
         if event.get("claimant_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Claimant Memorial)" for arg in event["claimant_arguments"]])
         if event.get("respondent_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Respondent Memorial)" for arg in event["respondent_arguments"]])
         if event.get("doc_name"):
-            sources.extend(event["doc_name"])
+            sources.extend([f"{doc} (Factual Exhibit)" for doc in event["doc_name"]])
         
         if sources:
-            text += f"[1] {'; '.join(sources)}\n\n"
+            footnotes.append(f"{footnote_num} {'; '.join(sources)}")
+    
+    # Add all footnotes at the end
+    if footnotes:
+        text += "\n\nFootnotes:\n"
+        for footnote in footnotes:
+            text += f"{footnote}\n"
     
     return text
 
@@ -234,14 +249,49 @@ def visualize(data, unique_id="", sidebar_values=None):
     # Button to copy timeline
     if st.button("📋 Copy Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
         timeline_text = generate_timeline_text(events)
-        st.code(timeline_text, language="markdown")
-        st.download_button(
-            label="Download Timeline as Text",
-            data=timeline_text,
-            file_name="timeline.md",
-            mime="text/markdown",
-            key=f"download_timeline_{unique_id}"
-        )
+        
+        # Only show download button for DOCX file
+        from io import BytesIO
+        
+        try:
+            from docx import Document
+            from docx.shared import Pt
+            
+            # Create a Word document
+            document = Document()
+            
+            # Add timeline content
+            for line in timeline_text.split('\n'):
+                if line.strip() == "Footnotes:":
+                    # Add a section break before footnotes
+                    document.add_paragraph()
+                    document.add_heading("Footnotes", level=2)
+                elif line.strip():
+                    # Add regular content
+                    document.add_paragraph(line)
+            
+            # Save to BytesIO
+            docx_file = BytesIO()
+            document.save(docx_file)
+            docx_file.seek(0)
+            
+            st.download_button(
+                label="Download Timeline as Word Document",
+                data=docx_file,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
+        except ImportError:
+            # If python-docx is not available, offer plain text download as fallback
+            st.info("📝 The python-docx library is not installed. Offering text download instead.")
+            st.download_button(
+                label="Download Timeline as Text",
+                data=timeline_text,
+                file_name="timeline.txt",
+                mime="text/plain",
+                key=f"download_timeline_txt_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
