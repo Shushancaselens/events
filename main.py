@@ -490,10 +490,141 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Download/View timeline button
+    # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate HTML that looks like a Word document
-        html_content = generate_timeline_html(events)
+        # Generate HTML content as text
+        html_content = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbitral Event Timeline</title>
+    <style>
+        body {
+            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.5;
+            margin: 2.5cm;
+            color: #333;
+            background-color: #fff;
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 2.5cm;
+        }
+        .word-document {
+            background-color: white;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            min-height: 29.7cm;
+            padding: 2.5cm;
+        }
+        h1 {
+            text-align: center;
+            font-size: 16pt;
+            margin-bottom: 24pt;
+            font-weight: bold;
+        }
+        .event {
+            margin-bottom: 14pt;
+        }
+        .event-date {
+            font-weight: bold;
+        }
+        .footnote-reference {
+            vertical-align: super;
+            font-size: 70%;
+            text-decoration: none;
+            color: inherit;
+        }
+        .footnotes {
+            margin-top: 48pt;
+            border-top: 1pt solid #ccc;
+            padding-top: 12pt;
+        }
+        .footnote {
+            font-size: 10pt;
+            margin-bottom: 6pt;
+            padding-left: 16pt;
+            text-indent: -16pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="word-document">
+        <h1>Arbitral Event Timeline</h1>
+"""
+        
+        # Add events in chronological order
+        sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
+        for i, event in enumerate(sorted_events):
+            # Format the date
+            date_formatted = format_date(event["date"])
+            footnote_num = i + 1
+            
+            # Add event with footnote reference
+            html_content += f"""
+        <div class="event">
+            <span class="event-date">{date_formatted}:</span> {event["event"]}<a href="#footnote-{footnote_num}" id="ref-{footnote_num}" class="footnote-reference">{footnote_num}</a>
+        </div>
+"""
+        
+        # Add footnotes section
+        html_content += """
+        <div class="footnotes">
+"""
+        
+        # Add each footnote
+        for i, event in enumerate(sorted_events):
+            footnote_num = i + 1
+            
+            # Format exhibits for footnote
+            claimant_exhibits = []
+            respondent_exhibits = []
+            other_exhibits = []
+            
+            if event.get("claimant_arguments"):
+                for arg in event.get("claimant_arguments"):
+                    claimant_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+            
+            if event.get("respondent_arguments"):
+                for arg in event.get("respondent_arguments"):
+                    respondent_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+            
+            if event.get("doc_name"):
+                other_exhibits.extend(event.get("doc_name"))
+            
+            # Build footnote content
+            footnote_content = ""
+            
+            if claimant_exhibits or respondent_exhibits or other_exhibits:
+                if claimant_exhibits:
+                    footnote_content += "Claimant memorial: " + "; ".join(claimant_exhibits)
+                
+                if respondent_exhibits:
+                    if footnote_content:
+                        footnote_content += "; "
+                    footnote_content += "Respondent memorial: " + "; ".join(respondent_exhibits)
+                
+                if other_exhibits:
+                    if footnote_content:
+                        footnote_content += "; "
+                    footnote_content += "Exhibits: " + "; ".join(other_exhibits)
+            else:
+                footnote_content = "No exhibits available"
+            
+            # Add footnote
+            html_content += f"""
+            <div id="footnote-{footnote_num}" class="footnote">
+                <a href="#ref-{footnote_num}" class="footnote-reference">{footnote_num}</a> {footnote_content}
+            </div>
+"""
+        
+        # Close HTML document
+        html_content += """
+        </div>
+    </div>
+</body>
+</html>
+"""
         
         # Create data URL for opening in new tab
         b64_html = base64.b64encode(html_content.encode()).decode()
