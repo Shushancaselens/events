@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
+import zipfile
+import base64
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -491,17 +493,18 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate HTML timeline with footnotes
-        html_content = generate_timeline_html(events)
+        # Generate DOCX file manually
+        docx_bytes = generate_timeline_docx_manual(events)
         
-        # Provide download button for the HTML file
-        st.download_button(
-            label="Download Timeline",
-            data=html_content,
-            file_name="timeline.html",
-            mime="text/html",
-            key=f"download_timeline_html_{unique_id}"
-        )
+        if docx_bytes:
+            # Provide download button for the Word document
+            st.download_button(
+                label="Download Timeline",
+                data=docx_bytes,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
