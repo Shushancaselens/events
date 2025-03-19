@@ -3,27 +3,11 @@ import pandas as pd
 from datetime import datetime
 from io import StringIO, BytesIO
 
-# Check if required packages are installed
-def check_requirements():
-    try:
-        import docx
-        return True
-    except ImportError:
-        return False
-
-# Check for python-docx availability
-has_docx = check_requirements()
-
-# Check for pandoc availability
-def check_pandoc():
-    try:
-        import subprocess
-        result = subprocess.run(['pandoc', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return result.returncode == 0
-    except:
-        return False
-
-has_pandoc = check_pandoc()
+# Try to import python-docx for Word document generation
+try:
+    import docx
+except ImportError:
+    pass
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -190,65 +174,36 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-def try_create_docx_with_pandoc(events):
-    """Attempt to create a Word document using pandoc as a fallback method."""
-    try:
-        import subprocess
-        import tempfile
-        import os
+# Function to generate timeline text for copying
+def generate_timeline_text(events):
+    text = ""
+    footnotes = []
+    
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
+        # Format the event text with date in bold
+        date_formatted = format_date(event["date"])
+        footnote_num = i + 1
+        text += f"{date_formatted} {event['event']}{footnote_num}\n\n"
         
-        # Generate markdown content
-        markdown_content = ""
-        footnotes = []
+        # Sources for footnote
+        sources = []
+        if event.get("claimant_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Claimant Memorial)" for arg in event["claimant_arguments"]])
+        if event.get("respondent_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Respondent Memorial)" for arg in event["respondent_arguments"]])
+        if event.get("doc_name"):
+            sources.extend([f"{doc} (Factual Exhibit)" for doc in event["doc_name"]])
         
-        for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-            # Format the event text with date in bold
-            date_formatted = format_date(event["date"])
-            footnote_num = i + 1
-            
-            # Add event with footnote
-            markdown_content += f"**{date_formatted}**: {event['event']}[^{footnote_num}]\n\n"
-            
-            # Prepare footnote
-            sources = []
-            if event.get("claimant_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Claimant Memorial)" for arg in event["claimant_arguments"]])
-            if event.get("respondent_arguments"):
-                sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Respondent Memorial)" for arg in event["respondent_arguments"]])
-            if event.get("doc_name"):
-                sources.extend([f"{doc} (Factual Exhibit)" for doc in event["doc_name"]])
-            
-            if sources:
-                footnotes.append(f"[^{footnote_num}]: {'; '.join(sources)}")
-        
-        # Add all footnotes
-        if footnotes:
-            markdown_content += "\n\n"
-            for footnote in footnotes:
-                markdown_content += f"{footnote}\n\n"
-        
-        # Create temporary files
-        with tempfile.NamedTemporaryFile(suffix='.md', delete=False) as md_file:
-            md_file.write(markdown_content.encode('utf-8'))
-            md_path = md_file.name
-        
-        docx_path = md_path.replace('.md', '.docx')
-        
-        # Use pandoc to convert markdown to docx
-        subprocess.run(['pandoc', md_path, '-o', docx_path], check=True)
-        
-        # Read the docx file
-        with open(docx_path, 'rb') as docx_file:
-            docx_bytes = docx_file.read()
-        
-        # Clean up temp files
-        os.unlink(md_path)
-        os.unlink(docx_path)
-        
-        return docx_bytes
-    except Exception as e:
-        st.error(f"Error creating document with pandoc: {str(e)}")
-        return None
+        if sources:
+            footnotes.append(f"{footnote_num} {'; '.join(sources)}")
+    
+    # Add all footnotes at the end
+    if footnotes:
+        text += "\n\nFootnotes:\n"
+        for footnote in footnotes:
+            text += f"{footnote}\n"
+    
+    return text
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -285,152 +240,35 @@ def visualize(data, unique_id="", sidebar_values=None):
     # Use passed data directly
     events = data["events"]
     
-    # Check document generation capabilities
-    global has_docx, has_pandoc
-    doc_generation_available = has_docx or has_pandoc
-    
-    if not doc_generation_available:
-        st.warning("⚠️ Neither 'python-docx' nor 'pandoc' is available. Timeline download requires one of these tools.")
-        st.code("pip install python-docx", language="bash")
-        st.markdown("Or install pandoc: [https://pandoc.org/installing.html](https://pandoc.org/installing.html)")
-    
     # Use passed sidebar values or create new ones
     if sidebar_values is None:
         search_query, start_date, end_date = show_sidebar(events, unique_id)
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Button to download timeline as Word document
-    if st.button("📋 Download Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
-        docx_bytes = None
+    # Button to copy timeline
+    if st.button("📋 Copy Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
+        timeline_text = generate_timeline_text(events)
         
-        # Try to generate Word document - first with python-docx, then with pandoc as fallback
-        if has_docx:
-            try:
-                from docx import Document
-                from docx.shared import Pt
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                
-                # Create a Word document
-                document = Document()
-                
-                # Add title
-                title = document.add_heading("Arbitral Event Timeline", level=1)
-                title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                # Add events with footnote references
-                footnote_counter = 1
-                for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
-                    date_formatted = format_date(event["date"])
-                    
-                    # Add paragraph with event info
-                    p = document.add_paragraph()
-                    p.add_run(f"{date_formatted}: ").bold = True
-                    p.add_run(f"{event['event']}")
-                    
-                    # Add footnote reference
-                    has_sources = (
-                        event.get("claimant_arguments") or 
-                        event.get("respondent_arguments") or 
-                        event.get("doc_name")
-                    )
-                    
-                    if has_sources:
-                        # Add the footnote
-                        footnote_text = p.add_run(f" {footnote_counter}")
-                        footnote_text.font.superscript = True
-                        
-                        # Prepare footnote content
-                        sources = []
-                        if event.get("claimant_arguments"):
-                            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Claimant Memorial)" for arg in event["claimant_arguments"]])
-                        if event.get("respondent_arguments"):
-                            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Respondent Memorial)" for arg in event["respondent_arguments"]])
-                        if event.get("doc_name"):
-                            sources.extend([f"{doc} (Factual Exhibit)" for doc in event["doc_name"]])
-                        
-                        # Add actual footnote at bottom of page
-                        footnote = document.add_paragraph(f"{footnote_counter}. {'; '.join(sources)}")
-                        footnote.style = 'Footnote Text'
-                        
-                        footnote_counter += 1
-                
-                # Save to BytesIO
-                docx_file = BytesIO()
-                document.save(docx_file)
-                docx_file.seek(0)
-                docx_bytes = docx_file.getvalue()
-                
-            except Exception as e:
-                st.error(f"Error creating document with python-docx: {str(e)}")
-                docx_bytes = None
+        # Only show download button for DOCX file
+        from io import BytesIO
         
-        # Try pandoc as fallback
-        if docx_bytes is None and has_pandoc:
-            docx_bytes = try_create_docx_with_pandoc(events)
-        
-        # Offer download if we have a document
-        if docx_bytes:
-            st.download_button(
-                label="Download as Microsoft Word Document",
-                data=docx_bytes,
-                file_name="timeline.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"download_timeline_docx_{unique_id}"
-            )
-        else:
-            st.error("Failed to create Word document. Please install 'python-docx' or 'pandoc'.")
-    
-    # Button to download timeline as Word document
-    if st.button("📋 Download Timeline", type="primary", key=f"copy_timeline_{unique_id}"):
         try:
             from docx import Document
             from docx.shared import Pt
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
             
             # Create a Word document
             document = Document()
             
-            # Add title
-            title = document.add_heading("Arbitral Event Timeline", level=1)
-            title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
-            # Add events with footnote references
-            footnote_counter = 1
-            for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
-                date_formatted = format_date(event["date"])
-                
-                # Add paragraph with event info
-                p = document.add_paragraph()
-                p.add_run(f"{date_formatted}: ").bold = True
-                p.add_run(f"{event['event']}")
-                
-                # Add footnote reference
-                has_sources = (
-                    event.get("claimant_arguments") or 
-                    event.get("respondent_arguments") or 
-                    event.get("doc_name")
-                )
-                
-                if has_sources:
-                    # Add the footnote
-                    footnote_text = p.add_run(f" {footnote_counter}")
-                    footnote_text.font.superscript = True
-                    
-                    # Prepare footnote content
-                    sources = []
-                    if event.get("claimant_arguments"):
-                        sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Claimant Memorial)" for arg in event["claimant_arguments"]])
-                    if event.get("respondent_arguments"):
-                        sources.extend([f"{arg['fragment_start']}... (Page {arg['page']} of Respondent Memorial)" for arg in event["respondent_arguments"]])
-                    if event.get("doc_name"):
-                        sources.extend([f"{doc} (Factual Exhibit)" for doc in event["doc_name"]])
-                    
-                    # Add actual footnote at bottom of page
-                    footnote = document.add_paragraph(f"{footnote_counter}. {'; '.join(sources)}")
-                    footnote.style = 'Footnote Text'
-                    
-                    footnote_counter += 1
+            # Add timeline content
+            for line in timeline_text.split('\n'):
+                if line.strip() == "Footnotes:":
+                    # Add a section break before footnotes
+                    document.add_paragraph()
+                    document.add_heading("Footnotes", level=2)
+                elif line.strip():
+                    # Add regular content
+                    document.add_paragraph(line)
             
             # Save to BytesIO
             docx_file = BytesIO()
@@ -438,15 +276,22 @@ def visualize(data, unique_id="", sidebar_values=None):
             docx_file.seek(0)
             
             st.download_button(
-                label="Download as Microsoft Word Document",
+                label="Download Timeline as Word Document",
                 data=docx_file,
                 file_name="timeline.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 key=f"download_timeline_docx_{unique_id}"
             )
         except ImportError:
-            st.error("Required library 'python-docx' is not installed. Please install it to enable Word document generation.")
-            st.code("pip install python-docx", language="bash")
+            # If python-docx is not available, offer plain text download as fallback
+            st.info("📝 The python-docx library is not installed. Offering text download instead.")
+            st.download_button(
+                label="Download Timeline as Text",
+                data=timeline_text,
+                file_name="timeline.txt",
+                mime="text/plain",
+                key=f"download_timeline_txt_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
