@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
+import zipfile
 import base64
 
 # VISUALIZE START #####################
@@ -169,46 +170,201 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate an RTF (Rich Text Format) document with footnotes
-# RTF can be opened directly in Microsoft Word
-def generate_timeline_rtf(events):
-    # RTF header
-    rtf = r"{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fcharset0 Arial;}}"
+# Function to create a minimal Office Open XML (docx) file manually
+def generate_timeline_docx_manual(events):
+    # We'll create a minimal docx file with the required XML parts
+    docx_buffer = BytesIO()
     
-    # Add title centered
-    rtf += r"{\pard\qc\b\fs32 Arbitral Event Timeline\par}\par\pard\plain\fs24"
-    
-    # Add events in chronological order
-    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-        # Format the date
-        date_formatted = format_date(event["date"])
+    try:
+        with zipfile.ZipFile(docx_buffer, 'w') as docx_zip:
+            # Add required files for minimal docx
+            
+            # Add [Content_Types].xml
+            content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+    <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+    <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
+    <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+    <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>"""
+            docx_zip.writestr('[Content_Types].xml', content_types_xml)
+            
+            # Add _rels/.rels
+            rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>"""
+            docx_zip.writestr('_rels/.rels', rels_xml)
+            
+            # Add docProps/app.xml
+            app_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+    <Application>Streamlit</Application>
+</Properties>"""
+            docx_zip.writestr('docProps/app.xml', app_xml)
+            
+            # Add docProps/core.xml
+            core_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Arbitral Event Timeline</dc:title>
+    <dc:creator>Streamlit App</dc:creator>
+    <dc:created>{}</dc:created>
+</cp:coreProperties>""".format(datetime.now().isoformat())
+            docx_zip.writestr('docProps/core.xml', core_xml)
+            
+            # Add word/_rels/document.xml.rels
+            document_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
+</Relationships>"""
+            docx_zip.writestr('word/_rels/document.xml.rels', document_rels_xml)
+            
+            # Add word/fontTable.xml
+            font_table_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:fonts xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:font w:name="Calibri">
+        <w:panose1 w:val="020F0502020204030204"/>
+        <w:charset w:val="00"/>
+        <w:family w:val="swiss"/>
+        <w:pitch w:val="variable"/>
+        <w:sig w:usb0="E10002FF" w:usb1="4000ACFF" w:usb2="00000009" w:usb3="00000000" w:csb0="0000019F" w:csb1="00000000"/>
+    </w:font>
+</w:fonts>"""
+            docx_zip.writestr('word/fontTable.xml', font_table_xml)
+            
+            # Add word/settings.xml
+            settings_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:defaultTabStop w:val="720"/>
+</w:settings>"""
+            docx_zip.writestr('word/settings.xml', settings_xml)
+            
+            # Add word/styles.xml (minimal)
+            styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:style w:type="paragraph" w:styleId="Normal">
+        <w:name w:val="Normal"/>
+        <w:pPr/>
+        <w:rPr/>
+    </w:style>
+    <w:style w:type="paragraph" w:styleId="Heading1">
+        <w:name w:val="heading 1"/>
+        <w:basedOn w:val="Normal"/>
+        <w:pPr>
+            <w:jc w:val="center"/>
+        </w:pPr>
+        <w:rPr>
+            <w:b/>
+            <w:sz w:val="32"/>
+        </w:rPr>
+    </w:style>
+</w:styles>"""
+            docx_zip.writestr('word/styles.xml', styles_xml)
+            
+            # Create the main document.xml with timeline content
+            document_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:body>
+        <w:p>
+            <w:pPr>
+                <w:pStyle w:val="Heading1"/>
+            </w:pPr>
+            <w:r>
+                <w:t>Arbitral Event Timeline</w:t>
+            </w:r>
+        </w:p>"""
+            
+            # Add events in chronological order
+            sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
+            for i, event in enumerate(sorted_events):
+                # Format the date
+                date_formatted = format_date(event["date"])
+                
+                # Collect sources for footnote
+                sources = []
+                if event.get("claimant_arguments"):
+                    sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+                if event.get("respondent_arguments"):
+                    sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+                if event.get("doc_name"):
+                    sources.extend(event["doc_name"])
+                
+                footnote_text = '; '.join(sources) if sources else "No sources available"
+                
+                # Add event paragraph with date in bold
+                document_xml += f"""
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                </w:rPr>
+                <w:t>{date_formatted}: </w:t>
+            </w:r>
+            <w:r>
+                <w:t>{event["event"]}</w:t>
+            </w:r>
+            <w:r>
+                <w:rPr>
+                    <w:vertAlign w:val="superscript"/>
+                </w:rPr>
+                <w:t>[{i+1}]</w:t>
+            </w:r>
+        </w:p>"""
+            
+            # Add footnotes section
+            document_xml += """
+        <w:p>
+            <w:r>
+                <w:t>Footnotes:</w:t>
+            </w:r>
+        </w:p>"""
+                
+            # Add each footnote
+            for i, event in enumerate(sorted_events):
+                # Collect sources for footnote
+                sources = []
+                if event.get("claimant_arguments"):
+                    sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+                if event.get("respondent_arguments"):
+                    sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+                if event.get("doc_name"):
+                    sources.extend(event["doc_name"])
+                
+                footnote_text = '; '.join(sources) if sources else "No sources available"
+                
+                document_xml += f"""
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:vertAlign w:val="superscript"/>
+                </w:rPr>
+                <w:t>[{i+1}]</w:t>
+            </w:r>
+            <w:r>
+                <w:t> {footnote_text}</w:t>
+            </w:r>
+        </w:p>"""
+            
+            # Close document
+            document_xml += """
+    </w:body>
+</w:document>"""
+            
+            docx_zip.writestr('word/document.xml', document_xml)
         
-        # Add event with footnote reference
-        rtf += r"{\b " + date_formatted + r":} " + event["event"] + r"\super " + str(i+1) + r"\nosupersub\par\par"
-        
-    # Add footnotes section
-    rtf += r"{\pard\fs20\brdrb\brdrs\brdrw10\brsp20 \par}\par"
-    rtf += r"{\fs20 " + r"Footnotes:\par\par" + r"}"
+        # Reset buffer position to beginning
+        docx_buffer.seek(0)
+        return docx_buffer.getvalue()
     
-    # Add each footnote
-    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
-        # Collect sources for footnote
-        sources = []
-        if event.get("claimant_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
-        if event.get("respondent_arguments"):
-            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
-        if event.get("doc_name"):
-            sources.extend(event["doc_name"])
-        
-        # Add formatted footnote
-        footnote_text = '; '.join(sources) if sources else "No sources available"
-        rtf += r"{\fs20 " + r"\super " + str(i+1) + r"\nosupersub " + footnote_text + r"\par\par}"
-    
-    # Close RTF document
-    rtf += r"}"
-    
-    return rtf
+    except Exception as e:
+        st.error(f"Error creating DOCX file: {str(e)}")
+        return None
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -253,18 +409,18 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate RTF (Rich Text Format) document with footnotes
-        # RTF can be opened directly by Microsoft Word
-        rtf_content = generate_timeline_rtf(events)
+        # Generate DOCX file manually
+        docx_bytes = generate_timeline_docx_manual(events)
         
-        # Provide download button for the RTF file
-        st.download_button(
-            label="Download Timeline",
-            data=rtf_content,
-            file_name="timeline.rtf",
-            mime="application/rtf",
-            key=f"download_timeline_rtf_{unique_id}"
-        )
+        if docx_bytes:
+            # Provide download button for the Word document
+            st.download_button(
+                label="Download Timeline",
+                data=docx_bytes,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
