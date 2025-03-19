@@ -1,7 +1,408 @@
-import streamlit as st
+# Add footnote reference
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                rPr = ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+                ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rStyle',
+                             {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'FootnoteReference'})
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnoteReference',
+                             {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id': footnote_id})
+            
+            # Add end of document section properties
+            sectPr = ET.SubElement(body, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sectPr')
+            ET.SubElement(sectPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pgSz',
+                         {
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}w': '12240',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}h': '15840'
+                         })
+            ET.SubElement(sectPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pgMar',
+                         {
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}top': '1440',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}right': '1440',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}bottom': '1440',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}left': '1440',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}header': '720',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footer': '720',
+                             '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}gutter': '0'
+                         })
+            ET.SubElement(sectPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cols',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}space': '720'})
+            
+            docx_zip.writestr('word/document.xml', ET.tostring(document, encoding='utf-8', xml_declaration=True))
+            
+        # Reset buffer position to beginning
+        docx_buffer.seek(0)
+        return docx_buffer.getvalue()
+    
+    except Exception as e:
+        st.error(f"Error creating DOCX file: {str(e)}")
+        return None Function to create a well-formed Office Open XML (docx) file
+def generate_timeline_docx_manual(events):
+    # We'll create a docx file with proper XML structure
+    docx_buffer = BytesIO()
+    
+    try:
+        with zipfile.ZipFile(docx_buffer, 'w') as docx_zip:
+            # Define XML namespaces
+            namespaces = {
+                'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+                'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+                'wp': 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
+                'a': 'http://schemas.openxmlformats.org/drawingml/2006/main',
+                'pic': 'http://schemas.openxmlformats.org/drawingml/2006/picture',
+                'wne': 'http://schemas.microsoft.com/office/word/2006/wordml',
+                'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+                'cp': 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties',
+                'dc': 'http://purl.org/dc/elements/1.1/',
+                'dcterms': 'http://purl.org/dc/terms/',
+                'dcmitype': 'http://purl.org/dc/dcmitype/',
+                'xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+            }
+            
+            # Register namespaces for XML output
+            for prefix, uri in namespaces.items():
+                ET.register_namespace(prefix, uri)
+            
+            # Add [Content_Types].xml
+            content_types = ET.Element('Types', xmlns='http://schemas.openxmlformats.org/package/2006/content-types')
+            
+            # Default content types
+            ET.SubElement(content_types, 'Default', Extension='rels', ContentType='application/vnd.openxmlformats-package.relationships+xml')
+            ET.SubElement(content_types, 'Default', Extension='xml', ContentType='application/xml')
+            
+            # Override content types
+            ET.SubElement(content_types, 'Override', PartName='/word/document.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml')
+            ET.SubElement(content_types, 'Override', PartName='/word/styles.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml')
+            ET.SubElement(content_types, 'Override', PartName='/word/settings.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml')
+            ET.SubElement(content_types, 'Override', PartName='/word/fontTable.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml')
+            ET.SubElement(content_types, 'Override', PartName='/word/footnotes.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml')
+            ET.SubElement(content_types, 'Override', PartName='/word/numbering.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml')
+            ET.SubElement(content_types, 'Override', PartName='/docProps/core.xml', 
+                         ContentType='application/vnd.openxmlformats-package.core-properties+xml')
+            ET.SubElement(content_types, 'Override', PartName='/docProps/app.xml', 
+                         ContentType='application/vnd.openxmlformats-officedocument.extended-properties+xml')
+            
+            docx_zip.writestr('[Content_Types].xml', ET.tostring(content_types, encoding='utf-8', xml_declaration=True))
+            
+            # Add _rels/.rels
+            relationships = ET.Element('Relationships', xmlns='http://schemas.openxmlformats.org/package/2006/relationships')
+            ET.SubElement(relationships, 'Relationship', Id='rId1', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument', 
+                          Target='word/document.xml')
+            ET.SubElement(relationships, 'Relationship', Id='rId2', 
+                          Type='http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties', 
+                          Target='docProps/core.xml')
+            ET.SubElement(relationships, 'Relationship', Id='rId3', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties', 
+                          Target='docProps/app.xml')
+            
+            docx_zip.writestr('_rels/.rels', ET.tostring(relationships, encoding='utf-8', xml_declaration=True))
+            
+            # Add docProps/app.xml
+            app_props = ET.Element('Properties', 
+                                   xmlns='http://schemas.openxmlformats.org/officeDocument/2006/extended-properties',
+                                   **{'{http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes}': 'VT'})
+            ET.SubElement(app_props, 'Application').text = 'Microsoft Office Word'
+            ET.SubElement(app_props, 'AppVersion').text = '16.0000'
+            
+            docx_zip.writestr('docProps/app.xml', ET.tostring(app_props, encoding='utf-8', xml_declaration=True))
+            
+            # Add docProps/core.xml
+            core_props = ET.Element('{http://schemas.openxmlformats.org/package/2006/metadata/core-properties}coreProperties',
+                                    **{
+                                        'xmlns:cp': 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties',
+                                        'xmlns:dc': 'http://purl.org/dc/elements/1.1/',
+                                        'xmlns:dcterms': 'http://purl.org/dc/terms/',
+                                        'xmlns:dcmitype': 'http://purl.org/dc/dcmitype/',
+                                        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+                                    })
+            ET.SubElement(core_props, '{http://purl.org/dc/elements/1.1/}title').text = 'Arbitral Event Timeline'
+            ET.SubElement(core_props, '{http://purl.org/dc/elements/1.1/}creator').text = 'Streamlit App'
+            ET.SubElement(core_props, '{http://purl.org/dc/terms/}created').text = datetime.now().isoformat() + 'Z'
+            
+            docx_zip.writestr('docProps/core.xml', ET.tostring(core_props, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/_rels/document.xml.rels
+            document_rels = ET.Element('Relationships', xmlns='http://schemas.openxmlformats.org/package/2006/relationships')
+            ET.SubElement(document_rels, 'Relationship', Id='rId1', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles', 
+                          Target='styles.xml')
+            ET.SubElement(document_rels, 'Relationship', Id='rId2', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings', 
+                          Target='settings.xml')
+            ET.SubElement(document_rels, 'Relationship', Id='rId3', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable', 
+                          Target='fontTable.xml')
+            ET.SubElement(document_rels, 'Relationship', Id='rId4', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes', 
+                          Target='footnotes.xml')
+            ET.SubElement(document_rels, 'Relationship', Id='rId5', 
+                          Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering', 
+                          Target='numbering.xml')
+            
+            docx_zip.writestr('word/_rels/document.xml.rels', ET.tostring(document_rels, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/fontTable.xml
+            font_table = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}fonts')
+            
+            # Add default fonts
+            font = ET.SubElement(font_table, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}font',
+                                 {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name': 'Calibri'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}panose1',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '020F0502020204030204'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}charset',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '00'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}family',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'swiss'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pitch',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'variable'})
+            
+            # Add Times New Roman for footnotes
+            font = ET.SubElement(font_table, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}font',
+                                 {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name': 'Times New Roman'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}panose1',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '02020603050405020304'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}charset',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '00'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}family',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'roman'})
+            ET.SubElement(font, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pitch',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'variable'})
+            
+            docx_zip.writestr('word/fontTable.xml', ET.tostring(font_table, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/settings.xml
+            settings = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}settings')
+            ET.SubElement(settings, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}defaultTabStop',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '720'})
+            
+            # Add footnote settings
+            footnote_pr = ET.SubElement(settings, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnotePr')
+            ET.SubElement(footnote_pr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pos',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'pageBottom'})
+            ET.SubElement(footnote_pr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numFmt',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'decimal'})
+            
+            # Add more required settings
+            ET.SubElement(settings, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}compat')
+            ET.SubElement(settings, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}docVars')
+            
+            docx_zip.writestr('word/settings.xml', ET.tostring(settings, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/numbering.xml
+            numbering = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numbering')
+            abstract_num = ET.SubElement(numbering, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNum',
+                                        {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId': '0'})
+            
+            lvl = ET.SubElement(abstract_num, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lvl',
+                               {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ilvl': '0'})
+            ET.SubElement(lvl, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numFmt',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'decimal'})
+            
+            num = ET.SubElement(numbering, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}num',
+                               {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}numId': '1'})
+            ET.SubElement(num, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}abstractNumId',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '0'})
+            
+            docx_zip.writestr('word/numbering.xml', ET.tostring(numbering, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/styles.xml
+            styles = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}styles')
+            
+            # Default style
+            style = ET.SubElement(styles, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}style',
+                                 {
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type': 'paragraph',
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}styleId': 'Normal',
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}default': '1'
+                                 })
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'Normal'})
+            style_ppr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr')
+            style_rpr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+            
+            # Heading 1 style
+            style = ET.SubElement(styles, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}style',
+                                 {
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type': 'paragraph',
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}styleId': 'Heading1'
+                                 })
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'heading 1'})
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}basedOn',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'Normal'})
+            style_ppr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr')
+            ET.SubElement(style_ppr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}jc',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'center'})
+            style_rpr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+            ET.SubElement(style_rpr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}b')
+            ET.SubElement(style_rpr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '32'})
+            
+            # Footnote Text style
+            style = ET.SubElement(styles, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}style',
+                                 {
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type': 'paragraph',
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}styleId': 'FootnoteText'
+                                 })
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'footnote text'})
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}basedOn',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'Normal'})
+            style_ppr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr')
+            style_spacing = ET.SubElement(style_ppr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}spacing')
+            style_spacing.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}after', '0')
+            style_spacing.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}line', '240')
+            style_spacing.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}lineRule', 'auto')
+            style_rpr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+            ET.SubElement(style_rpr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': '20'})
+            
+            # Footnote Reference style
+            style = ET.SubElement(styles, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}style',
+                                 {
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type': 'character',
+                                     '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}styleId': 'FootnoteReference'
+                                 })
+            ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}name',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'footnote reference'})
+            style_rpr = ET.SubElement(style, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+            ET.SubElement(style_rpr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}vertAlign',
+                         {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'superscript'})
+            
+            docx_zip.writestr('word/styles.xml', ET.tostring(styles, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/footnotes.xml
+            footnotes = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnotes')
+            
+            # Add separator and continuation separator (required by Word)
+            for note_id, note_type in [('0', 'separator'), ('1', 'continuationSeparator')]:
+                footnote = ET.SubElement(footnotes, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnote',
+                                       {
+                                           '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id': note_id,
+                                           '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type': note_type
+                                       })
+                p = ET.SubElement(footnote, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                
+                if note_type == 'separator':
+                    separator_text = '_________'
+                else:
+                    separator_text = '¨¨¨¨¨¨¨¨¨'
+                    
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t').text = separator_text
+            
+            # Create footnotes for each event
+            sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
+            
+            for i, event in enumerate(sorted_events):
+                footnote_id = str(i + 2)  # Start from 2 as 0 and 1 are reserved
+                
+                # Format exhibits for footnote
+                claimant_exhibits = []
+                respondent_exhibits = []
+                other_exhibits = []
+                
+                if event.get("claimant_arguments"):
+                    for arg in event.get("claimant_arguments"):
+                        claimant_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+                
+                if event.get("respondent_arguments"):
+                    for arg in event.get("respondent_arguments"):
+                        respondent_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
+                
+                if event.get("doc_name"):
+                    other_exhibits.extend(event.get("doc_name"))
+                
+                # Build footnote content
+                footnote_content = ""
+                
+                if claimant_exhibits or respondent_exhibits or other_exhibits:
+                    if claimant_exhibits:
+                        footnote_content += "Claimant memorial: " + "; ".join(claimant_exhibits)
+                    
+                    if respondent_exhibits:
+                        if footnote_content:
+                            footnote_content += "; "
+                        footnote_content += "Respondent memorial: " + "; ".join(respondent_exhibits)
+                    
+                    if other_exhibits:
+                        if footnote_content:
+                            footnote_content += "; "
+                        footnote_content += "Exhibits: " + "; ".join(other_exhibits)
+                else:
+                    footnote_content = "No exhibits available"
+                
+                # Create footnote element
+                footnote = ET.SubElement(footnotes, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnote',
+                                       {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}id': footnote_id})
+                
+                p = ET.SubElement(footnote, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr').append(
+                    ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pStyle',
+                              {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'FootnoteText'})
+                )
+                
+                # Add footnote reference
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr').append(
+                    ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rStyle',
+                              {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'FootnoteReference'})
+                )
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}footnoteRef')
+                
+                # Add footnote text
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t', 
+                             {'{http://www.w3.org/XML/1998/namespace}space': 'preserve'}).text = " " + footnote_content
+            
+            docx_zip.writestr('word/footnotes.xml', ET.tostring(footnotes, encoding='utf-8', xml_declaration=True))
+            
+            # Add word/document.xml
+            document = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}document')
+            body = ET.SubElement(document, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}body')
+            
+            # Add title
+            p = ET.SubElement(body, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+            ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pPr').append(
+                ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pStyle',
+                          {'{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val': 'Heading1'})
+            )
+            r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+            ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t').text = 'Arbitral Event Timeline'
+            
+            # Add events in chronological order with proper footnotes
+            for i, event in enumerate(sorted_events):
+                # Format the date
+                date_formatted = format_date(event["date"])
+                footnote_id = str(i + 2)  # Match with footnote IDs
+                
+                # Add event paragraph
+                p = ET.SubElement(body, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
+                
+                # Add date in bold
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                rPr = ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
+                ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}b')
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t').text = date_formatted + ": "
+                
+                # Add event text
+                r = ET.SubElement(p, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
+                ET.SubElement(r, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t').text = event["event"]
+                
+                #import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
+import zipfile
+import base64
+import re
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -491,31 +892,18 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate text file with footnote formatting
-        text_content = generate_timeline_text(events)
+        # Generate DOCX file manually
+        docx_bytes = generate_timeline_docx_manual(events)
         
-        # Offer download as a text file that can be opened in Word
-        st.download_button(
-            label="Download Timeline",
-            data=text_content,
-            file_name="timeline.txt",
-            mime="text/plain",
-            key=f"download_timeline_txt_{unique_id}"
-        )
-        
-        # Add instructions for the user
-        st.info("""
-        **Instructions for viewing in Microsoft Word:**
-        1. Download the text file
-        2. Open Microsoft Word
-        3. Open the downloaded text file
-        4. The document will show proper formatting with timeline and footnotes
-        5. Save as .docx if needed
-        """)
-        
-        # Show a preview of the content
-        st.markdown("### Preview:")
-        st.text(text_content[:500] + "...")  # Show first 500 characters
+        if docx_bytes:
+            # Provide download button for the Word document
+            st.download_button(
+                label="Download Timeline",
+                data=docx_bytes,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
