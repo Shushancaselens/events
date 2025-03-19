@@ -4,8 +4,6 @@ from datetime import datetime
 from io import StringIO, BytesIO
 import zipfile
 import base64
-import tempfile
-import os
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -495,27 +493,17 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # First try to create the DOCX with pandoc (cleaner approach)
-        docx_bytes = try_create_docx_with_pandoc(events)
+        # Generate DOCX file manually
+        docx_bytes = generate_timeline_docx_manual(events)
         
         if docx_bytes:
-            # Provide download button for the Word document created with pandoc
+            # Provide download button for the Word document
             st.download_button(
                 label="Download Timeline",
                 data=docx_bytes,
                 file_name="timeline.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 key=f"download_timeline_docx_{unique_id}"
-            )
-        else:
-            # Fall back to plain text if pandoc approach fails
-            text_content = generate_timeline_text(events)
-            st.download_button(
-                label="Download Timeline",
-                data=text_content,
-                file_name="timeline.txt",
-                mime="text/plain",
-                key=f"download_timeline_txt_{unique_id}"
             )
     
     # Filter events
