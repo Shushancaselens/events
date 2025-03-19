@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from io import StringIO, BytesIO
-import zipfile
-import base64
+from docx import Document
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -170,288 +171,154 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to create a minimal Office Open XML (docx) file manually
-def generate_timeline_docx_manual(events):
-    # We'll create a minimal docx file with the required XML parts
-    docx_buffer = BytesIO()
+# Function to generate formatted HTML for the timeline
+def generate_timeline_html(events):
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Arbitral Event Timeline</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 40px;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            h1 {
+                text-align: center;
+                color: #333;
+                margin-bottom: 30px;
+            }
+            .event {
+                margin-bottom: 20px;
+                padding-bottom: 20px;
+                border-bottom: 1px solid #eee;
+            }
+            .event-date {
+                font-weight: bold;
+            }
+            .footnote {
+                font-size: 0.9em;
+                color: #555;
+                margin-left: 20px;
+                margin-top: 5px;
+            }
+            .footnote-marker {
+                vertical-align: super;
+                font-size: 0.8em;
+                color: #0066cc;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Arbitral Event Timeline</h1>
+    """
     
-    try:
-        with zipfile.ZipFile(docx_buffer, 'w') as docx_zip:
-            # Add required files for minimal docx
-            
-            # Add [Content_Types].xml
-            content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-    <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
-    <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
-    <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-    <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>"""
-            docx_zip.writestr('[Content_Types].xml', content_types_xml)
-            
-            # Add _rels/.rels
-            rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>"""
-            docx_zip.writestr('_rels/.rels', rels_xml)
-            
-            # Add docProps/app.xml
-            app_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-    <Application>Streamlit</Application>
-</Properties>"""
-            docx_zip.writestr('docProps/app.xml', app_xml)
-            
-            # Add docProps/core.xml
-            core_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>Arbitral Event Timeline</dc:title>
-    <dc:creator>Streamlit App</dc:creator>
-    <dc:created>{}</dc:created>
-</cp:coreProperties>""".format(datetime.now().isoformat())
-            docx_zip.writestr('docProps/core.xml', core_xml)
-            
-            # Add word/_rels/document.xml.rels
-            document_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
-    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
-</Relationships>"""
-            docx_zip.writestr('word/_rels/document.xml.rels', document_rels_xml)
-            
-            # Add word/fontTable.xml
-            font_table_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:fonts xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:font w:name="Calibri">
-        <w:panose1 w:val="020F0502020204030204"/>
-        <w:charset w:val="00"/>
-        <w:family w:val="swiss"/>
-        <w:pitch w:val="variable"/>
-        <w:sig w:usb0="E10002FF" w:usb1="4000ACFF" w:usb2="00000009" w:usb3="00000000" w:csb0="0000019F" w:csb1="00000000"/>
-    </w:font>
-</w:fonts>"""
-            docx_zip.writestr('word/fontTable.xml', font_table_xml)
-            
-            # Add word/settings.xml
-            settings_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:defaultTabStop w:val="720"/>
-</w:settings>"""
-            docx_zip.writestr('word/settings.xml', settings_xml)
-            
-            # Add word/styles.xml (minimal)
-            styles_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:style w:type="paragraph" w:styleId="Normal">
-        <w:name w:val="Normal"/>
-        <w:pPr/>
-        <w:rPr/>
-    </w:style>
-    <w:style w:type="paragraph" w:styleId="Heading1">
-        <w:name w:val="heading 1"/>
-        <w:basedOn w:val="Normal"/>
-        <w:pPr>
-            <w:jc w:val="center"/>
-        </w:pPr>
-        <w:rPr>
-            <w:b/>
-            <w:sz w:val="32"/>
-        </w:rPr>
-    </w:style>
-</w:styles>"""
-            docx_zip.writestr('word/styles.xml', styles_xml)
-            
-            # We need to add the footnotes part to content types
-            content_types_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-    <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
-    <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
-    <Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>
-    <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-    <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>"""
-            docx_zip.writestr('[Content_Types].xml', content_types_xml)
-            
-            # Update document relationships to include footnotes
-            document_rels_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
-    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
-    <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/>
-</Relationships>"""
-            docx_zip.writestr('word/_rels/document.xml.rels', document_rels_xml)
-            
-            # Update settings to enable footnotes
-            settings_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:defaultTabStop w:val="720"/>
-    <w:footnotePr>
-        <w:pos w:val="pageBottom"/>
-        <w:numFmt w:val="decimal"/>
-    </w:footnotePr>
-</w:settings>"""
-            docx_zip.writestr('word/settings.xml', settings_xml)
-            
-            # Create the footnotes.xml file - simpler structure to avoid Word repairs
-            footnotes_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:footnote w:id="-1" w:type="separator">
-        <w:p>
-            <w:pPr>
-                <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
-            </w:pPr>
-            <w:r>
-                <w:separator/>
-            </w:r>
-        </w:p>
-    </w:footnote>
-    <w:footnote w:id="0" w:type="continuationSeparator">
-        <w:p>
-            <w:pPr>
-                <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
-            </w:pPr>
-            <w:r>
-                <w:continuationSeparator/>
-            </w:r>
-        </w:p>
-    </w:footnote>"""
-            
-            # Add custom footnotes for each event
-            sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
-            
-            for i, event in enumerate(sorted_events):
-                footnote_id = i + 1  # Standard footnotes start at 1
-                
-                # Format exhibits for footnote
-                claimant_exhibits = []
-                respondent_exhibits = []
-                other_exhibits = []
-                
-                if event.get("claimant_arguments"):
-                    for arg in event.get("claimant_arguments"):
-                        claimant_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
-                
-                if event.get("respondent_arguments"):
-                    for arg in event.get("respondent_arguments"):
-                        respondent_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
-                
-                if event.get("doc_name"):
-                    other_exhibits.extend(event.get("doc_name"))
-                
-                # Build footnote content with simpler structure
-                footnote_parts = []
-                
-                if claimant_exhibits:
-                    footnote_parts.append("Claimant memorial: " + "; ".join(claimant_exhibits))
-                
-                if respondent_exhibits:
-                    footnote_parts.append("Respondent memorial: " + "; ".join(respondent_exhibits))
-                
-                if other_exhibits:
-                    footnote_parts.append("Exhibits: " + "; ".join(other_exhibits))
-                
-                footnote_content = "; ".join(footnote_parts) if footnote_parts else "No exhibits available"
-                
-                # Escape XML special characters
-                footnote_content = footnote_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;")
-                
-                # Add footnote to XML with simpler structure
-                footnotes_xml += f"""
-    <w:footnote w:id="{footnote_id}">
-        <w:p>
-            <w:pPr>
-                <w:pStyle w:val="FootnoteText"/>
-            </w:pPr>
-            <w:r>
-                <w:rPr>
-                    <w:rStyle w:val="FootnoteReference"/>
-                </w:rPr>
-                <w:footnoteRef/>
-            </w:r>
-            <w:r>
-                <w:t xml:space="preserve"> {footnote_content}</w:t>
-            </w:r>
-        </w:p>
-    </w:footnote>"""
-            
-            # Close footnotes XML
-            footnotes_xml += """
-</w:footnotes>"""
-            
-            docx_zip.writestr('word/footnotes.xml', footnotes_xml)
-            
-            # Create the main document.xml with timeline content and proper footnote references
-            document_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:p>
-            <w:pPr>
-                <w:pStyle w:val="Heading1"/>
-            </w:pPr>
-            <w:r>
-                <w:t>Arbitral Event Timeline</w:t>
-            </w:r>
-        </w:p>"""
-            
-            # Add events in chronological order with proper footnotes
-            for i, event in enumerate(sorted_events):
-                # Format the date
-                date_formatted = format_date(event["date"])
-                footnote_id = i + 1  # Match with footnote IDs
-                
-                # Add event paragraph with date in bold and properly referenced footnote
-                document_xml += f"""
-        <w:p>
-            <w:pPr>
-                <w:pStyle w:val="Normal"/>
-            </w:pPr>
-            <w:r>
-                <w:rPr>
-                    <w:b/>
-                </w:rPr>
-                <w:t>{date_formatted}: </w:t>
-            </w:r>
-            <w:r>
-                <w:t>{event["event"]}</w:t>
-            </w:r>
-            <w:r>
-                <w:rPr>
-                    <w:rStyle w:val="FootnoteReference"/>
-                </w:rPr>
-                <w:footnoteReference w:id="{footnote_id}"/>
-            </w:r>
-        </w:p>"""
-            
-            # Close document
-            document_xml += """
-    </w:body>
-</w:document>"""
-            
-            # Close document
-            document_xml += """
-    </w:body>
-</w:document>"""
-            
-            docx_zip.writestr('word/document.xml', document_xml)
+    # Add events in chronological order
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
+        # Format the date
+        date_formatted = format_date(event["date"])
         
-        # Reset buffer position to beginning
-        docx_buffer.seek(0)
-        return docx_buffer.getvalue()
+        # Start event div
+        html += f'<div class="event">\n'
+        html += f'<p><span class="event-date">{date_formatted}:</span> {event["event"]}<span class="footnote-marker">[{i+1}]</span></p>\n'
+        
+        # Collect sources for footnote
+        sources = []
+        if event.get("claimant_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
+        if event.get("respondent_arguments"):
+            sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["respondent_arguments"]])
+        if event.get("doc_name"):
+            sources.extend(event["doc_name"])
+        
+        # Add the footnote
+        if sources:
+            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> {"; ".join(sources)}</p>\n'
+        else:
+            html += f'<p class="footnote"><span class="footnote-marker">[{i+1}]</span> No sources available</p>\n'
+        
+        # Close event div
+        html += '</div>\n'
     
-    except Exception as e:
-        st.error(f"Error creating DOCX file: {str(e)}")
-        return None
+    # Close the HTML document
+    html += """
+    </body>
+    </html>
+    """
+    
+    return html
+
+# Function to generate a Word document for the timeline with proper footnotes
+def generate_timeline_docx(events):
+    # Create a new Word document
+    doc = Document()
+    
+    # Set document properties
+    doc.styles['Normal'].font.name = 'Times New Roman'
+    doc.styles['Normal'].font.size = Pt(12)
+    
+    # Add title
+    title = doc.add_heading('Arbitral Event Timeline', level=1)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add events in chronological order
+    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
+        # Format the date
+        date_formatted = format_date(event["date"])
+        
+        # Add event text with date
+        p = doc.add_paragraph()
+        p.add_run(f"{date_formatted}: ").bold = True
+        p.add_run(f"{event['event']}")
+        
+        # Prepare footnote text
+        footnote_text = ""
+        
+        # Add exhibits references
+        if event.get("doc_name"):
+            for i, doc_name in enumerate(event.get("doc_name", [])):
+                if i > 0:
+                    footnote_text += "; "
+                footnote_text += f"{doc_name}"
+        
+        # Add claimant arguments
+        if event.get("claimant_arguments"):
+            if footnote_text:
+                footnote_text += "; "
+            claimant_refs = []
+            for arg in event["claimant_arguments"]:
+                claimant_refs.append(f"Claimant Memorial p.{arg['page']}")
+            footnote_text += "; ".join(claimant_refs)
+        
+        # Add respondent arguments
+        if event.get("respondent_arguments"):
+            if footnote_text:
+                footnote_text += "; "
+            respondent_refs = []
+            for arg in event["respondent_arguments"]:
+                respondent_refs.append(f"Respondent Memorial p.{arg['page']}")
+            footnote_text += "; ".join(respondent_refs)
+        
+        # Add footnote
+        if footnote_text:
+            footnote = p.add_footnote(footnote_text)
+        else:
+            footnote = p.add_footnote("No exhibits available")
+        
+        # Add some space between events
+        doc.add_paragraph()
+    
+    # Save the document to a BytesIO stream
+    docx_stream = BytesIO()
+    doc.save(docx_stream)
+    docx_stream.seek(0)
+    
+    return docx_stream
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -494,19 +361,39 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Download timeline button
-    if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate timeline text
-        timeline_text = generate_timeline_text(events)
-        
-        # Provide download button for the text as a Word document
-        st.download_button(
-            label="Download Timeline",
-            data=timeline_text,
-            file_name="timeline.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            key=f"download_timeline_docx_{unique_id}"
-        )
+    # Download timeline section
+    st.markdown("### 📥 Download Timeline")
+    
+    # Create columns for download options
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📋 Download as HTML", key=f"download_timeline_html_btn_{unique_id}"):
+            # Generate HTML timeline with footnotes
+            html_content = generate_timeline_html(events)
+            
+            # Provide download button for HTML file
+            st.download_button(
+                label="Click to download HTML",
+                data=html_content,
+                file_name="timeline.html",
+                mime="text/html",
+                key=f"download_timeline_html_{unique_id}"
+            )
+    
+    with col2:
+        if st.button("📄 Download as Word", key=f"download_timeline_word_btn_{unique_id}"):
+            # Generate Word document with proper footnotes
+            docx_stream = generate_timeline_docx(events)
+            
+            # Provide download button for Word file
+            st.download_button(
+                label="Click to download Word document",
+                data=docx_stream,
+                file_name="timeline.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                key=f"download_timeline_docx_{unique_id}"
+            )
     
     # Filter events
     filtered_events = events
