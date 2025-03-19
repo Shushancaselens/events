@@ -496,18 +496,17 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate DOCX file manually
-        docx_bytes = generate_timeline_docx_manual(events)
+        # Generate RTF file with proper footnotes - most compatible format
+        rtf_content = generate_timeline_rtf(events)
         
-        if docx_bytes:
-            # Provide download button for the Word document
-            st.download_button(
-                label="Download Timeline",
-                data=docx_bytes,
-                file_name="timeline.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"download_timeline_docx_{unique_id}"
-            )
+        # Provide download button for the RTF file
+        st.download_button(
+            label="Download Timeline",
+            data=rtf_content,
+            file_name="timeline.rtf",
+            mime="application/rtf",
+            key=f"download_timeline_rtf_{unique_id}"
+        )
     
     # Filter events
     filtered_events = events
