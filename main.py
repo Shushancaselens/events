@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO, BytesIO
-import zipfile
-import base64
+from io import StringIO
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -493,18 +491,31 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate DOCX file manually
-        docx_bytes = generate_timeline_docx_manual(events)
+        # Generate text file with footnote formatting
+        text_content = generate_timeline_text(events)
         
-        if docx_bytes:
-            # Provide download button for the Word document
-            st.download_button(
-                label="Download Timeline",
-                data=docx_bytes,
-                file_name="timeline.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key=f"download_timeline_docx_{unique_id}"
-            )
+        # Offer download as a text file that can be opened in Word
+        st.download_button(
+            label="Download Timeline",
+            data=text_content,
+            file_name="timeline.txt",
+            mime="text/plain",
+            key=f"download_timeline_txt_{unique_id}"
+        )
+        
+        # Add instructions for the user
+        st.info("""
+        **Instructions for viewing in Microsoft Word:**
+        1. Download the text file
+        2. Open Microsoft Word
+        3. Open the downloaded text file
+        4. The document will show proper formatting with timeline and footnotes
+        5. Save as .docx if needed
+        """)
+        
+        # Show a preview of the content
+        st.markdown("### Preview:")
+        st.text(text_content[:500] + "...")  # Show first 500 characters
     
     # Filter events
     filtered_events = events
