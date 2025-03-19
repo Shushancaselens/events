@@ -1,7 +1,10 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
+from docx import Document
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -168,15 +171,28 @@ def format_date(date_str):
     else:
         return date.strftime("%d %B %Y")
 
-# Function to generate timeline text for copying
-def generate_timeline_text(events):
-    text = ""
-    for event in sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min):
-        # Format the event text with date in bold
+# Function to generate timeline Word document with footnotes
+def generate_timeline_document(events):
+    doc = Document()
+    
+    # Add a title
+    title = doc.add_heading('Arbitral Event Timeline', level=1)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # Add events in chronological order
+    for i, event in enumerate(sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)):
+        # Format the date
         date_formatted = format_date(event["date"])
-        text += f"**{date_formatted}** {event['event']}[1]\n\n"
         
-        # Sources for footnote
+        # Add the event text with date
+        p = doc.add_paragraph()
+        p.add_run(f"{date_formatted}: ").bold = True
+        event_run = p.add_run(f"{event['event']}")
+        
+        # Add footnote reference
+        footnote_ref = event_run.add_footnote()
+        
+        # Collect sources for footnote
         sources = []
         if event.get("claimant_arguments"):
             sources.extend([f"{arg['fragment_start']}... (Page {arg['page']})" for arg in event["claimant_arguments"]])
@@ -185,10 +201,18 @@ def generate_timeline_text(events):
         if event.get("doc_name"):
             sources.extend(event["doc_name"])
         
+        # Add the sources to the footnote
         if sources:
-            text += f"[1] {'; '.join(sources)}\n\n"
+            footnote_ref.add_run('; '.join(sources))
+        else:
+            footnote_ref.add_run("No sources available")
     
-    return text
+    # Save the document to a BytesIO object
+    docx_file = BytesIO()
+    doc.save(docx_file)
+    docx_file.seek(0)
+    
+    return docx_file
 
 def show_sidebar(events, unique_id=""):
     # Sidebar - Logo and title
@@ -231,12 +255,15 @@ def visualize(data, unique_id="", sidebar_values=None):
     else:
         search_query, start_date, end_date = sidebar_values
     
-    # Download timeline button 
+    # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        timeline_text = generate_timeline_text(events)
+        # Generate Word document with proper footnotes
+        docx_file = generate_timeline_document(events)
+        
+        # Provide download button for the Word document
         st.download_button(
             label="Download Timeline as Word Document",
-            data=timeline_text,
+            data=docx_file,
             file_name="timeline.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             key=f"download_timeline_docx_{unique_id}"
