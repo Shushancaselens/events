@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from io import StringIO
+from io import StringIO, BytesIO
 import base64
+import zipfile
 
 # VISUALIZE START #####################
 st.set_page_config(
@@ -492,159 +493,28 @@ def visualize(data, unique_id="", sidebar_values=None):
     
     # Download timeline button
     if st.button("📋 Download Timeline", type="primary", key=f"download_timeline_{unique_id}"):
-        # Generate HTML content as text
-        html_content = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arbitral Event Timeline</title>
-    <style>
-        body {
-            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
-            line-height: 1.5;
-            margin: 2.5cm;
-            color: #333;
-            background-color: #fff;
-            max-width: 21cm;
-            margin: 0 auto;
-            padding: 2.5cm;
-        }
-        .word-document {
-            background-color: white;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            min-height: 29.7cm;
-            padding: 2.5cm;
-        }
-        h1 {
-            text-align: center;
-            font-size: 16pt;
-            margin-bottom: 24pt;
-            font-weight: bold;
-        }
-        .event {
-            margin-bottom: 14pt;
-        }
-        .event-date {
-            font-weight: bold;
-        }
-        .footnote-reference {
-            vertical-align: super;
-            font-size: 70%;
-            text-decoration: none;
-            color: inherit;
-        }
-        .footnotes {
-            margin-top: 48pt;
-            border-top: 1pt solid #ccc;
-            padding-top: 12pt;
-        }
-        .footnote {
-            font-size: 10pt;
-            margin-bottom: 6pt;
-            padding-left: 16pt;
-            text-indent: -16pt;
-        }
-    </style>
-</head>
-<body>
-    <div class="word-document">
-        <h1>Arbitral Event Timeline</h1>
-"""
+        # Generate HTML that can be displayed in a new browser tab
+        html_content = generate_timeline_html(events)
         
-        # Add events in chronological order
-        sorted_events = sorted(events, key=lambda x: parse_date(x["date"]) or datetime.min)
-        for i, event in enumerate(sorted_events):
-            # Format the date
-            date_formatted = format_date(event["date"])
-            footnote_num = i + 1
-            
-            # Add event with footnote reference
-            html_content += f"""
-        <div class="event">
-            <span class="event-date">{date_formatted}:</span> {event["event"]}<a href="#footnote-{footnote_num}" id="ref-{footnote_num}" class="footnote-reference">{footnote_num}</a>
-        </div>
-"""
-        
-        # Add footnotes section
-        html_content += """
-        <div class="footnotes">
-"""
-        
-        # Add each footnote
-        for i, event in enumerate(sorted_events):
-            footnote_num = i + 1
-            
-            # Format exhibits for footnote
-            claimant_exhibits = []
-            respondent_exhibits = []
-            other_exhibits = []
-            
-            if event.get("claimant_arguments"):
-                for arg in event.get("claimant_arguments"):
-                    claimant_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
-            
-            if event.get("respondent_arguments"):
-                for arg in event.get("respondent_arguments"):
-                    respondent_exhibits.append(f"{arg['fragment_start']}... (Page {arg['page']})")
-            
-            if event.get("doc_name"):
-                other_exhibits.extend(event.get("doc_name"))
-            
-            # Build footnote content
-            footnote_content = ""
-            
-            if claimant_exhibits or respondent_exhibits or other_exhibits:
-                if claimant_exhibits:
-                    footnote_content += "Claimant memorial: " + "; ".join(claimant_exhibits)
-                
-                if respondent_exhibits:
-                    if footnote_content:
-                        footnote_content += "; "
-                    footnote_content += "Respondent memorial: " + "; ".join(respondent_exhibits)
-                
-                if other_exhibits:
-                    if footnote_content:
-                        footnote_content += "; "
-                    footnote_content += "Exhibits: " + "; ".join(other_exhibits)
-            else:
-                footnote_content = "No exhibits available"
-            
-            # Add footnote
-            html_content += f"""
-            <div id="footnote-{footnote_num}" class="footnote">
-                <a href="#ref-{footnote_num}" class="footnote-reference">{footnote_num}</a> {footnote_content}
-            </div>
-"""
-        
-        # Close HTML document
-        html_content += """
-        </div>
-    </div>
-</body>
-</html>
-"""
-        
-        # Create data URL for opening in new tab
+        # Create a data URI
         b64_html = base64.b64encode(html_content.encode()).decode()
         href = f'data:text/html;base64,{b64_html}'
         
-        # JavaScript to open in new tab
-        js = f"""
-        <script>
-            (function() {{
-                const link = document.createElement('a');
-                link.href = '{href}';
-                link.target = '_blank';
-                link.click();
-            }})();
-        </script>
-        """
-        st.markdown(js, unsafe_allow_html=True)
-        
-        # Also provide a direct link in case the automatic opening doesn't work
-        st.markdown(f'<a href="{href}" target="_blank">Click here if document doesn\'t open automatically</a>', unsafe_allow_html=True)
+        # Create a button that opens the document in a new tab
+        st.markdown(f'''
+        <a href="{href}" target="_blank" style="
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #1E88E5;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 1rem;
+        ">
+            Open Timeline Document in New Tab
+        </a>
+        ''', unsafe_allow_html=True)
     
     # Filter events
     filtered_events = events
