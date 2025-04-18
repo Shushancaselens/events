@@ -775,7 +775,9 @@ def analytics_page():
         x='count',
         y='term',
         orientation='h',
-        title="Most Frequent Terms"
+        title="Most Frequent Terms",
+        color='count',
+        color_continuous_scale='Viridis'
     )
     st.plotly_chart(fig3)
     
@@ -785,4 +787,15 @@ def analytics_page():
     
     if selected_term and st.button("Find Occurrences"):
         # Auto-execute a search for this term
-        with st.spinner(f"Finding occurrences of
+        with st.spinner(f"Finding occurrences of '{selected_term}'..."):
+            results = search_documents(selected_term, case_filter=st.session_state['current_case'])
+            
+            if results:
+                st.subheader(f"Found {len(results)} occurrences of '{selected_term}'")
+                
+                # Display each occurrence with context
+                for i, result in enumerate(results[:10]):  # Limit to first 10 for performance
+                    with st.expander(f"Occurrence {i+1} in {result['filename']}", expanded=i==0):
+                        st.markdown(result['highlighted_chunk'], unsafe_allow_html=True)
+            else:
+                st.info(f"No occurrences of '{selected_term}' found.")
