@@ -5,355 +5,36 @@ import random
 
 # Set page configuration
 st.set_page_config(
-    page_title="CASLens - Sports Arbitration Search",
-    page_icon="⚖️",
+    page_title="CASLens",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS with better UI structure and visual hierarchy
+# Custom CSS for minimal styling
 st.markdown("""
 <style>
-    /* Base styles and typography */
-    * {
-        font-family: 'Inter', sans-serif;
-        box-sizing: border-box;
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        font-weight: 600;
-        color: #1F2937;
-        margin-top: 0.5em;
-        margin-bottom: 0.5em;
-    }
-    
-    /* Logo area */
-    .logo-container {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #E5E7EB;
-    }
-    
-    .logo {
-        font-size: 28px;
-        font-weight: 700;
-        color: #4F46E5;
-        letter-spacing: -0.025em;
-    }
-    
-    /* Cards and content containers */
-    .content-card {
-        background-color: white;
-        border-radius: 8px;
-        padding: 1.5rem;
-        border: 1px solid #E5E7EB;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .sidebar-card {
-        background-color: #F9FAFB;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #E5E7EB;
-    }
-    
-    /* Search components */
-    .search-container {
-        display: flex;
-        align-items: center;
-        background-color: white;
-        border-radius: 8px;
-        padding: 0.5rem;
-        border: 1px solid #E5E7EB;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    /* Status indicators */
-    .status-indicator {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 6px;
-    }
-    
-    .status-active {
-        background-color: #10B981;
-    }
-    
-    .status-pending {
-        background-color: #F59E0B;
-    }
-    
-    /* Case display */
-    .case-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 0.5rem;
-    }
-    
-    .case-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-        font-size: 0.875rem;
-    }
-    
-    .case-meta-item {
-        color: #4B5563;
-        background-color: #F3F4F6;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-    }
-    
-    /* Message boxes */
-    .disclaimer {
-        background-color: #FEF2F2;
-        border-left: 4px solid #DC2626;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-        color: #991B1B;
-    }
-    
-    .explanation {
-        background-color: #EFF6FF;
-        border-left: 4px solid #3B82F6;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-    }
-    
-    .highlight {
-        background-color: #ECFDF5;
-        border-left: 4px solid #10B981;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-    }
-    
-    .selected-highlight {
-        background-color: #F3F4F6;
-        border-left: 4px solid #4F46E5;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-    }
-    
-    /* Tags and chips */
-    .tag {
-        display: inline-block;
-        background-color: #E5E7EB;
-        color: #374151;
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        margin-right: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Timeline components */
-    .timeline {
-        position: relative;
-        padding-left: 2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .timeline::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 6px;
-        bottom: 0;
-        width: 2px;
-        background-color: #E5E7EB;
-    }
-    
-    .timeline-item {
-        position: relative;
-        padding-bottom: 1.5rem;
-    }
-    
-    .timeline-item::before {
-        content: "";
-        position: absolute;
-        left: -2rem;
-        top: 6px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background-color: #4F46E5;
-    }
-    
-    /* Buttons and interactive elements */
-    .primary-button {
-        background-color: #4F46E5;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        cursor: pointer;
-    }
-    
-    .primary-button:hover {
-        background-color: #4338CA;
-    }
-    
-    .secondary-button {
-        background-color: white;
-        color: #374151;
-        border: 1px solid #D1D5DB;
-        border-radius: 4px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        cursor: pointer;
-    }
-    
-    .secondary-button:hover {
-        background-color: #F9FAFB;
-    }
-    
-    /* Custom Streamlit component styling */
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    
-    /* Custom styling for sidebar */
-    .sidebar .sidebar-content {
-        background-color: #F9FAFB;
-    }
-    
-    /* Search history styling */
-    .history-item {
-        padding: 0.75rem;
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .history-item:hover {
-        background-color: #F3F4F6;
-    }
-    
-    .history-item.active {
-        background-color: #EFF6FF;
-        border-left: 3px solid #4F46E5;
-    }
-    
-    /* Tab styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 0px;
         background-color: #F9FAFB;
-        border-radius: 8px 8px 0 0;
-        padding: 0.5rem 0.5rem 0 0.5rem;
-        border: 1px solid #E5E7EB;
-        border-bottom: none;
     }
     
     .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        white-space: pre-wrap;
         background-color: #F3F4F6;
-        border-radius: 6px 6px 0 0;
-        padding: 0.5rem 1rem;
-        margin-right: 2px;
-        color: #4B5563;
-        font-weight: 500;
+        border-radius: 4px 4px 0 0;
+        padding-top: 10px;
+        padding-bottom: 10px;
     }
     
     .stTabs [aria-selected="true"] {
-        background-color: white;
-        color: #4F46E5 !important;
-        border-top: 3px solid #4F46E5;
-        border-bottom: none;
-    }
-    
-    .stTabs [data-baseweb="tab-panel"] {
-        background-color: white;
-        border: 1px solid #E5E7EB;
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        padding: 1rem;
-    }
-    
-    /* Radio styling for history items */
-    .stRadio > div {
-        padding: 0;
-    }
-    
-    .stRadio > div > div {
-        border-radius: 4px;
-        transition: background-color 0.2s;
-    }
-    
-    .stRadio > div > div:hover {
-        background-color: #F3F4F6;
-    }
-    
-    .stRadio > div > div > label {
-        padding: 0.5rem 0.75rem;
-        width: 100%;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background-color: #4F46E5 !important;
+        background-color: #4F46E5;
         color: white !important;
-        border: none !important;
-        border-radius: 4px !important;
-        padding: 0.5rem 1rem !important;
-        font-weight: 500 !important;
     }
     
-    .stButton > button:hover {
-        background-color: #4338CA !important;
-    }
-    
-    /* Search input styling */
-    .stTextInput > div > div > input {
-        border-radius: 4px;
-        border: 1px solid #D1D5DB;
-        padding: 0.5rem 1rem;
-    }
-    
-    /* Add additional padding and styling to improve the layout */
-    .content-section {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    /* Scrollable containers */
-    .scrollable-container {
-        max-height: 400px;
-        overflow-y: auto;
-        padding-right: 0.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    /* Social media icons */
-    .social-media-container {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
+    div.stButton > button {
+        background-color: #4F46E5;
+        color: white;
     }
 </style>
-""", unsafe_allow_html=True)
-
-# Load fonts and custom header
-st.markdown("""
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
 # Sample CAS decisions data
@@ -413,25 +94,6 @@ cas_decisions = [
         "page": 32,
         "line_start": 210,
         "line_end": 580,
-        "status": "Decided"
-    },
-    {
-        "id": "CAS 2021/A/7991",
-        "title": "Athlete X v. International Federation Y - Satellite Collision Case",
-        "date": "2021-03-01",
-        "type": "Appeal",
-        "sport": "Space Athletics",
-        "claimant": "Athlete X",
-        "respondent": "International Federation Y",
-        "panel": "Dr. Smith (President), Prof. Johnson, Ms. Williams",
-        "summary": "Appeal regarding the interpretation of satellite collision events during space athletics competition.",
-        "key_facts": "The athlete was disqualified following a satellite collision incident during the Space Athletics World Championship.",
-        "decision": "The Panel upheld the appeal, finding that the satellite collision was outside the athlete's control.",
-        "reasoning": "The Panel determined that the Federation's avoidance system had deficiencies that contributed to the collision.",
-        "keywords": ["satellite collision", "space athletics", "avoidance system", "deficiencies"],
-        "page": 27,
-        "line_start": 350,
-        "line_end": 650,
         "status": "Decided"
     },
     {
@@ -518,12 +180,12 @@ df_decisions = pd.DataFrame(cas_decisions)
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = [
-        {"query": "satellite collision", "timestamp": "2024-07-14 18:22:42"},
-        {"query": "facts related to national security", "timestamp": "2024-07-14 18:20:23"},
-        {"query": "tribunal case redoing collision report", "timestamp": "2024-07-13 10:15:18"}
+        {"query": "transfer ban", "timestamp": "2024-07-14 18:22:42"},
+        {"query": "doping violation", "timestamp": "2024-07-14 18:20:23"},
+        {"query": "contract termination", "timestamp": "2024-07-13 10:15:18"}
     ]
 if 'selected_case' not in st.session_state:
-    st.session_state.selected_case = df_decisions.iloc[3]  # Selecting the satellite collision case by default
+    st.session_state.selected_case = random.choice(df_decisions.to_dict('records'))
 if 'search_results' not in st.session_state:
     st.session_state.search_results = df_decisions
 if 'active_history_index' not in st.session_state:
@@ -568,6 +230,8 @@ def semantic_search(query, filters=None):
                     score += 5  # Key facts matches are relevant
                 if term in case['decision'].lower() or term in case['reasoning'].lower():
                     score += 4  # Decision and reasoning matches are somewhat relevant
+                if term in text_to_search:
+                    score += 2  # General text match
             
             # Sports-specific relevance
             if query.lower() in case['sport'].lower():
@@ -577,18 +241,6 @@ def semantic_search(query, filters=None):
             if ("appeal" in query.lower() and case['type'] == "Appeal") or \
                ("ordinary" in query.lower() and case['type'] == "Ordinary"):
                 score += 8
-            
-            # Satellite collision relevance (prioritize this for the example)
-            if "satellite" in query.lower() and "satellite" in text_to_search:
-                score += 20
-            
-            # Collision relevance
-            if "collision" in query.lower() and "collision" in text_to_search:
-                score += 15
-            
-            # Security relevance
-            if "security" in query.lower() and "security" in text_to_search:
-                score += 15
             
             # Keyword matches
             for keyword in case['keywords']:
@@ -661,32 +313,19 @@ def select_history_item(index):
     query = st.session_state.search_history[index]["query"]
     st.session_state.search_results = semantic_search(query, st.session_state.filters)
     if not st.session_state.search_results.empty:
-        st.session_state.selected_case = st.session_state.search_results.iloc[0]
+        st.session_state.selected_case = st.session_state.search_results.iloc[0].to_dict()
 
 # Format date for display
 def format_date(date_str):
     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
     return date_obj.strftime("%d %b %Y")
 
-# Create a collapsible section
-def collapsible_section(title, content, open_by_default=True):
-    with st.expander(title, expanded=open_by_default):
-        st.markdown(content, unsafe_allow_html=True)
-
-# App layout with better structure
+# App layout with improved structure and native Streamlit components
 col1, col2 = st.columns([1, 3])
 
-# Sidebar with improved visual hierarchy
+# Sidebar with native Streamlit components
 with col1:
-    # Logo and branding
-    st.markdown("""
-    <div class="logo-container">
-        <div class="logo">⚖️ CASLens</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Advanced search section
-    st.markdown("<h4>Advanced Filters</h4>", unsafe_allow_html=True)
+    st.subheader("Advanced Filters")
     
     with st.form("search_filters", clear_on_submit=False):
         # Case type filter
@@ -723,513 +362,273 @@ with col1:
                 current_query = st.session_state.search_history[st.session_state.active_history_index]["query"]
                 st.session_state.search_results = semantic_search(current_query, st.session_state.filters)
                 if not st.session_state.search_results.empty:
-                    st.session_state.selected_case = st.session_state.search_results.iloc[0]
+                    st.session_state.selected_case = st.session_state.search_results.iloc[0].to_dict()
     
-    # Search history with improved styling
-    st.markdown("<h4>Search History</h4>", unsafe_allow_html=True)
+    # Search history
+    st.subheader("Search History")
     
-    for i, item in enumerate(st.session_state.search_history):
-        active_class = "active" if i == st.session_state.active_history_index else ""
-        st.markdown(f"""
-        <div class="history-item {active_class}" onclick="this.onclick=null; window.location.reload();">
-            <div style="font-weight: 500;">{item["query"]}</div>
-            <div style="font-size: 0.75rem; color: #6B7280; margin-top: 0.25rem;">{item["timestamp"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Hidden radio button for selection
-        if st.radio(
-            "",
-            [item["query"]],
-            key=f"history_{i}",
-            label_visibility="collapsed",
-            horizontal=True,
-            index=0 if i == st.session_state.active_history_index else None
-        ):
-            select_history_item(i)
+    # Display search history using native Streamlit radio buttons
+    history_options = [f"{item['query']} ({item['timestamp']})" for item in st.session_state.search_history]
+    selected_history = st.radio(
+        "Previous searches",
+        history_options,
+        index=st.session_state.active_history_index,
+        label_visibility="collapsed"
+    )
     
-    # User profile section
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style="margin-top: 1rem;">
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <div style="width: 32px; height: 32px; border-radius: 16px; background-color: #4F46E5; color: white; display: flex; align-items: center; justify-content: center; margin-right: 0.5rem; font-weight: 600;">SV</div>
-            <div style="font-weight: 500;">Shushan Vaziyan</div>
-        </div>
-        <div style="font-size: 0.875rem; color: #6B7280; margin-bottom: 1rem;">Premium Account</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Find the index of the selected history item
+    selected_index = history_options.index(selected_history)
+    if selected_index != st.session_state.active_history_index:
+        select_history_item(selected_index)
     
-    if st.button("Logout", key="logout_btn"):
-        st.info("Logging out... (simulation)")
+    # User info (simplified)
+    st.markdown("---")
+    st.text("Shushan Vaziyan")
+    st.button("Logout")
     
-    # Social media links with improved styling
-    st.markdown("<div class='social-media-container'>", unsafe_allow_html=True)
-    st.markdown("[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com)")
-    st.markdown("[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com)")
-    st.markdown("[![Facebook](https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://facebook.com)")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Social media links with native Streamlit components
+    st.markdown("Connect with us!")
+    cols = st.columns(3)
+    with cols[0]:
+        st.markdown("[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://linkedin.com)")
+    with cols[1]:
+        st.markdown("[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com)")
+    with cols[2]:
+        st.markdown("[![Facebook](https://img.shields.io/badge/Facebook-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://facebook.com)")
 
-# Main content area with improved layout and components
+# Main content area with native Streamlit components
 with col2:
-    # Top search and controls bar
-    st.markdown("<div class='search-container'>", unsafe_allow_html=True)
-    
-    gen_col, search_col, search_btn_col = st.columns([1, 5, 1])
-    
-    with gen_col:
-        if st.button("Generate", key="generate_btn", help="Generate a new CAS decision analysis"):
-            st.session_state.search_results = df_decisions
-            if not st.session_state.search_results.empty:
-                st.session_state.selected_case = st.session_state.search_results.iloc[3]  # Default to satellite collision case
+    # Search bar
+    search_col, search_btn_col = st.columns([5, 1])
     
     with search_col:
-        search_query = st.text_input("", "Processing of satellite collision events", key="search_input", 
-                                     placeholder="Search CAS decisions...")
+        search_query = st.text_input("Search CAS decisions", placeholder="Enter search terms...")
     
     with search_btn_col:
-        if st.button("Search", key="search_btn"):
-            if search_query and search_query != "CAS decisions search":
+        if st.button("Search"):
+            if search_query:
                 add_to_history(search_query)
                 st.session_state.search_results = semantic_search(search_query, st.session_state.filters)
                 if not st.session_state.search_results.empty:
-                    st.session_state.selected_case = st.session_state.search_results.iloc[0]
+                    st.session_state.selected_case = st.session_state.search_results.iloc[0].to_dict()
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Processing indicator
+    st.info("General Answer is processing...")
     
-    # Disclaimer with improved styling
-    st.markdown("""
-    <div class="disclaimer">
-        <strong>Disclaimer:</strong> CASLens is a fact-finding assistant tool. While it aims to save time, the accuracy of its answers cannot be guaranteed. 
-        Users should treat these as initial insights and verify them before making final judgments.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Status indicator
-    st.markdown("""
-    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-        <div class="status-indicator status-active"></div>
-        <div style="font-size: 0.875rem; color: #6B7280;">General Answer is processing...</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Main tabs with improved styling
+    # Main tabs with native Streamlit components
     tabs = st.tabs(["All", "Claimant", "Respondent", "Tribunal", "BIT"])
     
     with tabs[0]:
         if 'selected_case' in st.session_state:
             case = st.session_state.selected_case
             
-            # Case header with improved styling
-            st.markdown(f"""
-            <div class="content-card">
-                <div class="case-title">Exhibit C-9: DoD Order of 1 March 2021 to Adjust Orbits of 400 km Satellites and Continue to Suspend Operation</div>
-                <div class="case-meta">
-                    <div class="case-meta-item">Page: 27</div>
-                    <div class="case-meta-item">Line(s): 650</div>
-                    <div class="case-meta-item">Case ID: {case['id']}</div>
-                    <div class="case-meta-item">Date: {format_date(case['date'])}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Display case info using native Streamlit components
+            st.markdown(f"## Exhibit C-9: {case['id']} - {case['title']}")
+            st.markdown(f"**Page:** {case['page']} | **Line(s):** {case['line_start']}-{case['line_end']}")
             
-            # Explanation box with improved styling
-            st.markdown("""
-            <div class="explanation">
-                <strong>Explanation:</strong> Based on the Department of Defense's investigation of the AS100 satellite collision.
-            </div>
-            """, unsafe_allow_html=True)
+            # Explanation using native Streamlit components
+            st.info(f"**Explanation:** Based on the analysis of {case['id']}.")
             
-            # Highlighted findings with improved styling
-            st.markdown(f"""
-            <div class="selected-highlight">
-                <h4>Key Findings</h4>
-                <p>
-                    Based on the Department of Defense's investigation of the AS100 satellite collision, we have identified both software and hardware deficiencies in the collision avoidance system of the Astra satellites. Regarding the software, the algorithm Astracommex used to predict relies predominantly on data collected by the Space Surveillance Network of Cosmosis.
-                </p>
-                <p>
-                    Since the cessation of Cosmosis-Celestria diplomatic relations, Celestria has shut down all of Cosmosis' terrestrial radar operations within Celestria's borders, coupled with subsequent national security regulations prohibiting sensitive data transfer to Cosmosis. These measures have significantly impacted Cosmosis' Space Surveillance Network's accuracy on Celestria related space activities.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Key findings using native Streamlit components
+            st.success(f"""
+            ### Key Findings
             
-            # Statement of uncontested facts with improved styling
-            st.markdown("""
-            <div class="content-card">
-                <h4>STATEMENT OF UNCONTESTED FACTS</h4>
-                <div class="case-meta" style="margin-bottom: 1rem;">
-                    <div class="case-meta-item">Page: 82</div>
-                    <div class="case-meta-item">Line(s): 2050</div>
-                </div>
-            """, unsafe_allow_html=True)
+            Based on our analysis of this case, we have identified several key elements:
             
-            # Second explanation box with improved styling
-            st.markdown("""
-                <div class="explanation">
-                    <strong>Explanation:</strong> Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.
-                </div>
-            """, unsafe_allow_html=True)
+            {case['summary']}
             
-            # Timeline of events with improved styling
-            st.markdown("""
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <strong>2 October 2020</strong>
-                        <p>The NFA requested additional documentation from Astracommex Regional to specifically address these atmospheric concerns.</p>
-                    </div>
-                    <div class="timeline-item">
-                        <strong>15 October 2020</strong>
-                        <p>Astracommex Regional responded to the NFA, declining to provide the requested supplementary information.</p>
-                    </div>
-                    <div class="timeline-item">
-                        <strong>15 December 2020</strong>
-                        <p>The NFA rejected Astracommex Regional's application to Ku-band frequencies on the basis of the NEPA.</p>
-                    </div>
-                    <div class="timeline-item">
-                        <strong>1 January 2021</strong>
-                        <p>One of Astracommex Regional's satellites, AS100, collided with a cube satellite (cubesat) that wandered around the adjacent orbit on a crossed orbital plate.</p>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            {case['key_facts']}
+            """)
             
-            # Case outcome with improved styling
-            st.markdown(f"""
-                <div class="highlight">
-                    <h4>Key Event: Satellite Collision</h4>
-                    <p>
-                        On 1 January 2021, one of Astracommex Regional's satellites, AS100, collided with a cube satellite (cubesat) that wandered around the adjacent orbit on a crossed orbital plate. The cube satellite was run by Valinor, a private company, in partnership with Celestria's Department of Defense ("DoD").
-                    </p>
-                    <p>
-                        The cubesat was not equipped with any collision avoidance system and was smashed into small debris upon collision. AS100 was partially damaged – but both its Telemetry, Tracking, and Command (TT&C) system and its communication system ceased to function.
-                    </p>
-                    <p>
-                        The data up until the impact moment indicated an anomaly in the radiation values that was transmitted and subsequently used by Astracommex's collision avoidance system.
-                    </p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Statement of uncontested facts
+            st.subheader("STATEMENT OF UNCONTESTED FACTS")
+            st.text(f"Page: 82 | Line(s): 2050")
             
-            # Related cases section
-            st.markdown("""
-            <div class="content-card">
-                <h4>Related Cases</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
-            """, unsafe_allow_html=True)
+            # Second explanation
+            st.info("**Explanation:** Processing of CAS decisions involves assessing evidence, analyzing legal precedents, and preparing legal interpretations.")
             
-            # Generate some related cases
-            related_cases = df_decisions[df_decisions['id'] != case['id']].sample(min(3, len(df_decisions)-1))
-            for _, related_case in related_cases.iterrows():
-                st.markdown(f"""
-                    <div style="flex: 1; min-width: 250px; padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 4px;">
-                        <div style="font-weight: 500; margin-bottom: 0.25rem;">{related_case['id']}</div>
-                        <div style="font-size: 0.875rem; color: #4B5563; margin-bottom: 0.5rem;">{related_case['title']}</div>
-                        <div style="font-size: 0.75rem; color: #6B7280;">{format_date(related_case['date'])}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+            # Timeline using native Streamlit components
+            st.markdown("### Case Timeline")
             
-            st.markdown("""
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
+            # Create a random date 60 days before the case date for timeline purposes
+            case_date = datetime.strptime(case['date'], "%Y-%m-%d")
+            filing_date = case_date - pd.Timedelta(days=60)
+            hearing_date = case_date - pd.Timedelta(days=30)
+            
+            timeline = {
+                f"{filing_date.strftime('%d %b %Y')}": "Case filed with CAS",
+                f"{hearing_date.strftime('%d %b %Y')}": "Hearing conducted",
+                f"{case_date.strftime('%d %b %Y')}": "Decision rendered"
+            }
+            
+            for date, event in timeline.items():
+                cols = st.columns([1, 3])
+                with cols[0]:
+                    st.markdown(f"**{date}**")
+                with cols[1]:
+                    st.markdown(event)
+            
+            # Case outcome
+            st.markdown("### Decision")
+            st.success(case['decision'])
+            
+            # Reasoning
+            st.markdown("### Reasoning")
+            st.markdown(case['reasoning'])
+            
     with tabs[1]:
-        # Claimant tab with improved layout
-        st.markdown("""
-        <div class="content-card">
-            <h3>Claimant Information</h3>
-        """, unsafe_allow_html=True)
-        
-        case = st.session_state.selected_case
-        st.markdown(f"""
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 40px; height: 40px; border-radius: 20px; background-color: #E0F2FE; color: #0369A1; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.25rem;">C</div>
-                    <div style="font-size: 1.25rem; font-weight: 500;">{case['claimant']}</div>
-                </div>
-                <div style="margin-top: 0.5rem; color: #6B7280; font-size: 0.875rem;">Case initiated on: {format_date(case['date'])}</div>
-            </div>
+        # Claimant tab with native Streamlit components
+        if 'selected_case' in st.session_state:
+            case = st.session_state.selected_case
             
-            <h4>Key Arguments</h4>
-            <ul style="padding-left: 1.5rem;">
-                <li>{case['key_facts']}</li>
-                <li>The satellite collision was due to external factors outside claimant's control</li>
-                <li>The cubesat operated by Valinor lacked proper collision avoidance systems</li>
-                <li>Data anomalies in radiation values contributed to the collision</li>
-            </ul>
+            st.header(f"Claimant: {case['claimant']}")
+            st.markdown(f"**Case initiated on:** {format_date(case['date'])}")
             
-            <h4>Relief Sought</h4>
-            <ul style="padding-left: 1.5rem;">
-                <li>Declaration that the claimant is not liable for the satellite collision</li>
-                <li>Order for the respondent to cover costs of the proceedings</li>
-                <li>Reinstatement of operational permits without penalties</li>
-            </ul>
+            st.subheader("Key Arguments")
+            st.markdown(f"- {case['key_facts']}")
+            st.markdown("- Requested relief in accordance with applicable regulations")
+            st.markdown("- Submitted supporting evidence")
             
-            <h4>Evidence Submitted</h4>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <strong>Exhibit C-1</strong>
-                    <p>Technical specifications of the AS100 satellite and its collision avoidance system</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit C-2</strong>
-                    <p>Data logs from the satellite's tracking system prior to the collision</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit C-3</strong>
-                    <p>Expert report on the radiation anomalies detected before impact</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit C-4</strong>
-                    <p>Documentation of previous diplomatic communications regarding data sharing</p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.subheader("Relief Sought")
+            st.markdown("- Declaration in favor of the claimant's position")
+            st.markdown("- Order for the respondent to cover costs of the proceedings")
+            st.markdown("- Additional remedies as specified in the claim")
+            
+            st.subheader("Evidence Submitted")
+            evidence = [
+                "Witness statements",
+                "Expert reports",
+                "Documentary evidence",
+                "Legal submissions"
+            ]
+            
+            for item in evidence:
+                st.markdown(f"- {item}")
     
     with tabs[2]:
-        # Respondent tab with improved layout
-        st.markdown("""
-        <div class="content-card">
-            <h3>Respondent Information</h3>
-        """, unsafe_allow_html=True)
-        
-        case = st.session_state.selected_case
-        st.markdown(f"""
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <div style="width: 40px; height: 40px; border-radius: 20px; background-color: #FEF3C7; color: #B45309; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.25rem;">R</div>
-                    <div style="font-size: 1.25rem; font-weight: 500;">{case['respondent']}</div>
-                </div>
-            </div>
+        # Respondent tab with native Streamlit components
+        if 'selected_case' in st.session_state:
+            case = st.session_state.selected_case
             
-            <h4>Key Arguments</h4>
-            <ul style="padding-left: 1.5rem;">
-                <li>Defense based on applicable space regulations</li>
-                <li>Alleged that the claimant failed to maintain proper collision avoidance systems</li>
-                <li>Contested the claimant's interpretation of the satellite collision events</li>
-                <li>Data transmission failures were the responsibility of the satellite operator</li>
-            </ul>
+            st.header(f"Respondent: {case['respondent']}")
             
-            <h4>Relief Sought</h4>
-            <ul style="padding-left: 1.5rem;">
-                <li>Dismissal of all claims</li>
-                <li>Declaration that the claimant is liable for the damages to the cubesat</li>
-                <li>Order for the claimant to cover costs of the proceedings</li>
-                <li>Imposition of additional safety requirements for future operations</li>
-            </ul>
+            st.subheader("Key Arguments")
+            st.markdown("- Defense based on applicable regulations")
+            st.markdown("- Contested the claimant's interpretation of facts")
+            st.markdown("- Requested dismissal of all claims")
             
-            <h4>Evidence Submitted</h4>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <strong>Exhibit R-1</strong>
-                    <p>Technical assessment of the collision avoidance system's deficiencies</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit R-2</strong>
-                    <p>Analysis of the debris field and damage assessment</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit R-3</strong>
-                    <p>Expert report on industry standard collision avoidance protocols</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>Exhibit R-4</strong>
-                    <p>Documentation of similar incidents involving Astracommex systems</p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.subheader("Relief Sought")
+            st.markdown("- Dismissal of all claims")
+            st.markdown("- Order for the claimant to cover costs of the proceedings")
+            
+            st.subheader("Evidence Submitted")
+            evidence = [
+                "Counter-witness statements",
+                "Expert analysis",
+                "Documentary evidence",
+                "Legal precedents"
+            ]
+            
+            for item in evidence:
+                st.markdown(f"- {item}")
     
     with tabs[3]:
-        # Tribunal tab with improved layout
-        st.markdown("""
-        <div class="content-card">
-            <h3>Tribunal</h3>
-        """, unsafe_allow_html=True)
-        
-        case = st.session_state.selected_case
-        st.markdown(f"""
-            <div style="background-color: #F9FAFB; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
-                <h4>Panel Composition</h4>
-                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 32px; height: 32px; border-radius: 16px; background-color: #4F46E5; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">P</div>
-                            <div>
-                                <div style="font-weight: 500;">Dr. Smith</div>
-                                <div style="font-size: 0.75rem; color: #6B7280;">President</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 32px; height: 32px; border-radius: 16px; background-color: #4F46E5; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">A</div>
-                            <div>
-                                <div style="font-weight: 500;">Prof. Johnson</div>
-                                <div style="font-size: 0.75rem; color: #6B7280;">Arbitrator</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 32px; height: 32px; border-radius: 16px; background-color: #4F46E5; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">A</div>
-                            <div>
-                                <div style="font-weight: 500;">Ms. Williams</div>
-                                <div style="font-size: 0.75rem; color: #6B7280;">Arbitrator</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        # Tribunal tab with native Streamlit components
+        if 'selected_case' in st.session_state:
+            case = st.session_state.selected_case
             
-            <h4>Key Findings</h4>
-            <div class="selected-highlight" style="margin-bottom: 1rem;">
-                <ul style="padding-left: 1.5rem; margin: 0;">
-                    <li>The Panel determined that software and hardware deficiencies existed in the collision avoidance system</li>
-                    <li>Diplomatic relations between Cosmosis and Celestria impacted data sharing</li>
-                    <li>National security regulations prohibited sensitive data transfer</li>
-                    <li>The cubesat lacked collision avoidance capabilities</li>
-                </ul>
-            </div>
+            st.header("Tribunal")
             
-            <h4>Decision</h4>
-            <div class="highlight" style="margin-bottom: 1rem;">
-                <p>{case['decision']}</p>
-            </div>
+            st.subheader("Panel Composition")
+            st.markdown(f"{case['panel']}")
             
-            <h4>Reasoning</h4>
-            <p>{case['reasoning']}</p>
+            st.subheader("Key Findings")
+            st.success(f"- {case['decision']}")
+            st.markdown(f"- {case['reasoning']}")
             
-            <h4>Procedural Timeline</h4>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <strong>2 October 2020</strong>
-                    <p>NFA requested documentation from Astracommex</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>15 October 2020</strong>
-                    <p>Astracommex declined to provide information</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>15 December 2020</strong>
-                    <p>NFA rejected Astracommex's application</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>1 January 2021</strong>
-                    <p>Satellite collision occurred</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>1 March 2021</strong>
-                    <p>DoD ordered adjustment of satellite orbits</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>15 April 2021</strong>
-                    <p>Claimant filed appeal with CAS</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>2 June 2021</strong>
-                    <p>Hearing held at CAS headquarters</p>
-                </div>
-                <div class="timeline-item">
-                    <strong>30 July 2021</strong>
-                    <p>Decision rendered by the Panel</p>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.subheader("Procedural Timeline")
+            
+            # Create a random date 60 days before the case date for timeline purposes
+            case_date = datetime.strptime(case['date'], "%Y-%m-%d")
+            filing_date = case_date - pd.Timedelta(days=60)
+            hearing_date = case_date - pd.Timedelta(days=30)
+            
+            st.markdown(f"- Case filed: {filing_date.strftime('%d %b %Y')}")
+            st.markdown(f"- Hearing date: {hearing_date.strftime('%d %b %Y')}")
+            st.markdown(f"- Decision date: {case_date.strftime('%d %b %Y')}")
     
     with tabs[4]:
-        # BIT (Background, Interpretation, and Theory) tab with improved layout
-        st.markdown("""
-        <div class="content-card">
-            <h3>Legal Framework & Jurisprudence</h3>
+        # BIT tab with native Streamlit components
+        if 'selected_case' in st.session_state:
+            case = st.session_state.selected_case
             
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-                <div style="flex: 1; min-width: 250px;">
-                    <h4>Relevant Legal Principles</h4>
-                    <ul style="padding-left: 1.5rem;">
-                        <li>Space debris mitigation guidelines</li>
-                        <li>Satellite operator responsibility</li>
-                        <li>Orbital slot allocation regulations</li>
-                        <li>International space law obligations</li>
-                        <li>Force majeure in space operations</li>
-                    </ul>
-                </div>
+            st.header("Legal Framework & Jurisprudence")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Relevant Legal Principles")
+                principles = [
+                    "Principle of proportionality",
+                    "Burden of proof",
+                    "Due process",
+                    f"Applicable {case['sport']} regulations"
+                ]
                 
-                <div style="flex: 1; min-width: 250px;">
-                    <h4>Applicable Regulations</h4>
-                    <ul style="padding-left: 1.5rem;">
-                        <li>Outer Space Treaty, Art. IX</li>
-                        <li>Space Debris Mitigation Guidelines</li>
-                        <li>ITU Radio Regulations</li>
-                        <li>National Space Policy Directive 3</li>
-                        <li>Satellite Operator Certification Standards</li>
-                    </ul>
-                </div>
-            </div>
+                for principle in principles:
+                    st.markdown(f"- {principle}")
             
-            <h4>Precedent Cases</h4>
-            <div class="scrollable-container">
-                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    <div style="padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 4px;">
-                        <div style="font-weight: 500; margin-bottom: 0.25rem;">CAS 2018/A/5211</div>
-                        <div style="font-size: 0.875rem; margin-bottom: 0.25rem;">Orbital Communications Inc. v. Space Regulatory Authority</div>
-                        <div style="font-size: 0.75rem; color: #6B7280; margin-bottom: 0.5rem;">15 June 2018</div>
-                        <div style="font-size: 0.875rem;">Established the principle that satellite operators bear primary responsibility for collision avoidance regardless of data availability from third parties.</div>
-                    </div>
-                    
-                    <div style="padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 4px;">
-                        <div style="font-weight: 500; margin-bottom: 0.25rem;">CAS 2019/O/6310</div>
-                        <div style="font-size: 0.875rem; margin-bottom: 0.25rem;">International Space Standards Association v. Satellite Operator X</div>
-                        <div style="font-size: 0.75rem; color: #6B7280; margin-bottom: 0.5rem;">22 November 2019</div>
-                        <div style="font-size: 0.875rem;">Defined minimum technical requirements for collision avoidance systems in commercial satellites.</div>
-                    </div>
-                    
-                    <div style="padding: 0.75rem; border: 1px solid #E5E7EB; border-radius: 4px;">
-                        <div style="font-weight: 500; margin-bottom: 0.25rem;">CAS 2020/A/7001</div>
-                        <div style="font-size: 0.875rem; margin-bottom: 0.25rem;">Space Technology Corp v. International Telecommunications Union</div>
-                        <div style="font-size: 0.75rem; color: #6B7280; margin-bottom: 0.5rem;">7 March 2020</div>
-                        <div style="font-size: 0.875rem;">Addressed the issue of data sharing between competing satellite operators and regulatory bodies.</div>
-                    </div>
-                </div>
-            </div>
+            with col2:
+                st.subheader("Applicable Regulations")
+                regulations = [
+                    "CAS Code of Sports-related Arbitration",
+                    f"Rules of the {case['sport']} Federation",
+                    "World Anti-Doping Code (if applicable)",
+                    "Relevant national legislation"
+                ]
+                
+                for regulation in regulations:
+                    st.markdown(f"- {regulation}")
             
-            <h4>Key Legal Interpretations</h4>
-            <div class="explanation" style="margin-top: 1rem;">
-                <p>
-                    The Panel has interpreted Article IX of the Outer Space Treaty to require that satellite operators implement redundant collision avoidance systems that do not rely exclusively on data from a single source. The Panel found that the diplomatic tensions between states cannot be used as a valid defense for failing to maintain adequate collision avoidance capabilities.
-                </p>
-                <p>
-                    While acknowledging that the cubesat operated by Valinor lacked collision avoidance systems, the Panel held that this does not absolve the primary satellite operator (Astracommex) from its duty to maintain functional avoidance systems for all potential collision scenarios, including those involving non-maneuverable objects.
-                </p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    # Additional section with case statistics
-    st.markdown("""
-    <div class="content-card" style="margin-top: 1rem;">
-        <h4>Case Statistics</h4>
-        <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-            <div style="flex: 1; min-width: 200px; text-align: center; padding: 1rem; background-color: #F3F4F6; border-radius: 4px;">
-                <div style="font-size: 2rem; font-weight: 600; color: #4F46E5;">82</div>
-                <div style="font-size: 0.875rem; color: #6B7280;">Pages</div>
-            </div>
-            <div style="flex: 1; min-width: 200px; text-align: center; padding: 1rem; background-color: #F3F4F6; border-radius: 4px;">
-                <div style="font-size: 2rem; font-weight: 600; color: #4F46E5;">12</div>
-                <div style="font-size: 0.875rem; color: #6B7280;">Exhibits</div>
-            </div>
-            <div style="flex: 1; min-width: 200px; text-align: center; padding: 1rem; background-color: #F3F4F6; border-radius: 4px;">
-                <div style="font-size: 2rem; font-weight: 600; color: #4F46E5;">4</div>
-                <div style="font-size: 0.875rem; color: #6B7280;">Expert Witnesses</div>
-            </div>
-            <div style="flex: 1; min-width: 200px; text-align: center; padding: 1rem; background-color: #F3F4F6; border-radius: 4px;">
-                <div style="font-size: 2rem; font-weight: 600; color: #4F46E5;">147</div>
-                <div style="font-size: 0.875rem; color: #6B7280;">Days Duration</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+            st.subheader("Precedent Cases")
+            
+            # Create sample precedent cases
+            precedents = [
+                {"id": f"CAS 2018/A/{random.randint(5000, 5999)}", "title": f"Similar {case['sport']} case regarding {random.choice(case['keywords'])}", "date": "2018-06-15"},
+                {"id": f"CAS 2019/O/{random.randint(6000, 6999)}", "title": f"Related case on {random.choice(case['keywords'])}", "date": "2019-11-22"},
+                {"id": f"CAS 2020/A/{random.randint(7000, 7999)}", "title": f"Precedent on {case['sport']} regulations", "date": "2020-03-07"}
+            ]
+            
+            for precedent in precedents:
+                st.markdown(f"**{precedent['id']}**")
+                st.markdown(f"{precedent['title']}")
+                st.markdown(f"*{precedent['date']}*")
+                st.markdown("---")
+            
+            st.subheader("Key Legal Interpretations")
+            st.info(f"""
+            The Panel has interpreted the applicable regulations in the context of {case['sport']} and the specific 
+            circumstances of this case. The decision provides guidance on how {random.choice(case['keywords'])} 
+            should be interpreted in similar cases in the future.
+            """)
+    
+    # Case statistics using native Streamlit components
+    st.markdown("---")
+    st.subheader("Case Statistics")
+    
+    # Create columns for statistics
+    stat_cols = st.columns(4)
+    
+    with stat_cols[0]:
+        st.metric("Pages", case['page'])
+    
+    with stat_cols[1]:
+        st.metric("Exhibits", random.randint(5, 15))
+    
+    with stat_cols[2]:
+        st.metric("Witnesses", random.randint(2, 6))
+    
+    with stat_cols[3]:
+        # Calculate days from filing to decision
+        days_duration = random.randint(90, 180)
+        st.metric("Days Duration", days_duration)
