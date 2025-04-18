@@ -4,29 +4,8 @@ from pathlib import Path
 import difflib
 import base64
 from io import StringIO
-import nltk
-from nltk.tokenize import sent_tokenize
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
-from collections import Counter
-import spacy
 import json
-
-# Download NLTK resources (first-time setup)
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
-
-# Load spaCy model for better NLP capabilities
-try:
-    nlp = spacy.load("en_core_web_md")
-except:
-    st.warning("Installing spaCy model (first run). This may take a moment...")
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_md"], capture_output=True)
-    nlp = spacy.load("en_core_web_md")
+from collections import Counter
 
 # Set up page configuration
 st.set_page_config(page_title="Sports Arbitration Smart Search", layout="wide")
@@ -42,8 +21,6 @@ if 'compare_results' not in st.session_state:
     st.session_state.compare_results = []
 if 'summary' not in st.session_state:
     st.session_state.summary = None
-if 'document_embeddings' not in st.session_state:
-    st.session_state.document_embeddings = {}
 if 'legal_concepts' not in st.session_state:
     st.session_state.legal_concepts = {
         "sporting succession": ["succession", "sporting rights", "club identity", "transfer of membership"],
@@ -123,21 +100,41 @@ def simple_similarity(text1, text2):
         
     return intersection / union
 
-def semantic_similarity(text1, text2):
-    """Calculate semantic similarity using spaCy embeddings"""
-    if not text1 or not text2:
-        return 0.0
+def enhanced_similarity(text1, text2):
+    """Enhanced version of simple_similarity that gives more weight to key terms"""
+    # Base similarity using Jaccard index
+    base_sim = simple_similarity(text1, text2)
     
-    # Process texts with spaCy
-    doc1 = nlp(text1)
-    doc2 = nlp(text2)
+    # Look for exact phrase matches which would indicate higher similarity
+    text1_lower = text1.lower()
+    text2_lower = text2.lower()
     
-    # If either document has no vector, fall back to simple similarity
-    if doc1.vector_norm == 0 or doc2.vector_norm == 0:
-        return simple_similarity(text1, text2)
+    # Generate a list of phrases (3-5 words) from text1
+    words1 = text1_lower.split()
+    phrases1 = []
+    for i in range(len(words1)):
+        for j in range(3, 6):  # phrases of 3-5 words
+            if i + j <= len(words1):
+                phrases1.append(" ".join(words1[i:i+j]))
     
-    # Calculate cosine similarity between document vectors
-    return doc1.similarity(doc2)
+    # Count how many phrases from text1 appear in text2
+    phrase_matches = sum(1 for phrase in phrases1 if phrase in text2_lower)
+    
+    # Boost factor based on phrase matches (max boost of 0.2)
+    boost = min(0.2, phrase_matches * 0.02)
+    
+    # Check for key legal terms in both texts (boost if they share terms)
+    legal_terms = ["force majeure", "contract", "breach", "damages", "liability", 
+                  "arbitration", "tribunal", "evidence", "submissions", "legal", 
+                  "clause", "article", "exhibit", "award", "proceedings"]
+    
+    shared_terms = sum(1 for term in legal_terms 
+                      if term in text1_lower and term in text2_lower)
+    
+    legal_boost = min(0.2, shared_terms * 0.04)
+    
+    # Return enhanced similarity score (capped at 1.0)
+    return min(1.0, base_sim + boost + legal_boost)
 
 def expand_query_with_legal_concepts(query):
     """Expand query with related legal concepts"""
@@ -150,10 +147,10 @@ def expand_query_with_legal_concepts(query):
             expanded_terms.add(concept.lower())
             expanded_terms.update([var.lower() for var in variations])
     
-    return " OR ".join(expanded_terms)
+    return " ".join(expanded_terms)
 
-def search_documents(query, doc_contents, threshold=0.2, use_semantic=True):
-    """Search documents using either simple text similarity or semantic similarity"""
+def search_documents(query, doc_contents, threshold=0.2, use_enhanced=True):
+    """Search documents using either simple text similarity or enhanced similarity"""
     if not doc_contents or not query:
         return []
     
@@ -174,10 +171,10 @@ def search_documents(query, doc_contents, threshold=0.2, use_semantic=True):
                 continue
                 
             # Calculate similarity with query
-            if use_semantic:
-                similarity = semantic_similarity(query, paragraph)
+            if use_enhanced:
+                similarity = enhanced_similarity(expanded_query, paragraph)
             else:
-                similarity = simple_similarity(query, paragraph)
+                similarity = simple_similarity(expanded_query, paragraph)
             
             # Check if it meets threshold
             if similarity >= threshold:
@@ -247,6 +244,12 @@ def extract_citations(text):
     
     return citations
 
+def sent_tokenize(text):
+    """Simple sentence tokenization function using regex"""
+    # Split by common sentence endings
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    return [s for s in sentences if s.strip()]
+
 def compare_documents(doc1_id, doc2_id, focus_on_substance=True):
     """Compare two documents and highlight differences with focus on substantial changes"""
     if doc1_id not in st.session_state.document_content or doc2_id not in st.session_state.document_content:
@@ -265,9 +268,6 @@ def compare_documents(doc1_id, doc2_id, focus_on_substance=True):
     
     results = []
     
-    # For more advanced comparison, we'll compare at the sentence level too
-    # This helps identify specific changes within paragraphs
-    
     # Compare each paragraph from doc1 with each paragraph from doc2
     for i, para1 in enumerate(doc1_paras):
         para1_words = get_common_words(para1)
@@ -279,7 +279,7 @@ def compare_documents(doc1_id, doc2_id, focus_on_substance=True):
             
             # Calculate similarity
             if focus_on_substance:
-                similarity = semantic_similarity(para1, para2)
+                similarity = enhanced_similarity(para1, para2)
             else:
                 similarity = simple_similarity(para1, para2)
             
@@ -308,7 +308,7 @@ def compare_documents(doc1_id, doc2_id, focus_on_substance=True):
                     best_match = None
                     best_score = 0
                     for s2 in doc2_sentences:
-                        score = semantic_similarity(s1, s2)
+                        score = enhanced_similarity(s1, s2)
                         if score > best_score and score > 0.7:  # Only consider good matches
                             best_score = score
                             best_match = s2
@@ -322,12 +322,6 @@ def compare_documents(doc1_id, doc2_id, focus_on_substance=True):
                             'changes': highlight_word_differences(s1, best_match)
                         }
                         sentence_diffs.append(sentence_diff)
-                
-                # Determine if differences are substantial
-                # More sophisticated approach:
-                # 1. Check if key legal terms were changed
-                # 2. Check if numbers or dates were changed
-                # 3. Check if negations were added/removed
                 
                 # Extract key legal terms
                 legal_terms1 = extract_legal_terms(para1)
@@ -411,8 +405,6 @@ def highlight_word_differences(text1, text2):
 
 def extract_legal_terms(text):
     """Extract important legal terms from the text"""
-    # This is a simplified version - in a real implementation, 
-    # you would use a legal dictionary or a trained model
     legal_terms = []
     
     # Common legal phrases in arbitration
@@ -422,7 +414,8 @@ def extract_legal_terms(text):
         "arbitral tribunal", "applicable law", "jurisdiction", "liability",
         "termination", "damages", "compensation", "injunction", "remedy",
         "penalty clause", "counter-claim", "burden of proof", "evidence",
-        "exhibit", "testimony", "witness", "expert", "award", "hearing"
+        "exhibit", "testimony", "witness", "expert", "award", "hearing",
+        "sporting succession", "contra proferentem", "lex sportiva"
     ]
     
     for phrase in legal_phrases:
@@ -612,9 +605,7 @@ def find_counterarguments(argument, doc_contents):
     """Find potential counterarguments to the given argument"""
     counters = []
     
-    # Use semantic search to find relevant paragraphs that might contain counterarguments
-    # Then check for linguistic patterns indicating opposition
-    
+    # Use similarity search to find relevant paragraphs that might contain counterarguments
     for doc_id, content in doc_contents.items():
         paragraphs = re.split(r'\n\s*\n', content)
         
@@ -623,7 +614,7 @@ def find_counterarguments(argument, doc_contents):
                 continue
             
             # Check if paragraph is semantically similar to the argument
-            similarity = semantic_similarity(argument, paragraph)
+            similarity = enhanced_similarity(argument, paragraph)
             
             if similarity > 0.4:  # Reasonably similar
                 # Check if it contains counter-indicators
@@ -679,19 +670,19 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
             report.append(f"Is substantial difference: {'Yes' if result['is_substantial'] else 'No'}\n")
             
             if result['is_substantial']:
-                if result['different_legal_terms']:
+                if result.get('different_legal_terms', False):
                     report.append("Contains differences in legal terminology\n")
-                if result['different_numbers']:
+                if result.get('different_numbers', False):
                     report.append("Contains differences in numbers or quantities\n")
-                if result['different_negations']:
+                if result.get('different_negations', False):
                     report.append("Contains differences in negations (not, never, etc.)\n")
                 
                 report.append("\nUnique words in Document 1:\n")
-                for word in result['unique_words_doc1'][:10]:  # Limit to first 10 for brevity
+                for word in result.get('unique_words_doc1', [])[:10]:  # Limit to first 10 for brevity
                     report.append(f"- {word}\n")
                 
                 report.append("\nUnique words in Document 2:\n")
-                for word in result['unique_words_doc2'][:10]:
+                for word in result.get('unique_words_doc2', [])[:10]:
                     report.append(f"- {word}\n")
             
             report.append(f"\nDocument 1 text: {result['doc1_text']}\n")
@@ -710,7 +701,7 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
         report.append(f"Total arguments found: {summary['argument_count']}\n")
         report.append(f"Total counterarguments found: {summary['counterargument_count']}\n\n")
         
-        if summary['legal_concepts']:
+        if summary.get('legal_concepts', []):
             report.append("## Legal Concepts Identified\n")
             for concept in summary['legal_concepts']:
                 report.append(f"- {concept}\n")
@@ -722,7 +713,7 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
             report.append(f"Text: {arg['text']}\n")
             report.append(f"Paragraph: {arg.get('paragraph', 'N/A')}\n")
             
-            if arg['legal_concepts']:
+            if arg.get('legal_concepts', []):
                 report.append("Legal concepts:\n")
                 for concept in arg['legal_concepts']:
                     report.append(f"- {concept}\n")
@@ -732,14 +723,14 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
                 for ev in arg['evidence']:
                     report.append(f"- {ev}\n")
             
-            if arg['counterarguments']:
+            if arg.get('counterarguments', []):
                 report.append("Related counterarguments:\n")
                 for counter in arg['counterarguments']:
                     report.append(f"- {counter}\n")
             
             report.append("\n")
         
-        if summary['counterarguments']:
+        if summary.get('counterarguments', []):
             report.append("## Explicit Counterarguments\n")
             for i, arg in enumerate(summary['counterarguments'], 1):
                 report.append(f"### Counterargument {i}\n")
@@ -753,13 +744,13 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
                 
                 report.append("\n")
         
-        if summary['quotes']:
+        if summary.get('quotes', []):
             report.append("## Important Quotes\n")
             for i, quote in enumerate(summary['quotes'], 1):
                 report.append(f"### Quote {i}\n")
                 report.append(f"\"{quote['text']}\"\n\n")
         
-        if summary['key_dates']:
+        if summary.get('key_dates', []):
             report.append("## Timeline of Key Dates\n")
             for i, date in enumerate(summary['key_dates'], 1):
                 report.append(f"### {date['date']}\n")
@@ -922,8 +913,8 @@ with tab1:
         search_threshold = st.slider("Similarity Threshold", 
                                     min_value=0.1, max_value=0.9, value=0.2, step=0.05,
                                     help="Lower values return more results but may be less relevant")
-        use_semantic = st.checkbox("Use semantic search", value=True, 
-                                  help="Use advanced NLP for better understanding of legal concepts")
+        use_enhanced = st.checkbox("Use enhanced search", value=True, 
+                                  help="Use advanced techniques for better understanding of legal concepts")
         search_button = st.button("Search Documents", type="primary")
     
     if search_button and search_query:
@@ -933,7 +924,7 @@ with tab1:
         
         with st.spinner("Searching documents..."):
             search_results = search_documents(search_query, st.session_state.document_content, 
-                                             search_threshold, use_semantic)
+                                             search_threshold, use_enhanced)
             st.session_state.search_results = search_results
     
     if st.session_state.search_results:
@@ -1021,7 +1012,7 @@ with tab2:
         
         if compare_button:
             with st.spinner("Comparing documents..."):
-                # Use semantic comparison for substantial differences
+                # Use enhanced comparison for substantial differences
                 focus_on_substance = comparison_type in ["Substantial Differences", "Legal Terms"]
                 compare_results = compare_documents(doc1_id, doc2_id, focus_on_substance)
                 
@@ -1149,7 +1140,7 @@ with tab3:
                 st.markdown(f"**Arguments Found:** {st.session_state.summary['argument_count']}")
                 st.markdown(f"**Counterarguments Found:** {st.session_state.summary['counterargument_count']}")
                 
-                if st.session_state.summary['legal_concepts']:
+                if st.session_state.summary.get('legal_concepts', []):
                     st.markdown("**Legal Concepts Identified:**")
                     st.write(", ".join(st.session_state.summary['legal_concepts']))
             
@@ -1200,7 +1191,7 @@ with tab3:
                                                         {k: v for k, v in st.session_state.document_content.items() 
                                                         if k != doc_id},  # Exclude current document
                                                         threshold=0.3, 
-                                                        use_semantic=True)
+                                                        use_enhanced=True)
                                 if similar:
                                     st.markdown("**Similar Arguments in Other Documents:**")
                                     for j, sim in enumerate(similar[:3]):  # Show top 3
@@ -1235,10 +1226,10 @@ with tab3:
             
             # Quotes tab
             with summary_tabs[2]:
-                if not st.session_state.summary['quotes']:
+                if not st.session_state.summary.get('quotes', []):
                     st.info("No significant quotes found in this document.")
                 
-                for i, quote in enumerate(st.session_state.summary['quotes']):
+                for i, quote in enumerate(st.session_state.summary.get('quotes', [])):
                     with st.expander(f"Quote {i+1}"):
                         st.markdown(f"**Text:** \"{quote['text']}\"")
                         st.markdown("**Context:**")
@@ -1246,14 +1237,14 @@ with tab3:
             
             # Timeline tab
             with summary_tabs[3]:
-                if not st.session_state.summary['key_dates']:
+                if not st.session_state.summary.get('key_dates', []):
                     st.info("No key dates found in this document.")
                 else:
-                    # Create a dataframe for the timeline
-                    timeline_data = [{"Date": date['date'], "Context": date['context']} 
-                                    for date in st.session_state.summary['key_dates']]
-                    timeline_df = pd.DataFrame(timeline_data)
-                    st.dataframe(timeline_df)
+                    # Create a timeline view
+                    for i, date in enumerate(st.session_state.summary['key_dates']):
+                        st.markdown(f"**{date['date']}**")
+                        st.markdown(f"*Context:* {date['context']}")
+                        st.markdown("---")
             
             # Download results button
             if st.button("Download Argument Summary", key="download_summary"):
@@ -1395,7 +1386,7 @@ with tab5:
             
             with st.spinner("Searching documents..."):
                 search_results = search_documents(query, st.session_state.document_content, 
-                                             threshold=0.2, use_semantic=True)
+                                             threshold=0.2, use_enhanced=True)
                 
                 if search_results:
                     st.success(f"Found {len(search_results)} matches for '{concept_search}'")
@@ -1415,15 +1406,12 @@ with tab5:
         
         # Display all concepts and variations
         st.subheader("All Legal Concepts")
-        concepts_df = []
         
         for concept, variations in st.session_state.legal_concepts.items():
-            concepts_df.append({
-                "Concept": concept,
-                "Variations": ", ".join(variations)
-            })
-        
-        st.dataframe(pd.DataFrame(concepts_df))
+            with st.expander(concept):
+                st.write("**Variations:**")
+                for var in variations:
+                    st.write(f"- {var}")
 
 # Footer
 st.markdown("---")
