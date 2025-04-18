@@ -500,6 +500,8 @@ def semantic_search(query):
                                 context_before = prev_para[:100] + "..."
                         else:
                             context_before = prev_para
+                else:
+                    context_before = "<em>This is the beginning of the decision...</em>"
                 
                 # Get paragraph after (if exists)
                 if para_idx < len(paragraphs) - 1:
@@ -515,6 +517,8 @@ def semantic_search(query):
                                 context_after = next_para[:100] + "..."
                         else:
                             context_after = next_para
+                else:
+                    context_after = "<em>This is the end of the decision.</em>"
                 
                 # Create the full context text
                 full_text = ""
@@ -708,7 +712,7 @@ with col2:
                     {chunk['text']}
                     </div>
                     <div class="relevance">
-                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    <strong style="color: #2563eb;">RELEVANCE:</strong> {chunk['relevance_explanation']}
                     </div>
                     """, unsafe_allow_html=True)
     
