@@ -1,52 +1,138 @@
- import streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
 import time
 
 # Set page configuration
-st.set_page_config(page_title="CAS Decision Search", layout="wide")
+st.set_page_config(page_title="CaseLens - CAS Decision Search", layout="wide")
 
 # Basic styling - clean and simple
 st.markdown("""
 <style>
     body {font-family: Arial, sans-serif;}
     
-    /* Simple header */
-    .header {
-        padding: 1rem 0;
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 1rem;
+    /* Sidebar styling to match screenshot */
+    section[data-testid="stSidebar"] {
+        background-color: #f1f3f9;
+        padding: 2rem 1rem;
     }
     
-    /* Clean search container */
-    .search-container {
+    /* Logo styling */
+    .sidebar-logo {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .logo-icon {
+        background-color: #4a66f0;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    
+    .logo-text {
+        color: #333;
+        font-size: 30px;
+        font-weight: bold;
+    }
+    
+    /* History item styling */
+    .history-section {
+        margin-top: 2rem;
+        margin-bottom: 3rem;
+    }
+    
+    .history-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+    
+    .history-item {
+        display: flex;
+        align-items: center;
         margin-bottom: 1.5rem;
     }
     
-    /* Results container */
-    .results-container {
-        border: 1px solid #e5e7eb;
-        border-radius: 4px;
-        padding: 1rem;
+    .history-radio {
+        margin-right: 10px;
+    }
+    
+    .history-query {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+    
+    .history-time {
+        font-size: 14px;
+        color: #888;
+        margin-top: 0.2rem;
+    }
+    
+    /* User profile section */
+    .profile-section {
+        border-top: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-name {
+        font-size: 20px;
+        font-weight: bold;
         margin-bottom: 1rem;
     }
     
-    /* Case title */
-    .case-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
+    .logout-btn {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 0.5rem 1.5rem;
+        background-color: white;
+        color: #333;
+        font-weight: 500;
+        text-align: center;
+        width: fit-content;
+        cursor: pointer;
     }
     
-    /* Case metadata */
-    .case-meta {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin-bottom: 0.75rem;
+    /* Social media section */
+    .social-section {
+        margin-top: 1rem;
     }
     
-    /* Explanation box - blue background */
+    .social-title {
+        font-size: 16px;
+        color: #888;
+        margin-bottom: 1rem;
+    }
+    
+    .social-icons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .social-icon {
+        width: 40px;
+        height: 40px;
+        background-color: #000;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Main content styling */
     .explanation {
         font-size: 0.95rem;
         color: #1e3a8a;
@@ -57,146 +143,27 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Highlighted relevant paragraph - green background */
     .relevant-paragraph {
         background-color: #d1fae5;  /* Light green background */
         padding: 1rem;
         margin: 0;
     }
     
-    /* Context paragraphs - normal styling */
     .context-paragraph {
         padding: 1rem;
         margin: 0;
     }
     
-    /* Document section containing context and relevant paragraph */
     .document-section {
         border: 1px solid #e5e7eb;
         border-radius: 4px;
         margin-bottom: 1.5rem;
     }
     
-    /* Simple button */
-    .stButton>button {
-        background-color: #2563eb;
-        color: white;
-        border: none;
-        width: 100%;
-    }
-    
-    /* Logout button */
-    .logout-btn>button {
-        background-color: #f9fafb !important;
-        color: #111827 !important;
-        border: 1px solid #d1d5db !important;
-        border-radius: 6px !important;
-    }
-    
-    /* Remove excess padding */
-    .stTextInput>div>div>input {
-        padding: 0.5rem;
-    }
-    
-    /* History item */
-    .history-item {
-        padding: 0.5rem;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    
-    /* Selected history item */
-    .selected-history-item {
-        color: #3b82f6;
-    }
-    
-    /* Caselens logo */
-    .caselens-logo {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    
-    .caselens-logo-icon {
-        background-color: #4f46e5;
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-        font-weight: bold;
-        font-size: 1.5rem;
-    }
-    
-    .caselens-logo-text {
-        font-weight: bold;
-        font-size: 2rem;
-        color: #111827;
-    }
-    
-    /* Social media icons */
-    .social-icons {
-        display: flex;
-        margin-top: 1rem;
-    }
-    
-    .social-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 4px;
-        background-color: #111827;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 10px;
-    }
-    
-    /* History separator */
-    .separator {
-        border-top: 1px solid #e5e7eb;
-        margin: 1.5rem 0;
-    }
-    
-    /* History radio buttons */
-    div.row-widget.stRadio > div {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    /* Custom radio buttons for history */
-    .history-radio .stRadio > div[role="radiogroup"] > label {
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f3f4f6;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .history-radio .stRadio > div[role="radiogroup"] > label > div:first-child {
-        margin-right: 10px;
-    }
-    
-    .history-timestamp {
-        font-size: 0.8rem;
+    .case-meta {
+        font-size: 0.9rem;
         color: #6b7280;
-        margin-top: 0.25rem;
-    }
-    
-    /* No padding for main content */
-    .main .block-container {
-        padding-top: 1rem;
-    }
-    
-    /* Make sidebar cleaner */
-    [data-testid="stSidebar"] {
-        background-color: #f9fafb;
-    }
-    
-    [data-testid="stSidebar"] > div:first-child {
-        padding: 2rem 1rem;
+        margin-bottom: 0.75rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -413,7 +380,7 @@ if 'search_history' not in st.session_state:
     st.session_state.search_history = [
         {"query": "Processing of satellite collision events", "timestamp": "2024-07-14 18:22:42"},
         {"query": "facts related to national security in the problem", "timestamp": "2024-07-14 18:20:23"},
-        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:18:05"}
+        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:15:18"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
@@ -427,8 +394,6 @@ if 'search_complete' not in st.session_state:
     st.session_state.search_complete = False
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
-if 'username' not in st.session_state:
-    st.session_state.username = "Shushan Yazichyan"
 
 # Enhanced semantic search function that finds paragraphs and their surrounding context
 def semantic_search(query):
@@ -529,14 +494,12 @@ def generate_relevance_explanation(text, query_terms):
         "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
         "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
         "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
-        "national security": "Facts related to national security in the problem must be evaluated in light of applicable regulatory frameworks.",
-        "collision report": "Analysis of why tribunals might request additional information even when collision reports are available."
+        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes."
     }
     
-    # Check if query contains any of our pre-defined topics
-    query_text = " ".join(query_terms).lower()
+    # Check if any of our pre-defined topics match the query
     for topic, explanation in explanations.items():
-        if topic in query_text:
+        if topic in " ".join(query_terms).lower():
             return explanation
     
     # If no pre-defined explanation matches, generate a generic one
@@ -568,69 +531,71 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
-# Sidebar with caselens interface
+# ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
-    # Logo and brand
+    # Logo and app title
     st.markdown("""
-    <div class="caselens-logo">
-        <div class="caselens-logo-icon">c</div>
-        <div class="caselens-logo-text">caselens</div>
+    <div class="sidebar-logo">
+        <div class="logo-icon">c</div>
+        <div class="logo-text">caselens</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Chronology of Events button
-    st.button("📅 Chronology of Events", key="chronology_btn")
-    
     # History section
-    st.markdown("## History")
+    st.markdown('<div class="history-section">', unsafe_allow_html=True)
+    st.markdown('<div class="history-title">History</div>', unsafe_allow_html=True)
     
-    # Display history with selected/unselected styling
+    # Display search history with radio buttons
     for i, item in enumerate(st.session_state.search_history):
-        col1, col2 = st.columns([0.1, 0.9])
+        col1, col2 = st.columns([1, 9])
+        
         with col1:
-            # Use a radio button but style it to look like a circle
-            selected = st.radio("", [""], key=f"radio_{i}", label_visibility="collapsed")
+            selected = st.radio("", [""], key=f"history_{i}", label_visibility="collapsed")
             if selected:
                 st.session_state.current_query = item["query"]
                 st.session_state.is_searching = True
                 st.session_state.search_complete = False
+        
         with col2:
-            # Display the query and timestamp
-            if i == 0 and (st.session_state.current_query == "" or st.session_state.current_query == item["query"]):
-                st.markdown(f"<div class='selected-history-item'>{item['query']}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"{item['query']}")
-            st.markdown(f"<div class='history-timestamp'>{item['timestamp']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='history-query'>{item['query']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='history-time'>{item['timestamp']}</div>", unsafe_allow_html=True)
     
-    # Separator
-    st.markdown("<div class='separator'></div>", unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # User profile and logout
-    st.markdown(f"## {st.session_state.username}")
-    logout_btn = st.button("Logout", key="logout_btn", use_container_width=True)
+    # User profile section
+    st.markdown('<div class="profile-section">', unsafe_allow_html=True)
+    st.markdown('<div class="profile-name">Shushan Yazichyan</div>', unsafe_allow_html=True)
+    st.markdown('<div class="logout-btn">Logout</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # Social media links
-    st.markdown("<div class='separator'></div>", unsafe_allow_html=True)
-    st.markdown("### Connect with us!")
-    
-    # Social media icons
+    # Social media section
+    st.markdown('<div class="social-section">', unsafe_allow_html=True)
+    st.markdown('<div class="social-title">Connect with us!</div>', unsafe_allow_html=True)
     st.markdown("""
     <div class="social-icons">
-        <div class="social-icon">in</div>
-        <div class="social-icon">X</div>
-        <div class="social-icon">f</div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+            </svg>
+        </div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Main content
-# Simple search bar
-col_search, col_button = st.columns([4, 1])
-
-with col_search:
-    search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
-
-with col_button:
-    search_button = st.button("Search", key="search_btn")
+# Main content area
+# Simple search bar at top
+search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+search_button = st.button("Search", key="search_btn")
 
 # If search button clicked, start the search process
 if search_button and search_query:
@@ -704,7 +669,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
 # Show welcome screen if no search has been done
 if not st.session_state.is_searching and not st.session_state.search_complete:
     st.markdown("""
-    ### Welcome to CAS Decision Search
+    ### Welcome to CaseLens
     
     Search for legal concepts, case types, or specific terms to find relevant passages from 
     Court of Arbitration for Sport decisions.
@@ -713,7 +678,7 @@ if not st.session_state.is_searching and not st.session_state.search_complete:
     - buy-out clause
     - sporting results
     - satellite collision
-    - coach contract
-    - just cause
+    - national security
+    - contract termination
     - compensation
     """)
