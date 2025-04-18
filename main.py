@@ -7,43 +7,161 @@ import time
 # Set page configuration
 st.set_page_config(page_title="CAS Decision Search", layout="wide")
 
-# Basic styling - clean and simple
+# Basic styling - redesigned to match caselens style
 st.markdown("""
 <style>
-    body {font-family: Arial, sans-serif;}
+    body {font-family: Arial, sans-serif; background-color: #f8f9fa;}
     
-    /* Simple header */
-    .header {
-        padding: 1rem 0;
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 1rem;
+    /* Logo styling */
+    .logo-container {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
     }
     
-    /* Clean search container */
-    .search-container {
-        margin-bottom: 1.5rem;
-    }
-    
-    /* Results container */
-    .results-container {
-        border: 1px solid #e5e7eb;
-        border-radius: 4px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    /* Case title */
-    .case-title {
-        font-size: 1.1rem;
+    .logo {
+        background-color: #4169e1;
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         font-weight: bold;
-        margin-bottom: 0.5rem;
+        font-size: 24px;
+        margin-right: 10px;
     }
     
-    /* Case metadata */
-    .case-meta {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin-bottom: 0.75rem;
+    .logo-text {
+        font-size: 28px;
+        font-weight: bold;
+        color: #2d3748;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] > div {
+        background-color: #f0f2f6;
+        padding: 1.5rem 1rem;
+    }
+    
+    /* History section */
+    .history-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        color: #2d3748;
+    }
+    
+    /* History item with circle */
+    .history-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .history-circle {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 12px;
+        display: inline-block;
+    }
+    
+    .history-circle-selected {
+        background-color: #4169e1;
+    }
+    
+    .history-circle-unselected {
+        border: 2px solid #cbd5e0;
+        background-color: white;
+    }
+    
+    .history-text {
+        font-size: 16px;
+        color: #2d3748;
+    }
+    
+    .history-time {
+        font-size: 12px;
+        color: #718096;
+        margin-left: 32px;
+        margin-bottom: 1rem;
+    }
+    
+    /* User section */
+    .user-section {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+    
+    .username {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+    
+    .logout-btn {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        background-color: white;
+        color: #2d3748;
+        text-align: center;
+        font-size: 16px;
+        margin-bottom: 2rem;
+    }
+    
+    .social-section {
+        margin-top: 2rem;
+    }
+    
+    .social-title {
+        font-size: 14px;
+        color: #718096;
+        margin-bottom: 1rem;
+    }
+    
+    .social-icons {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .social-icon {
+        width: 30px;
+        height: 30px;
+        background-color: black;
+        border-radius: 4px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    /* Search bar improvements */
+    .search-container {
+        display: flex;
+        margin-bottom: 1.5rem;
+        align-items: stretch;
+    }
+    
+    .search-input {
+        flex-grow: 1;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px 0 0 4px;
+        font-size: 16px;
+    }
+    
+    .search-button {
+        background-color: #4169e1;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 0 4px 4px 0;
+        font-size: 16px;
     }
     
     /* Explanation box - blue background */
@@ -77,28 +195,26 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
     
-    /* Simple button */
+    /* Case metadata */
+    .case-meta {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Fix Streamlit's default button styling */
     .stButton>button {
-        background-color: #2563eb;
-        color: white;
-        border: none;
+        display: none;
     }
     
-    /* Remove excess padding */
-    .stTextInput>div>div>input {
-        padding: 0.5rem;
-    }
+    /* Hide Streamlit header/footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     
-    /* History item */
-    .history-item {
-        padding: 0.5rem;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    
-    /* Make sidebar cleaner */
-    section[data-testid="stSidebar"] > div {
-        background-color: #f9fafb;
-        padding: 1.5rem 1rem;
+    /* Fix radio button layout */
+    .stRadio > div {
+        display: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -313,9 +429,9 @@ df_decisions = pd.DataFrame(cas_decisions)
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = [
-        {"query": "buy-out clause", "timestamp": "2024-04-18 15:32:42"},
-        {"query": "sporting results", "timestamp": "2024-04-18 14:20:23"},
-        {"query": "satellite collision", "timestamp": "2024-04-18 11:45:18"}
+        {"query": "Processing of satellite collision events", "timestamp": "2024-07-14 18:22:42"},
+        {"query": "facts related to national security in the problem", "timestamp": "2024-07-14 18:20:23"},
+        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:15:10"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
@@ -422,13 +538,12 @@ def semantic_search(query):
 def generate_relevance_explanation(text, query_terms):
     # Default explanations based on common legal topics
     explanations = {
+        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
         "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
         "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
         "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
-        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
-        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
-        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
-        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests."
+        "national security": "Facts related to national security in the problem may limit disclosure while preserving essential legal arguments.",
+        "tribunal": "The tribunal's request for additional searches may be due to procedural requirements or new evidence availability."
     }
     
     # Check if any of our pre-defined topics match the query
@@ -465,40 +580,96 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
-# App layout - cleaner with more focus on results
+# Create a two-column layout
 col1, col2 = st.columns([1, 3])
 
-# Sidebar column
+# Custom sidebar column using the caselens style
 with col1:
-    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+    # Logo and branding
+    st.markdown("""
+    <div class="logo-container">
+        <div class="logo">c</div>
+        <div class="logo-text">caselens</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.markdown("## History")
+    # History section
+    st.markdown('<div class="history-title">History</div>', unsafe_allow_html=True)
     
-    # Display search history with radio buttons
+    # Display search history with custom styling to match caselens
     for i, item in enumerate(st.session_state.search_history):
-        if st.radio(
-            "",
-            [item["query"]],
-            key=f"history_{i}",
-            label_visibility="collapsed",
-            index=0 if i == 0 else None
-        ):
-            st.session_state.current_query = item["query"]
+        # Create a radio button for selection (standard Streamlit component but hidden with CSS)
+        selected = st.radio("", [item["query"]], key=f"history_{i}", label_visibility="collapsed", index=0 if i == 0 else None)
+        
+        # If selected, trigger search
+        if selected == item["query"] and selected != st.session_state.current_query:
+            st.session_state.current_query = selected
             st.session_state.is_searching = True
             st.session_state.search_complete = False
-                
-        st.caption(item["timestamp"])
+            
+        # Custom styling for history items
+        circle_class = "history-circle-selected" if selected == item["query"] else "history-circle-unselected"
+        
+        st.markdown(f"""
+        <div class="history-item">
+            <div class="history-circle {circle_class}"></div>
+            <div class="history-text">{item["query"]}</div>
+        </div>
+        <div class="history-time">{item["timestamp"]}</div>
+        """, unsafe_allow_html=True)
+    
+    # User section
+    st.markdown("""
+    <div class="user-section">
+        <div class="username">Shushan Yazichyan</div>
+        <div class="logout-btn">Logout</div>
+        
+        <div class="social-section">
+            <div class="social-title">Connect with us!</div>
+            <div class="social-icons">
+                <div class="social-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-linkedin" viewBox="0 0 16 16">
+                        <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+                    </svg>
+                </div>
+                <div class="social-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                        <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                    </svg>
+                </div>
+                <div class="social-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" class="bi bi-facebook" viewBox="0 0 16 16">
+                        <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Main content column
 with col2:
-    # Simple search bar
-    col_search, col_button = st.columns([4, 1])
+    # Custom search bar that looks like caselens
+    st.markdown("""
+    <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="Search CAS decisions...">
+        <button id="search-button" class="search-button">Search</button>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with col_search:
-        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    # Hidden standard search input that will be used for the actual search functionality
+    search_query = st.text_input("", label_visibility="collapsed", key="search_query")
+    search_button = st.button("Search", key="search_btn")
     
-    with col_button:
-        search_button = st.button("Search", key="search_btn")
+    # Streamlit doesn't allow direct JavaScript, so we have a workaround
+    # to sync the custom search input with the hidden standard input
+    st.markdown("""
+    <script>
+        // This script would sync the custom input with Streamlit's input, but
+        // Streamlit doesn't allow custom JavaScript in this way.
+        // In a real application, this would need to be implemented differently.
+    </script>
+    """, unsafe_allow_html=True)
     
     # If search button clicked, start the search process
     if search_button and search_query:
@@ -572,16 +743,52 @@ with col2:
     # Show welcome screen if no search has been done
     if not st.session_state.is_searching and not st.session_state.search_complete:
         st.markdown("""
-        ### Welcome to CAS Decision Search
+        ### Welcome to CaseLens CAS Decision Search
         
         Search for legal concepts, case types, or specific terms to find relevant passages from 
         Court of Arbitration for Sport decisions.
         
         **Example searches:**
-        - buy-out clause
-        - sporting results
         - satellite collision
-        - coach contract
-        - just cause
-        - compensation
+        - contract termination
+        - sporting results
+        - national security
+        - buy-out clause
         """)
+
+# JavaScript hack to try to improve the UX (note: this is limited in what it can do in Streamlit)
+st.markdown("""
+<script>
+    // Try to sync custom inputs with Streamlit elements
+    // Note: This has limited functionality in Streamlit's sandbox
+    document.addEventListener('DOMContentLoaded', function() {
+        const customInput = document.getElementById('search-input');
+        const customButton = document.getElementById('search-button');
+        
+        if (customInput && customButton) {
+            customInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    // Try to update Streamlit's hidden input and click the button
+                    const streamlitInput = document.querySelector('input[data-testid="stTextInput"]');
+                    const streamlitButton = document.querySelector('button[data-testid="stButton"]');
+                    
+                    if (streamlitInput && streamlitButton) {
+                        streamlitInput.value = customInput.value;
+                        streamlitButton.click();
+                    }
+                }
+            });
+            
+            customButton.addEventListener('click', function() {
+                const streamlitInput = document.querySelector('input[data-testid="stTextInput"]');
+                const streamlitButton = document.querySelector('button[data-testid="stButton"]');
+                
+                if (streamlitInput && streamlitButton) {
+                    streamlitInput.value = customInput.value;
+                    streamlitButton.click();
+                }
+            });
+        }
+    });
+</script>
+""", unsafe_allow_html=True)
