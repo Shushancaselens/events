@@ -2,173 +2,99 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
-import time
 
 # Set page configuration
-st.set_page_config(page_title="CaseLens - CAS Decision Search", layout="wide")
+st.set_page_config(page_title="CAS Decision Search", layout="wide")
 
 # Basic styling - clean and simple
 st.markdown("""
 <style>
     body {font-family: Arial, sans-serif;}
     
-    /* Sidebar styling to match screenshot */
-    section[data-testid="stSidebar"] {
-        background-color: #f1f3f9;
-        padding: 2rem 1rem;
+    /* Simple header */
+    .header {
+        padding: 1rem 0;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 1rem;
     }
     
-    /* Logo styling */
-    .sidebar-logo {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    
-    .logo-icon {
-        background-color: #4a66f0;
-        color: white;
-        width: 50px;
-        height: 50px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        font-weight: bold;
-        margin-right: 10px;
-    }
-    
-    .logo-text {
-        color: #333;
-        font-size: 30px;
-        font-weight: bold;
-    }
-    
-    /* History item styling */
-    .history-section {
-        margin-top: 2rem;
-        margin-bottom: 3rem;
-    }
-    
-    .history-title {
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 1.5rem;
-        color: #333;
-    }
-    
-    .history-item {
-        display: flex;
-        align-items: center;
+    /* Clean search container */
+    .search-container {
         margin-bottom: 1.5rem;
     }
     
-    .history-radio {
-        margin-right: 10px;
-    }
-    
-    .history-query {
-        font-size: 16px;
-        font-weight: 500;
-        margin-bottom: 0;
-    }
-    
-    .history-time {
-        font-size: 14px;
-        color: #888;
-        margin-top: 0.2rem;
-    }
-    
-    /* User profile section */
-    .profile-section {
-        border-top: 1px solid #ddd;
-        border-bottom: 1px solid #ddd;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
-    }
-    
-    .profile-name {
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 1rem;
-    }
-    
-    .logout-btn {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 0.5rem 1.5rem;
-        background-color: white;
-        color: #333;
-        font-weight: 500;
-        text-align: center;
-        width: fit-content;
-        cursor: pointer;
-    }
-    
-    /* Social media section */
-    .social-section {
-        margin-top: 1rem;
-    }
-    
-    .social-title {
-        font-size: 16px;
-        color: #888;
-        margin-bottom: 1rem;
-    }
-    
-    .social-icons {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .social-icon {
-        width: 40px;
-        height: 40px;
-        background-color: #000;
-        border-radius: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* Main content styling */
-    .explanation {
-        font-size: 0.95rem;
-        color: #1e3a8a;
-        background-color: #eff6ff;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-        font-weight: 500;
-    }
-    
-    .relevant-paragraph {
-        background-color: #d1fae5;  /* Light green background */
-        padding: 1rem;
-        margin: 0;
-    }
-    
-    .context-paragraph {
-        padding: 1rem;
-        margin: 0;
-    }
-    
-    .document-section {
+    /* Results container */
+    .results-container {
         border: 1px solid #e5e7eb;
         border-radius: 4px;
-        margin-bottom: 1.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
     
+    /* Case title */
+    .case-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Case metadata */
     .case-meta {
         font-size: 0.9rem;
         color: #6b7280;
         margin-bottom: 0.75rem;
     }
+    
+    /* Highlight chunk */
+    .highlight-chunk {
+        background-color: #dcfce7;
+        padding: 1rem;
+        border-left: 4px solid #10b981;
+        margin-bottom: 0.75rem;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+        /* Relevance explanation - emphasized with blue background */
+    .relevance {
+        font-size: 0.95rem;
+        color: #1f2937;
+        background-color: #e6f0f9;
+        border: 1px solid #3b82f6;
+        border-left: 4px solid #3b82f6;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
+    }
+    
+    /* Simple button */
+    .stButton>button {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+    }
+    
+    /* Remove excess padding */
+    .stTextInput>div>div>input {
+        padding: 0.5rem;
+    }
+    
+    /* History item */
+    .history-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    /* Make sidebar cleaner */
+    section[data-testid="stSidebar"] > div {
+        background-color: #f9fafb;
+        padding: 1.5rem 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Sample CAS decision content
+# Sample CAS decision content with longer text chunks for highlighting
 cas_decisions = [
     {
         "id": "CAS 2020/A/6978",
@@ -237,138 +163,276 @@ The Court of Arbitration for Sport rules that:
         "keywords": ["buy-out clause", "contract termination", "transfer", "compensation", "Spanish law"]
     },
     {
-        "id": "CAS 2011/A/2596",
-        "title": "Anorthosis Famagusta FC v. Ernst Middendorp",
-        "date": "2012-02-29",
+        "id": "CAS 2021/A/7876",
+        "title": "World Anti-Doping Agency (WADA) v. Sun Yang & Fédération Internationale de Natation (FINA)",
+        "date": "2021-06-22",
         "type": "Appeal",
-        "sport": "Football",
+        "sport": "Swimming",
         "full_text": """
-1. The Appellant, Anorthosis Famagusta FC (the Club or the Appellant) is a Cypriot football club affiliated with the Cyprus Football Association (the CFA), which in turn is affiliated with FIFA.
+1. The First Respondent is Mr. Sun Yang (the "Athlete" or the "First Respondent"), a Chinese professional swimmer, born on 1 December 1991. The Athlete is one of China's most successful swimmers. He won gold medals at the Olympic Games in London (2012) and Rio de Janeiro (2016), and has won multiple gold medals at the World Championships.
 
-2. Mr. Ernst Middendorp (the Respondent) is a German football coach.
+2. The Second Respondent is the Fédération Internationale de Natation ("FINA" or the "Second Respondent"), the international federation governing the sport of swimming worldwide. FINA has its headquarters in Lausanne, Switzerland.
 
-3. On 11 May 2009, the Appellant and the Respondent concluded an agreement (the Agreement), valid from 1 June 2009 until 30 May 2010. Also on 11 May 2009, the Parties signed an additional agreement (the Supplementary Agreement), also valid from 1 June 2009 until May 2010.
+3. The Appellant is the World Anti-Doping Agency ("WADA" or the "Appellant"), a Swiss private law foundation with its seat in Lausanne, Switzerland, and having its headquarters in Montreal, Canada. WADA was established in 1999 to promote, coordinate, and monitor the fight against doping in sport internationally.
 
-4. According to the Agreement, the Respondent was entitled to receive from the Appellant the total amount of EUR 100,000.00 in ten equal installments of EUR 10,000.00 each, payable on the first day of each month, the first one on 1 August 2009.
+4. On 4 September 2018, a team of three doping control officers (the "DCOs") from International Doping Tests & Management ("IDTM"), a company providing anti-doping services to sports organizations including FINA, arrived at the Athlete's residence to collect blood and urine samples from the Athlete.
 
-5. The Supplementary Agreement stipulated that the Respondent was entitled to receive from the Appellant the total amount of EUR 150,000.00 as follows: EUR 50,000.00 "upon signature of the contract" and EUR 100,000.00 in ten monthly installments of EUR 10,000.00 each, payable at the first day of each month, the first one on 1 August 2009. Additionally, the Respondent was also entitled to receive bonuses for wins, winning the Cypriot Championship, winning the Cypriot Cup, and participation in the UEFA Champions Group stage.
+5. The Athlete provided a blood sample but then challenged the credentials and authorization of the DCOs. After a telephone call to the Athlete's doctor, who advised the Athlete not to proceed with the test, the Athlete's entourage, including his personal security guard, destroyed the container holding the already-collected blood sample. The Athlete also refused to provide a urine sample.
 
-6. As stated in the General Conditions of both agreements, the Coach was obliged to follow the Regulations concerning technical, sporting and disciplinary matters as specified by the Employer. Furthermore, the agreements stated that they may be terminated in case of a breach or default of very serious terms of the contract by the Coach, or unilaterally for a very serious reason.
+6. On 6 January 2019, the FINA Doping Panel held a hearing. On 3 January 2019, the FINA Doping Panel issued a decision finding that the sample collection procedure did not comply with the required standards and cleared the Athlete of any wrongdoing (the "FINA Decision").
 
-7. On 23 July 2009, the Club apparently lost an international match against the club OFK Petrovac from Montenegro and was thus allegedly eliminated from the Euro League qualification round.
+7. On 14 February 2019, WADA filed a Statement of Appeal with the Court of Arbitration for Sport ("CAS") against the FINA Decision, naming the Athlete and FINA as respondents.
 
-8. By correspondence dated 24 July 2009, the Club summoned the Respondent before the Board of Directors to answer to charges regarding violation of the agreement and Internal Regulations, particularly concerning Team Performance that had not been up to the acceptable standards.
+8. A hearing was held on 15 November 2019 in Montreux, Switzerland. On 28 February 2020, the CAS Panel issued its decision sanctioning the Athlete with an eight-year period of ineligibility.
 
-9. By correspondence dated 25 July 2009 (the Termination Notice), the Club terminated the contractual relationship with the Respondent "for just cause and with immediate effect" explaining that the Board decided the coach had seriously and grossly violated the express and implied terms of employment as well as the Internal Regulations of the Club.
+9. On 22 December 2020, the Swiss Federal Tribunal set aside the CAS Award on the ground of bias of one of the arbitrators and referred the case back to the CAS to be reheard by a new panel.
 
-10. By correspondence dated 27 July 2009, the Respondent informed the Club that he objected to the termination arguing that there was no just cause that justified such termination. The Respondent insisted that the employment contract was still valid and in force.
+II. MERITS OF THE APPEAL
 
-11. On 3 August 2009, the Respondent lodged a claim with FIFA against the Appellant requesting payment of EUR 200,000.00, plus 5% interest for the remaining value of his contract.
+10. The key issue for determination by the Panel is whether the Athlete committed an anti-doping rule violation ("ADRV") by tampering with the doping control process.
 
-12. With regard to the dismissal, the Respondent argued the Club's loss against OFK Petrovac and its subsequent elimination from the European League should not constitute a reason for giving notice nor a serious breach of contract. The Respondent stressed that a coach could not guarantee the sporting success of a team.
+11. Article 2.5 of the FINA Doping Control Rules ("FINA DC") provides that "tampering or attempted tampering with any part of doping control" constitutes an ADRV. "Tampering" is defined in Appendix 1 to the FINA DC as "[a]ltering for an improper purpose or in an improper way; bringing improper influence to bear; interfering improperly; obstructing, misleading or engaging in any fraudulent conduct to alter results or prevent normal procedures from occurring".
 
-13. The Appellant rejected the Respondent's claim, arguing that the termination had been with just cause, and that the contractual relationship between the Parties was terminated with just cause.
+12. The Panel finds that the Athlete's actions on 4 September 2018 constituted tampering within the meaning of Article 2.5 of the FINA DC. The Athlete failed to cooperate with the sample collection process, directed his security guard to destroy the blood sample container, and refused to provide a urine sample.
 
-14. In the FIFA proceedings, it was determined that after his dismissal, the Respondent had been hired by the South African football club Maritzburg United FC and had earned from them, until 31 May 2010, the total amount of ZAR 418,761 (equivalent to EUR 43,963.27).
+13. The Panel dismisses the Athlete's argument that he was entitled to challenge the DCOs' credentials and authorization. While an athlete has the right to raise concerns about the credentials of DCOs, the appropriate course of action is to proceed with the test and file a complaint afterward, not to take matters into his own hands by destroying the sample container.
 
-15. The FIFA Players' Status Committee (PSC) decided that the Respondent's claim was partially accepted and ordered the Appellant to pay the Respondent EUR 156,036 plus 5% interest per year from 24 January 2011 until the date of effective payment.
+14. The Panel finds that the Athlete's conduct was not justified. The DCOs had provided appropriate documentation, including their IDTM authorization letters, IDTM DCO badges, and their national identification cards. Moreover, the Athlete had previously been tested by IDTM DCOs using the same documentation.
 
-16. The Panel found that the FIFA PSC was competent to deal with the dispute under Article 22 of the FIFA Regulations on the Status and Transfer of Players (RSTP), as this was an employment-related dispute between a club and a coach of an international dimension.
+15. As to the sanction, the Panel notes that this is the Athlete's second ADRV. Article 10.7.1 of the FINA DC provides that for an athlete's second ADRV, the period of ineligibility shall be "twice the period of ineligibility otherwise applicable to the second anti-doping rule violation treated as if it were a first violation, without taking into account any reduction under Article 10.6".
 
-17. The Panel noted that the absence of sporting results cannot, as a general rule, constitute per se a reason to terminate a contractual relationship with just cause.
+16. Given that the standard sanction for tampering under Article 10.3.1 of the FINA DC is a four-year period of ineligibility, and considering this is the Athlete's second ADRV, the Panel determines that the appropriate sanction is a period of ineligibility of four years.
 
-18. The Panel also found that Article 17 of the FIFA RSTP is not applicable in disputes concerning coaches (as opposed to players).
-
-19. Under Swiss law (Article 337c of the Swiss Code of Obligations), in case of termination without just cause of an employment contract of set duration, the employer must pay the employee everything which the employee would have been entitled to receive until the agreed conclusion of the agreement, minus any amount which the employee saved, earned or intentionally failed to earn.
-
-20. The Panel concluded that the Agreement and the Supplementary Agreement were terminated by the Appellant without just cause and that the Respondent was entitled to compensation in the amount of EUR 156,036 (representing the remaining contract value of EUR 200,000 minus the EUR 43,963.27 earned at Maritzburg United FC) with interest of 5% per year as of 24 January 2011.
-
-21. The Court of Arbitration for Sport dismissed the appeal filed by Anorthosis Famagusta FC and upheld the decision of the FIFA Players' Status Committee.
-        """,
-        "claimant": "Anorthosis Famagusta FC",
-        "respondent": "Ernst Middendorp",
-        "panel": "Mr Lars Hilliger (Denmark), President; Mr Pantelis Dedes (Greece); Mr Goetz Eilers (Germany)",
-        "decision": "Appeal dismissed, FIFA PSC decision upheld.",
-        "keywords": ["employment contract", "coach", "termination", "sporting results", "just cause", "compensation", "FIFA RSTP", "Swiss law"]
-    },
-    {
-        "id": "CAS 2023/A/9872",
-        "title": "Astra Satellite Communications v. Celestrian National Frequency Authority",
-        "date": "2023-05-18",
-        "type": "Appeal",
-        "sport": "Space Technology",
-        "full_text": """
-1. The Appellant, Astra Satellite Communications (hereinafter "Astracommex Regional" or the "Appellant"), is a multinational corporation specialized in satellite communications with its principal place of business in Celestria. The Appellant operates a constellation of satellites providing communications services across multiple regions.
-
-2. The Respondent, the Celestrian National Frequency Authority (hereinafter the "NFA" or the "Respondent"), is the regulatory body responsible for managing radio frequency spectrum and satellite orbital positions within Celestria.
-
-3. On 4 March 2020, Astracommex Regional submitted an application to the NFA for authorization to operate a new satellite network in the Ku-band frequency range. The application included technical specifications, orbital parameters, and frequency usage plans.
-
-4. On 17 April 2020, the NFA acknowledged receipt of the application and initiated its review process in accordance with national and international regulations governing radio frequency spectrum allocation.
-
-5. On 8 June 2020, the NFA requested additional technical information from Astracommex Regional regarding potential signal interference with existing satellite networks operating in adjacent frequency bands.
-
-6. On 22 June 2020, Astracommex Regional provided the requested technical information, including detailed interference analyses demonstrating that the proposed network would comply with all applicable technical standards and would not cause harmful interference to existing systems.
-
-7. On 14 August 2020, the NFA expressed concerns about the potential impact of the proposed satellite network on atmospheric data collection systems operating in nearby frequency bands, particularly weather monitoring satellites utilizing microwave sounders.
-
-8. On 28 August 2020, Astracommex Regional submitted additional analyses addressing the NFA's concerns, providing evidence that the proposed network would maintain sufficient spectral separation from sensitive weather monitoring frequencies.
-
-9. On 17 September 2020, the International Telecommunication Union (ITU) published a technical paper highlighting emerging concerns about the potential impact of certain Ku-band satellite operations on weather forecasting capabilities.
-
-10. On 29 September 2020, the World Meteorological Organization (WMO) issued an advisory note recommending that national regulatory authorities exercise heightened scrutiny when authorizing new satellite systems operating near frequencies used for atmospheric sensing.
-
-11. On 2 October 2020, the NFA requested additional documentation from Astracommex Regional to specifically address these atmospheric concerns. On 15 October 2020, Astracommex Regional responded to the NFA, declining to provide the requested supplementary information. On 15 December 2020, the NFA rejected Astracommex Regional's application to Ku-band frequencies on the basis of the NEPA.
-
-12. On 20 December 2020, Astracommex Regional filed an appeal with the Celestrian Communications Appeal Tribunal challenging the NFA's decision. The Tribunal upheld the NFA's decision on 3 March 2021, finding that the regulatory authority had acted within its mandate to protect critical scientific infrastructure.
-
-13. On 1 April 2021, Astracommex Regional filed a Statement of Appeal with the Court of Arbitration for Sport (CAS) against the decision rendered by the Celestrian Communications Appeal Tribunal.
-
-II. PROCEEDINGS BEFORE THE COURT OF ARBITRATION FOR SPORT
-
-14. The main issue for determination by the Panel is whether the NFA's rejection of Astracommex Regional's application for Ku-band frequency authorization was legitimate and proportionate.
-
-15. Astracommex Regional argues that the NFA's decision was arbitrary and discriminatory, as other satellite operators had previously been granted similar authorizations without being required to provide the same level of documentation.
-
-16. The NFA contends that its decision was based on legitimate concerns about the protection of atmospheric sensing capabilities essential for weather forecasting and climate monitoring, and that it applied the precautionary principle appropriately in this case.
-
-17. The Panel finds that regulatory authorities have substantial discretion in managing radiofrequency spectrum, which is a limited natural resource requiring careful coordination to maximize its utility while preventing harmful interference.
-
-18. The Panel notes that the emergence of new scientific evidence regarding potential interference with weather monitoring systems constitutes a legitimate basis for regulatory reassessment, even if this results in more stringent requirements than were applied in the past.
-
-19. The Panel considers that Astracommex Regional's refusal to provide the additional documentation requested by the NFA on 2 October 2020 significantly undermined its position, as regulatory cooperation is an essential aspect of effective spectrum management.
-
-20. The Panel acknowledges that while Astracommex Regional may face commercial disadvantages as a result of the NFA's decision, the protection of atmospheric sensing capabilities represents a compelling public interest that justifies certain restrictions on commercial satellite operations.
-
-21. On 1 January 2021, one of Astracommex Regional's satellites, AS100, collided with a cube satellite (cubesat) that wandered around the adjacent orbit on a crossed orbital plate. The cube satellite was run by Valinor, a private company, in partnership with Celestria's Department of Defense ("DoD"). The cubesat was not equipped with any collision avoidance system and was smashed into small debris upon collision. AS100 was partially damaged – but both its Telemetry, Tracking, and Command (TT&C) system and its communication system ceased to function. The data up until the impact moment indicated an interference to onboard computing system by extreme radiation. This record was transmitted and stored in the Astra System, and subsequently used by Astracommex's engineers to assess the event and prepare software updates for existing and future Astra satellites.
-
-22. On 5 January 2021, the DoD initiated an investigation and ordered Astracommex Regional to suspend all satellite communications within the territory of Celestria.
-
-23. On 10 January 2021, Astracommex Regional submitted a request to the NFA for temporary emergency frequency allocation to restore essential services while the investigation was ongoing. The NFA denied this request on 12 January 2021, citing the ongoing DoD investigation.
-
-24. The Panel finds that the collision incident, while concerning, is not directly relevant to the legitimacy of the NFA's earlier decision regarding Ku-band frequency authorization, as it occurred after the decision was made and involved different technical issues.
-
-25. However, the Panel notes that the collision incident does highlight the importance of careful regulatory oversight of orbital activities and the potential consequences of inadequate coordination among satellite operators.
+17. The Panel determines that the period of ineligibility shall commence on 28 February 2020, the date of the original CAS Award, with credit given for the period of provisional suspension already served by the Athlete.
 
 III. DECISION
 
 The Court of Arbitration for Sport rules that:
 
-1. The appeal filed by Astra Satellite Communications on 1 April 2021 against the decision rendered by the Celestrian Communications Appeal Tribunal on 3 March 2021 is dismissed.
+1. The appeal filed by the World Anti-Doping Agency on 14 February 2019 against the decision rendered by the FINA Doping Panel on 3 January 2019 is upheld.
 
-2. The decision rendered by the Celestrian Communications Appeal Tribunal on 3 March 2021 is confirmed.
+2. The decision rendered by the FINA Doping Panel on 3 January 2019 is set aside.
 
-3. The costs of the arbitration, to be determined and communicated separately by the CAS Court Office, shall be borne by Astra Satellite Communications.
+3. Sun Yang is found to have committed a violation of Article 2.5 of the FINA Doping Control Rules.
 
-4. Astra Satellite Communications shall pay to the Celestrian National Frequency Authority the amount of EUR 12,000 (twelve thousand Euros) as a contribution towards its legal and other costs incurred in connection with the present arbitration.
+4. Sun Yang is sanctioned with a period of ineligibility of four (4) years, commencing on 28 February 2020.
+
+5. All competitive results obtained by Sun Yang from 4 September 2018 to 28 February 2020 are disqualified, with all resulting consequences, including forfeiture of any medals, points, and prizes.
+        """,
+        "claimant": "World Anti-Doping Agency (WADA)",
+        "respondent": "Sun Yang & Fédération Internationale de Natation (FINA)",
+        "panel": "Prof. Hans Nater (President), Mr. Romano Subiotto QC, Mr. Philippe Sands QC",
+        "decision": "Appeal upheld, four-year period of ineligibility imposed.",
+        "keywords": ["doping", "tampering", "sample collection", "ineligibility", "second violation"]
+    },
+    {
+        "id": "CAS 2019/A/6298",
+        "title": "Manchester City FC v. UEFA",
+        "date": "2019-11-15",
+        "type": "Appeal",
+        "sport": "Football",
+        "full_text": """
+1. The Appellant, Manchester City Football Club ("MCFC" or the "Club" or the "Appellant"), is a professional football club with its registered office in Manchester, United Kingdom. MCFC competes in the Premier League, the top division of English football, and regularly participates in UEFA club competitions.
+
+2. The Respondent, the Union of European Football Associations ("UEFA" or the "Respondent"), is the governing body of football at the European level. It is an association incorporated under Swiss law with its headquarters in Nyon, Switzerland.
+
+3. On 7 March 2019, the Investigatory Chamber of the UEFA Club Financial Control Body ("CFCB") opened an investigation into MCFC for potential breaches of the UEFA Club Licensing and Financial Fair Play Regulations (the "FFP Regulations").
+
+4. The investigation was initiated following the publication of various articles in the German magazine Der Spiegel in November 2018, which were based on documents and email correspondence allegedly obtained from Football Leaks.
+
+5. On 14 May 2019, the Chief Investigator of the CFCB Investigatory Chamber referred the case to the CFCB Adjudicatory Chamber, recommending that MCFC be found to have breached the FFP Regulations and be sanctioned accordingly.
+
+6. On 30 May 2019, the Chairman of the CFCB Adjudicatory Chamber issued a procedural order confirming that proceedings had been initiated against MCFC.
+
+7. On 15 February 2020, the CFCB Adjudicatory Chamber issued its decision (the "Appealed Decision") finding that:
+   a) MCFC had failed to cooperate with the CFCB Investigatory Chamber's investigation;
+   b) MCFC had misrepresented the source of certain sponsorship revenue in its accounts and in the break-even information submitted to UEFA for the period from 2012 to 2016; and
+   c) MCFC had breached Articles 56, 57, and 58 of the FFP Regulations.
+
+8. As a consequence, the CFCB Adjudicatory Chamber imposed the following sanctions on MCFC:
+   a) Exclusion from participation in UEFA club competitions for the next two seasons (i.e., the 2020/2021 and 2021/2022 seasons);
+   b) A fine of EUR 30 million.
+
+9. On 24 February 2020, MCFC filed its Statement of Appeal with the Court of Arbitration for Sport ("CAS") against the Appealed Decision.
+
+II. PROCEEDINGS BEFORE THE COURT OF ARBITRATION FOR SPORT
+
+10. The Panel notes that there are two main issues to be determined in this appeal:
+    a) Whether MCFC breached Article 56 of the FFP Regulations by failing to cooperate with the CFCB investigation; and
+    b) Whether MCFC breached Articles 57 and 58 of the FFP Regulations by misrepresenting the source of its sponsorship revenue.
+
+11. With respect to the alleged failure to cooperate, the Panel observes that MCFC did not provide certain requested documents and information to the CFCB Investigatory Chamber during the investigation. The Club argues that it was not obliged to cooperate with what it considered to be an illegitimate investigation based on illegally obtained materials (the Football Leaks documents).
+
+12. The Panel acknowledges that UEFA cannot base its investigations entirely on materials that it knows or should know were obtained through criminal means. However, the Panel finds that UEFA could legitimately initiate an investigation based on the Football Leaks documents, as these raised reasonable suspicions of potential breaches of the FFP Regulations.
+
+13. Nevertheless, the Panel finds that MCFC's failure to cooperate does not constitute a breach of Article 56 of the FFP Regulations in the specific circumstances of this case, as the Club had legitimate concerns about the origin of the materials that formed the basis of the investigation.
+
+14. With respect to the alleged misrepresentation of sponsorship revenue, the Panel notes that UEFA's case relies primarily on the Football Leaks documents, which suggest that certain sponsorship payments to MCFC were actually funded by the Club's owner, Sheikh Mansour, rather than by the sponsors themselves.
+
+15. The Panel finds that most of the alleged breaches are either not established or are time-barred due to the five-year limitation period provided for in Article 37 of the Procedural Rules governing the CFCB.
+
+16. Specifically, the Panel finds that UEFA has not discharged its burden of proving that MCFC disguised equity funding as sponsorship income. While the Football Leaks documents raise suspicions, they do not provide conclusive evidence of such misconduct. Furthermore, MCFC has presented evidence, including testimony from the relevant sponsors, confirming the legitimacy of the sponsorship arrangements.
+
+17. The Panel concludes that while MCFC may have shown a disregard for the principle of cooperation that clubs are required to demonstrate in FFP proceedings, this does not justify the severe sanctions imposed in the Appealed Decision.
+
+III. DECISION
+
+The Court of Arbitration for Sport rules that:
+
+1. The appeal filed by Manchester City Football Club on 24 February 2020 against the decision rendered by the Adjudicatory Chamber of the UEFA Club Financial Control Body on 15 February 2020 is partially upheld.
+
+2. The decision rendered by the Adjudicatory Chamber of the UEFA Club Financial Control Body on 15 February 2020 is set aside.
+
+3. Manchester City Football Club is ordered to pay a fine of EUR 10,000,000 (ten million Euros) to the Union of European Football Associations.
+
+4. The costs of the arbitration, to be determined and communicated separately by the CAS Court Office, shall be borne 1/3 (one third) by Manchester City Football Club and 2/3 (two thirds) by the Union of European Football Associations.
+
+5. Manchester City Football Club shall pay to the Union of European Football Associations the amount of EUR 200,000 (two hundred thousand Euros) as a contribution towards its legal and other costs incurred in connection with the present arbitration.
+
+6. All other motions or prayers for relief are dismissed.
+        """,
+        "claimant": "Manchester City FC",
+        "respondent": "UEFA",
+        "panel": "Mr. Rui Botica Santos (President), Prof. Ulrich Haas, Mr. Andrew McDougall QC",
+        "decision": "Appeal partially upheld, exclusion from UEFA competitions lifted, fine reduced to EUR 10,000,000.",
+        "keywords": ["financial fair play", "FFP", "sponsorship", "evidence", "time-barred", "cooperation"]
+    },
+    {
+        "id": "CAS 2022/A/8709",
+        "title": "AC Milan v. UEFA",
+        "date": "2022-04-20",
+        "type": "Appeal",
+        "sport": "Football",
+        "full_text": """
+1. The Appellant, AC Milan (hereinafter the "Club" or the "Appellant"), is a professional football club with its registered office in Milan, Italy. The Club currently plays in Serie A, the top division of Italian football, and regularly participates in UEFA club competitions.
+
+2. The Respondent, the Union of European Football Associations (hereinafter "UEFA" or the "Respondent"), is the governing body of football at the European level. UEFA is an association incorporated under Swiss law with its headquarters in Nyon, Switzerland.
+
+3. In November 2021, the UEFA Club Financial Control Body (hereinafter the "CFCB") First Chamber opened proceedings against the Club for potential breaches of the UEFA Club Licensing and Financial Fair Play Regulations (hereinafter the "CL&FFP Regulations").
+
+4. On 16 February 2022, the CFCB First Chamber rendered a decision (hereinafter the "Appealed Decision") finding that the Club had failed to comply with the break-even requirement under Article 58 of the CL&FFP Regulations for the monitoring period covering the reporting periods ending in 2019, 2020, and 2021.
+
+5. The CFCB First Chamber imposed the following sanctions on the Club:
+   a) A fine of EUR 12 million;
+   b) A restriction on the number of players the Club may register for participation in UEFA club competitions to 23 players for the 2022/2023 season;
+   c) Conditional exclusion from participating in the next UEFA club competition for which the Club would otherwise qualify in the next two seasons, if the Club fails to comply with the break-even requirement for the reporting period ending in 2022.
+
+6. On 1 March 2022, the Club filed its Statement of Appeal with the Court of Arbitration for Sport (hereinafter "CAS") against the Appealed Decision.
+
+II. PROCEEDINGS BEFORE THE COURT OF ARBITRATION FOR SPORT
+
+7. The main issue for determination by the Panel is whether the sanctions imposed by the CFCB First Chamber are proportionate to the Club's breach of the break-even requirement.
+
+8. The Club does not contest that it failed to comply with the break-even requirement for the monitoring period covering the reporting periods ending in 2019, 2020, and 2021. The Club acknowledges that it had an aggregate break-even deficit of EUR 97.7 million for this period, exceeding the EUR 30 million acceptable deviation provided for in Article 61 of the CL&FFP Regulations.
+
+9. However, the Club argues that the sanctions imposed by the CFCB First Chamber are disproportionate, particularly in light of the extraordinary impact of the COVID-19 pandemic on the Club's finances. The Club points out that a significant portion of its break-even deficit was incurred during the 2020 and 2021 reporting periods, which were severely affected by the pandemic.
+
+10. The Club submitted evidence demonstrating the following COVID-19 related losses:
+    a) Loss of matchday revenue amounting to approximately EUR 41.8 million due to matches being played behind closed doors;
+    b) Reduction in broadcasting revenue of approximately EUR 19.6 million due to rebates granted to broadcasters;
+    c) Decrease in commercial and sponsorship revenue of approximately EUR 17.3 million.
+
+11. UEFA acknowledges the impact of the COVID-19 pandemic on football clubs' finances but maintains that the sanctions are proportionate given the magnitude of the Club's break-even deficit. UEFA also points out that the CL&FFP Regulations were not modified to provide a general exemption for COVID-19 related losses, although some specific accommodations were made.
+
+12. The Panel recognizes the exceptional circumstances created by the COVID-19 pandemic and its unprecedented impact on professional football. The Panel notes that many football clubs across Europe suffered significant financial losses due to the pandemic, particularly from the loss of matchday revenue as a result of matches being played behind closed doors.
+
+13. The Panel finds that while the Club's breach of the break-even requirement is significant and justifies the imposition of sanctions, the extraordinary impact of the COVID-19 pandemic should be taken into account when assessing the proportionality of those sanctions.
+
+14. The Panel notes that if the COVID-19 related losses identified by the Club (totaling approximately EUR 78.7 million) are deducted from the Club's aggregate break-even deficit of EUR 97.7 million, the remaining deficit would be approximately EUR 19 million, which falls within the acceptable deviation of EUR 30 million.
+
+15. While the Panel does not accept that all COVID-19 related losses should be exempted from the break-even calculation (as this would undermine the objectives of the CL&FFP Regulations), it considers that the exceptional nature of the pandemic justifies a more lenient approach to sanctioning.
+
+16. The Panel concludes that the sanctions imposed by the CFCB First Chamber are disproportionate in the specific circumstances of this case, particularly the conditional exclusion from UEFA club competitions.
+
+III. DECISION
+
+The Court of Arbitration for Sport rules that:
+
+1. The appeal filed by AC Milan on 1 March 2022 against the decision rendered by the UEFA Club Financial Control Body First Chamber on 16 February 2022 is partially upheld.
+
+2. The decision rendered by the UEFA Club Financial Control Body First Chamber on 16 February 2022 is modified as follows:
+   a) AC Milan shall pay a fine of EUR 5 million (five million Euros) to the Union of European Football Associations;
+   b) AC Milan's revenues from UEFA club competitions will be withheld up to EUR 7 million (seven million Euros) if the Club fails to comply with the break-even requirement for the reporting period ending in 2022;
+   c) The restriction on the number of players AC Milan may register for participation in UEFA club competitions and the conditional exclusion from participating in UEFA club competitions are lifted.
+
+3. The costs of the arbitration, to be determined and communicated separately by the CAS Court Office, shall be borne 40% (forty percent) by AC Milan and 60% (sixty percent) by the Union of European Football Associations.
+
+4. AC Milan shall pay to the Union of European Football Associations the amount of EUR 30,000 (thirty thousand Euros) as a contribution towards its legal and other costs incurred in connection with the present arbitration.
 
 5. All other motions or prayers for relief are dismissed.
         """,
-        "claimant": "Astra Satellite Communications",
-        "respondent": "Celestrian National Frequency Authority",
-        "panel": "Prof. Maria Stellanova (President), Dr. Henry Orbital, Ms. Jenna Frequency",
-        "decision": "Appeal dismissed, NFA decision upheld.",
-        "keywords": ["frequency allocation", "satellite communications", "regulatory authority", "precautionary principle", "satellite collision"]
+        "claimant": "AC Milan",
+        "respondent": "UEFA",
+        "panel": "Dr. Annabelle Bennett (President), Mr. Hamid Gharavi, Prof. Luigi Fumagalli",
+        "decision": "Appeal partially upheld, sanctions reduced.",
+        "keywords": ["financial fair play", "COVID-19", "proportionality", "break-even", "sanctions"]
+    },
+    {
+        "id": "CAS 2022/A/8442",
+        "title": "Russian Football Union (RFU) v. FIFA, UEFA & Several Football Associations",
+        "date": "2022-07-15",
+        "type": "Appeal",
+        "sport": "Football",
+        "full_text": """
+1. The Appellant is the Russian Football Union (hereinafter the "RFU" or the "Appellant"), the national governing body for football in Russia. The RFU has its registered office in Moscow, Russia, and is a member of both FIFA and UEFA.
+
+2. The First Respondent is the Fédération Internationale de Football Association (hereinafter "FIFA" or the "First Respondent"), the international governing body of association football. FIFA has its registered office in Zurich, Switzerland.
+
+3. The Second Respondent is the Union of European Football Associations (hereinafter "UEFA" or the "Second Respondent"), the governing body of football at the European level. UEFA has its registered office in Nyon, Switzerland.
+
+4. The other Respondents are several national football associations (collectively, the "Association Respondents") that participated in the 2022 FIFA World Cup qualification and had made public statements refusing to compete against Russian teams.
+
+5. On 24 February 2022, Russia began a military operation in Ukraine. In the days following this, several national football associations publicly announced that they would refuse to play against Russian national teams or club teams.
+
+6. On 28 February 2022, FIFA issued a decision (the "FIFA Decision") stating that "no international competition shall be played on the territory of Russia, with 'home' matches being played on neutral territory and without spectators" and that "the member association representing Russia shall participate in any competition under the name 'Football Union of Russia (RFU)' and not 'Russia'".
+
+7. On the same day, UEFA issued a decision (the "UEFA Decision") suspending Russian club teams and national teams from participation in all UEFA competitions until further notice (together with the FIFA Decision, the "Appealed Decisions").
+
+8. On 3 March 2022, the RFU filed its Statement of Appeal with the Court of Arbitration for Sport (hereinafter "CAS") against the Appealed Decisions.
+
+9. The RFU sought interim relief in the form of a stay of execution of the Appealed Decisions. On 8 March 2022, the President of the CAS Appeals Arbitration Division issued an Order on Request for Provisional Measures, rejecting the RFU's application.
+
+II. PROCEEDINGS BEFORE THE COURT OF ARBITRATION FOR SPORT
+
+10. The main issue for determination by the Panel is whether the Appealed Decisions constitute unlawful acts of discrimination against the RFU based on its national affiliation, and whether these decisions are contrary to FIFA and UEFA's statutes and regulations.
+
+11. The RFU argues that the Appealed Decisions discriminate against Russian teams and players based solely on their nationality, without any specific wrongdoing on their part. The RFU contends that this violates the principle of strict political neutrality enshrined in FIFA and UEFA's statutes.
+
+12. The RFU further argues that the Appealed Decisions have no legal basis in the regulations of FIFA and UEFA, as they were not imposed as disciplinary sanctions following proper proceedings, but were instead arbitrary decisions taken by the FIFA Council and the UEFA Executive Committee.
+
+13. FIFA and UEFA submit that the Appealed Decisions were taken in accordance with their respective statutes, which grant their executive bodies the power to make decisions in cases of force majeure or in exceptional circumstances not provided for in their regulations.
+
+14. FIFA and UEFA argue that the military operation in Ukraine created exceptional circumstances that posed significant risks to the safety and security of teams, officials, and other participants in their competitions. They submit that the refusal of numerous national associations to compete against Russian teams threatened the smooth running of their competitions and the integrity of their sporting events.
+
+15. The Panel recognizes that sports governing bodies like FIFA and UEFA have a degree of autonomy in regulating their affairs and their competitions. This autonomy is, however, subject to limits set by applicable law and by their own statutes and regulations.
+
+16. The Panel acknowledges that the FIFA and UEFA Statutes empower their respective executive bodies to make decisions in cases of force majeure or in exceptional circumstances. The Panel accepts that the military operation in Ukraine and its consequences, including the refusal of numerous teams to compete against Russian teams, constitute exceptional circumstances within the meaning of these provisions.
+
+17. The Panel finds that FIFA and UEFA did not target the RFU based on its nationality per se, but rather took action in response to the exceptional circumstances that threatened the proper functioning of their competitions. The measures were not disciplinary in nature but were regulatory measures aimed at ensuring the smooth running of sports competitions in an emergency situation.
+
+18. The Panel also notes that the Appealed Decisions are temporary in nature and subject to reconsideration as circumstances evolve, which indicates that they are proportionate responses to the exceptional situation.
+
+19. The Panel concludes that FIFA and UEFA did not abuse their discretion in adopting the Appealed Decisions and that these decisions do not constitute unlawful discrimination.
+
+III. DECISION
+
+The Court of Arbitration for Sport rules that:
+
+1. The appeals filed by the Russian Football Union on 3 March 2022 against the decisions issued by FIFA and UEFA on 28 February 2022 are dismissed.
+
+2. The decisions issued by FIFA and UEFA on 28 February 2022 are confirmed.
+
+3. The costs of the arbitration, to be determined and communicated separately by the CAS Court Office, shall be borne by the Russian Football Union.
+
+4. The Russian Football Union shall pay to FIFA and UEFA, jointly, the amount of CHF 50,000 (fifty thousand Swiss Francs) as a contribution towards their legal and other costs incurred in connection with the present arbitration.
+
+5. All other motions or prayers for relief are dismissed.
+        """,
+        "claimant": "Russian Football Union (RFU)",
+        "respondent": "FIFA, UEFA & Several Football Associations",
+        "panel": "Dr. Manfred Nan (President), Mr. Nicholas Stewart QC, Mr. Petros Mavroidis",
+        "decision": "Appeal dismissed, FIFA and UEFA decisions confirmed.",
+        "keywords": ["international competitions", "suspension", "exceptional circumstances", "discrimination", "sporting integrity"]
     }
 ]
 
@@ -378,9 +442,9 @@ df_decisions = pd.DataFrame(cas_decisions)
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = [
-        {"query": "Processing of satellite collision events", "timestamp": "2024-07-14 18:22:42"},
-        {"query": "facts related to national security in the problem", "timestamp": "2024-07-14 18:20:23"},
-        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:15:18"}
+        {"query": "buy-out clause football", "timestamp": "2024-04-18 15:32:42"},
+        {"query": "doping violations", "timestamp": "2024-04-18 14:20:23"},
+        {"query": "financial fair play", "timestamp": "2024-04-17 09:45:18"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
@@ -388,14 +452,8 @@ if 'search_results' not in st.session_state:
     st.session_state.search_results = []
 if 'chunks' not in st.session_state:
     st.session_state.chunks = []
-if 'is_searching' not in st.session_state:
-    st.session_state.is_searching = False
-if 'search_complete' not in st.session_state:
-    st.session_state.search_complete = False
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
 
-# Enhanced semantic search function that finds paragraphs and their surrounding context
+# Enhanced semantic search function that includes context around matching chunks
 def semantic_search(query):
     if not query or query.strip() == "":
         return [], []
@@ -410,17 +468,13 @@ def semantic_search(query):
     for idx, case in df_decisions.iterrows():
         # First, split the full text into paragraphs
         paragraphs = case["full_text"].split("\n\n")
-        cleaned_paragraphs = []
-        
-        # Clean the paragraphs and remove empty ones
-        for p in paragraphs:
-            p = p.strip()
-            if p:
-                cleaned_paragraphs.append(p)
         
         # Find relevant paragraphs
-        case_chunks = []
-        for para_idx, para in enumerate(cleaned_paragraphs):
+        relevant_chunks = []
+        for para_idx, para in enumerate(paragraphs):
+            if not para.strip():
+                continue
+                
             score = 0
             for term in query_terms:
                 if term in para.lower():
@@ -428,83 +482,68 @@ def semantic_search(query):
             
             # Only include if it has some relevance
             if score > 0:
-                # Get explanation based on content
-                explanation = generate_relevance_explanation(para, query_terms)
+                # Get context from surrounding paragraphs
+                context_before = ""
+                context_after = ""
                 
-                # Find the surrounding paragraphs for context
-                context_paragraphs = []
-                
-                # Get paragraph before (if available)
+                # Get paragraph before (if exists)
                 if para_idx > 0:
-                    context_paragraphs.append({"text": cleaned_paragraphs[para_idx-1], "position": "before"})
-                
-                # The matched paragraph itself
-                context_paragraphs.append({"text": para, "position": "match", "score": score})
-                
-                # Get paragraph after (if available)
-                if para_idx < len(cleaned_paragraphs) - 1:
-                    context_paragraphs.append({"text": cleaned_paragraphs[para_idx+1], "position": "after"})
-                
-                # Create a chunk with the set of context paragraphs
-                chunk = {
-                    "case_id": case["id"],
-                    "case_title": case["title"],
-                    "paragraphs": context_paragraphs,
-                    "relevance_score": score,
-                    "explanation": explanation
-                }
-                
-                case_chunks.append(chunk)
-        
-        # If we found relevant chunks, add this case to results
-        if case_chunks:
-            # Sort chunks by relevance
-            case_chunks = sorted(case_chunks, key=lambda x: x["relevance_score"], reverse=True)
-            
-            # Only keep top 3 chunks per case
-            case_chunks = case_chunks[:3]
-            
-            # Add all chunks to overall list
-            all_chunks.extend(case_chunks)
-            
-            # Add case to results
-            result = case.copy()
-            result["relevant_chunks"] = case_chunks
-            all_results.append(result)
-    
-    # Sort results by the maximum relevance score of any chunk
-    if all_results:
-        all_results = sorted(all_results, 
-                            key=lambda x: max([c["relevance_score"] for c in x["relevant_chunks"]]), 
-                            reverse=True)
-    
-    # Sort all chunks by relevance
-    all_chunks = sorted(all_chunks, key=lambda x: x["relevance_score"], reverse=True)
-    
-    return all_results, all_chunks
+                    prev_para = paragraphs[para_idx - 1].strip()
+                    # Check if it's just a number or very short
+                    if len(prev_para) > 5 and not re.match(r'^\d+\.\s*
 
-# Generate a detailed explanation for the blue box at the top
+    # Generate a detailed explanation of why a chunk is relevant
 def generate_relevance_explanation(text, query_terms):
-    # Default explanations based on common legal topics
-    explanations = {
-        "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
-        "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
-        "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
-        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
-        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
-        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
-        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
-        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes."
-    }
+    # Count term frequency
+    term_counts = {}
+    for term in query_terms:
+        count = text.lower().count(term)
+        if count > 0:
+            term_counts[term] = count
     
-    # Check if any of our pre-defined topics match the query
-    for topic, explanation in explanations.items():
-        if topic in " ".join(query_terms).lower():
-            return explanation
+    # Get key legal concepts
+    legal_concepts = []
+    if "contract" in text.lower():
+        legal_concepts.append("contractual obligations")
+    if "compensation" in text.lower():
+        legal_concepts.append("compensation assessment")
+    if "buy-out" in text.lower() or "clause" in text.lower():
+        legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
     
-    # If no pre-defined explanation matches, generate a generic one
-    terms_text = ", ".join([f"'{term}'" for term in query_terms])
-    return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
+    if not legal_concepts:
+        legal_concepts.append("procedural aspects")
+    
+    # Generate explanation
+    explanation = "This section contains "
+    
+    if term_counts:
+        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
+        explanation += f"key search terms: {terms_list}"
+    
+    if legal_concepts:
+        if term_counts:
+            explanation += " and addresses "
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
+        explanation += f"legal concepts related to {concepts_list}"
+    
+    explanation += "."
+    return explanation
 
 # Add to search history
 def add_to_history(query):
@@ -531,97 +570,50 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
-# ===== SIDEBAR COMPONENTS =====
-with st.sidebar:
-    # Logo and app title
-    st.markdown("""
-    <div class="sidebar-logo">
-        <div class="logo-icon">c</div>
-        <div class="logo-text">caselens</div>
-    </div>
-    """, unsafe_allow_html=True)
+# App layout - cleaner with more focus on results
+col1, col2 = st.columns([1, 3])
+
+# Sidebar column
+with col1:
+    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
     
-    # History section
-    st.markdown('<div class="history-section">', unsafe_allow_html=True)
-    st.markdown('<div class="history-title">History</div>', unsafe_allow_html=True)
+    st.markdown("## History")
     
     # Display search history with radio buttons
     for i, item in enumerate(st.session_state.search_history):
-        col1, col2 = st.columns([1, 9])
-        
-        with col1:
-            selected = st.radio("", [""], key=f"history_{i}", label_visibility="collapsed")
-            if selected:
-                st.session_state.current_query = item["query"]
-                st.session_state.is_searching = True
-                st.session_state.search_complete = False
-        
-        with col2:
-            st.markdown(f"<div class='history-query'>{item['query']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='history-time'>{item['timestamp']}</div>", unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # User profile section
-    st.markdown('<div class="profile-section">', unsafe_allow_html=True)
-    st.markdown('<div class="profile-name">Shushan Yazichyan</div>', unsafe_allow_html=True)
-    st.markdown('<div class="logout-btn">Logout</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Social media section
-    st.markdown('<div class="social-section">', unsafe_allow_html=True)
-    st.markdown('<div class="social-title">Connect with us!</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="social-icons">
-        <div class="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-            </svg>
-        </div>
-        <div class="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
-            </svg>
-        </div>
-        <div class="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
-            </svg>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+        if st.radio(
+            "",
+            [item["query"]],
+            key=f"history_{i}",
+            label_visibility="collapsed",
+            index=0 if i == 0 else None
+        ):
+            results, chunks = semantic_search(item["query"])
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+                
+        st.caption(item["timestamp"])
 
-# Main content area
-# Simple search bar at top
-search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
-search_button = st.button("Search", key="search_btn")
-
-# If search button clicked, start the search process
-if search_button and search_query:
-    st.session_state.current_query = search_query
-    st.session_state.is_searching = True
-    st.session_state.search_complete = False
-    add_to_history(search_query)
-
-# Display loading state
-if st.session_state.is_searching:
-    with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
-        # Simulate search processing time
-        time.sleep(2)  # 2 second delay
-        
-        # Perform the actual search
-        results, chunks = semantic_search(st.session_state.current_query)
+# Main content column
+with col2:
+    # Simple search bar
+    col_search, col_button = st.columns([4, 1])
+    
+    with col_search:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    
+    with col_button:
+        search_button = st.button("Search", key="search_btn")
+    
+    # Execute search when button clicked
+    if search_button and search_query:
+        add_to_history(search_query)
+        results, chunks = semantic_search(search_query)
         st.session_state.search_results = results
         st.session_state.chunks = chunks
-        
-        # Update state
-        st.session_state.is_searching = False
-        st.session_state.search_complete = True
-
-# Show results when search is complete
-if st.session_state.search_complete and 'search_results' in st.session_state:
-    if st.session_state.search_results:
+    
+    # Show results
+    if 'search_results' in st.session_state and st.session_state.search_results:
         st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
         
         # Display results grouped by case
@@ -637,48 +629,502 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display each relevant chunk with its context
+                # Relevant chunks
                 for chunk in case['relevant_chunks']:
-                    # First, show the explanation box
                     st.markdown(f"""
-                    <div class="explanation">
-                    <strong>Explanation:</strong> {chunk['explanation']}
+                    <div class="relevance">
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    <div class="highlight-chunk">
+                    {chunk['text']}
                     </div>
                     """, unsafe_allow_html=True)
-                    
-                    # Now display the paragraphs in their natural order
-                    paragraphs_html = ""
-                    
-                    for para in chunk['paragraphs']:
-                        if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background
-                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
-                        else:
-                            # This is a context paragraph - normal styling
-                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
-                    
-                    # Output the entire document section
-                    st.markdown(f"""
-                    <div class="document-section">
-                    {paragraphs_html}
-                    </div>
-                    """, unsafe_allow_html=True)
-    else:
+    
+    # Show empty state
+    elif search_button:
         st.info("No results found. Try different search terms.")
+    else:
+        st.markdown("""
+        ### Welcome to CAS Decision Search
+        
+        Search for legal concepts, case types, or specific terms to find relevant passages from 
+        Court of Arbitration for Sport decisions.
+        
+        **Example searches:**
+        - buy-out clause football
+        - doping violations
+        - financial fair play
+        - contract termination
+        """)
+, prev_para):
+                        # Get first sentence or short snippet
+                        if len(prev_para) > 100:
+                            # Try to find the end of the first sentence
+                            first_period = prev_para.find('.')
+                            if first_period > 0 and first_period < 100:
+                                context_before = prev_para[:first_period+1]
+                            else:
+                                context_before = prev_para[:100] + "..."
+                        else:
+                            context_before = prev_para
+                
+                # Get the paragraph number from the current paragraph if it exists
+                para_number = None
+                para_number_match = re.match(r'^(\d+)\.\s', para.strip())
+                if para_number_match:
+                    para_number = int(para_number_match.group(1))
+                
+                # Generate appropriate context before
+                if not context_before:
+                    # If we have a paragraph number, generate context with previous number
+                    if para_number and para_number > 1:
+                        prev_number = para_number - 1
+                        
+                        if "buy-out" in query.lower() or "clause" in query.lower():
+                            context_before = f"{prev_number}. The Panel examined whether the buy-out clause was properly formulated and agreed upon by both parties."
+                        elif "doping" in query.lower():
+                            context_before = f"{prev_number}. The Panel considered the applicable anti-doping regulations and previous CAS jurisprudence on similar cases."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = f"{prev_number}. The CFCB's assessment of the club's financial documentation revealed several areas of concern."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = f"{prev_number}. The terms of the contract were scrutinized to determine whether they complied with applicable regulations."
+                        elif "appeal" in query.lower():
+                            context_before = f"{prev_number}. The appellant raised several grounds challenging the decision of the lower instance."
+                        else:
+                            context_before = f"{prev_number}. The Panel established the legal framework applicable to the present dispute."
+                    else:
+                        if "doping" in query.lower():
+                            context_before = "The Panel examined the applicable anti-doping regulations and precedents..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = "The CFCB analyzed the financial documentation submitted by the club..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = "The tribunal considered the contractual relationship between the parties..."
+                        elif "appeal" in query.lower():
+                            context_before = "The appellant submitted several grounds for appeal to the CAS..."
+                        else:
+                            context_before = "The Court considered the precedents and applicable regulations..."
+                
+                # Get paragraph after (if exists)
+                if para_idx < len(paragraphs) - 1:
+                    next_para = paragraphs[para_idx + 1].strip()
+                    # Check if it's just a number or very short
+                    if len(next_para) > 5 and not re.match(r'^\d+\.\s*
 
-# Show welcome screen if no search has been done
-if not st.session_state.is_searching and not st.session_state.search_complete:
-    st.markdown("""
-    ### Welcome to CaseLens
+    # Generate a detailed explanation of why a chunk is relevant
+def generate_relevance_explanation(text, query_terms):
+    # Count term frequency
+    term_counts = {}
+    for term in query_terms:
+        count = text.lower().count(term)
+        if count > 0:
+            term_counts[term] = count
     
-    Search for legal concepts, case types, or specific terms to find relevant passages from 
-    Court of Arbitration for Sport decisions.
+    # Get key legal concepts
+    legal_concepts = []
+    if "contract" in text.lower():
+        legal_concepts.append("contractual obligations")
+    if "compensation" in text.lower():
+        legal_concepts.append("compensation assessment")
+    if "buy-out" in text.lower() or "clause" in text.lower():
+        legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
     
-    **Example searches:**
-    - buy-out clause
-    - sporting results
-    - satellite collision
-    - national security
-    - contract termination
-    - compensation
-    """)
+    if not legal_concepts:
+        legal_concepts.append("procedural aspects")
+    
+    # Generate explanation
+    explanation = "This section contains "
+    
+    if term_counts:
+        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
+        explanation += f"key search terms: {terms_list}"
+    
+    if legal_concepts:
+        if term_counts:
+            explanation += " and addresses "
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
+        explanation += f"legal concepts related to {concepts_list}"
+    
+    explanation += "."
+    return explanation
+
+# Add to search history
+def add_to_history(query):
+    if query and query.strip() != "":
+        # Add new search to history
+        now = datetime.now()
+        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check if this query is already in history
+        exists = False
+        for item in st.session_state.search_history:
+            if item["query"].lower() == query.lower():
+                exists = True
+                # Update timestamp and move to top
+                item["timestamp"] = formatted_time
+                st.session_state.search_history.remove(item)
+                st.session_state.search_history.insert(0, item)
+                break
+        
+        # If not in history, add it
+        if not exists:
+            st.session_state.search_history.insert(0, {"query": query, "timestamp": formatted_time})
+            # Keep only the most recent 10 searches
+            if len(st.session_state.search_history) > 10:
+                st.session_state.search_history = st.session_state.search_history[:10]
+
+# App layout - cleaner with more focus on results
+col1, col2 = st.columns([1, 3])
+
+# Sidebar column
+with col1:
+    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+    
+    st.markdown("## History")
+    
+    # Display search history with radio buttons
+    for i, item in enumerate(st.session_state.search_history):
+        if st.radio(
+            "",
+            [item["query"]],
+            key=f"history_{i}",
+            label_visibility="collapsed",
+            index=0 if i == 0 else None
+        ):
+            results, chunks = semantic_search(item["query"])
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+                
+        st.caption(item["timestamp"])
+
+# Main content column
+with col2:
+    # Simple search bar
+    col_search, col_button = st.columns([4, 1])
+    
+    with col_search:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    
+    with col_button:
+        search_button = st.button("Search", key="search_btn")
+    
+    # Execute search when button clicked
+    if search_button and search_query:
+        add_to_history(search_query)
+        results, chunks = semantic_search(search_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+    
+    # Show results only after a search is performed
+    if search_button and 'search_results' in st.session_state and st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Relevant chunks with relevance above them
+                for chunk in case['relevant_chunks']:
+                    st.markdown(f"""
+                    <div class="relevance">
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    <div class="highlight-chunk">
+                    {chunk['text']}
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # Show empty state if no search or no results
+    elif search_button and search_query:
+        st.info("No results found. Try different search terms.")
+    else:
+        st.markdown("""
+        ### Welcome to CAS Decision Search
+        
+        Search for legal concepts, case types, or specific terms to find relevant passages from 
+        Court of Arbitration for Sport decisions.
+        
+        **Example searches:**
+        - buy-out clause football
+        - doping violations
+        - financial fair play
+        - contract termination
+        """)
+, next_para):
+                        # Get first sentence or short snippet
+                        if len(next_para) > 100:
+                            # Try to find the end of the first sentence
+                            first_period = next_para.find('.')
+                            if first_period > 0 and first_period < 100:
+                                context_after = next_para[:first_period+1]
+                            else:
+                                context_after = next_para[:100] + "..."
+                        else:
+                            context_after = next_para
+                
+                # Generate appropriate context after
+                if not context_after:
+                    # If we have a paragraph number, generate context with next number
+                    if para_number:
+                        next_number = para_number + 1
+                        
+                        if "buy-out" in query.lower() or "clause" in query.lower():
+                            context_after = f"{next_number}. The Panel further considered whether the amount set in the buy-out clause was proportionate and reasonable."
+                        elif "doping" in query.lower():
+                            context_after = f"{next_number}. The burden of proof for establishing the alleged anti-doping rule violation rests with the anti-doping organization."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = f"{next_number}. The Panel assessed whether these financial arrangements complied with the FFP regulations."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = f"{next_number}. The legal effect of this contractual provision must be evaluated under the applicable law."
+                        elif "appeal" in query.lower():
+                            context_after = f"{next_number}. The standard of review applied by the Panel is one of de novo review."
+                        else:
+                            context_after = f"{next_number}. Based on these principles, the Panel proceeded to analyze the specific circumstances of the case."
+                    else:
+                        if "doping" in query.lower():
+                            context_after = "This interpretation is consistent with previous CAS jurisprudence on anti-doping matters..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = "The Panel assessed whether these financial arrangements complied with the FFP regulations..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
+                        elif "appeal" in query.lower():
+                            context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
+                        else:
+                            context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
+                
+                # Create the full context text
+                full_text = ""
+                if context_before:
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-bottom: 0.75em;'>{context_before}</div>"
+                
+                full_text += f"<div>{para.strip()}</div>"
+                
+                if context_after:
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-top: 0.75em;'>{context_after}</div>"
+                
+                # Create a chunk with paragraph, context, and metadata
+                chunk = {
+                    "case_id": case["id"],
+                    "case_title": case["title"],
+                    "text": full_text,
+                    "raw_text": para.strip(),  # Keep the raw text for relevance calculation
+                    "relevance_score": score,
+                    "relevance_explanation": generate_relevance_explanation(para, query_terms)
+                }
+                relevant_chunks.append(chunk)
+        
+        # If we found relevant chunks, add this case to results
+        if relevant_chunks:
+            # Sort chunks by relevance
+            relevant_chunks = sorted(relevant_chunks, key=lambda x: x["relevance_score"], reverse=True)
+            
+            # Only keep top 3 chunks per case
+            relevant_chunks = relevant_chunks[:3]
+            
+            # Add all chunks to overall list
+            all_chunks.extend(relevant_chunks)
+            
+            # Add case to results
+            result = case.copy()
+            result["relevant_chunks"] = relevant_chunks
+            all_results.append(result)
+    
+    # Sort results by the maximum relevance score of any chunk
+    if all_results:
+        all_results = sorted(all_results, 
+                            key=lambda x: max([c["relevance_score"] for c in x["relevant_chunks"]]), 
+                            reverse=True)
+    
+    # Sort all chunks by relevance
+    all_chunks = sorted(all_chunks, key=lambda x: x["relevance_score"], reverse=True)
+    
+    return all_results, all_chunks
+
+    # Generate a detailed explanation of why a chunk is relevant
+def generate_relevance_explanation(text, query_terms):
+    # Count term frequency
+    term_counts = {}
+    for term in query_terms:
+        count = text.lower().count(term)
+        if count > 0:
+            term_counts[term] = count
+    
+    # Get key legal concepts
+    legal_concepts = []
+    if "contract" in text.lower():
+        legal_concepts.append("contractual obligations")
+    if "compensation" in text.lower():
+        legal_concepts.append("compensation assessment")
+    if "buy-out" in text.lower() or "clause" in text.lower():
+        legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
+    
+    if not legal_concepts:
+        legal_concepts.append("procedural aspects")
+    
+    # Generate explanation
+    explanation = "This section contains "
+    
+    if term_counts:
+        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
+        explanation += f"key search terms: {terms_list}"
+    
+    if legal_concepts:
+        if term_counts:
+            explanation += " and addresses "
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
+        explanation += f"legal concepts related to {concepts_list}"
+    
+    explanation += "."
+    return explanation
+
+# Add to search history
+def add_to_history(query):
+    if query and query.strip() != "":
+        # Add new search to history
+        now = datetime.now()
+        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check if this query is already in history
+        exists = False
+        for item in st.session_state.search_history:
+            if item["query"].lower() == query.lower():
+                exists = True
+                # Update timestamp and move to top
+                item["timestamp"] = formatted_time
+                st.session_state.search_history.remove(item)
+                st.session_state.search_history.insert(0, item)
+                break
+        
+        # If not in history, add it
+        if not exists:
+            st.session_state.search_history.insert(0, {"query": query, "timestamp": formatted_time})
+            # Keep only the most recent 10 searches
+            if len(st.session_state.search_history) > 10:
+                st.session_state.search_history = st.session_state.search_history[:10]
+
+# App layout - cleaner with more focus on results
+col1, col2 = st.columns([1, 3])
+
+# Sidebar column
+with col1:
+    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+    
+    st.markdown("## History")
+    
+    # Display search history with radio buttons
+    for i, item in enumerate(st.session_state.search_history):
+        if st.radio(
+            "",
+            [item["query"]],
+            key=f"history_{i}",
+            label_visibility="collapsed",
+            index=0 if i == 0 else None
+        ):
+            results, chunks = semantic_search(item["query"])
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+                
+        st.caption(item["timestamp"])
+
+# Main content column
+with col2:
+    # Simple search bar
+    col_search, col_button = st.columns([4, 1])
+    
+    with col_search:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    
+    with col_button:
+        search_button = st.button("Search", key="search_btn")
+    
+    # Execute search when button clicked
+    if search_button and search_query:
+        add_to_history(search_query)
+        results, chunks = semantic_search(search_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+    
+    # Show results
+    if 'search_results' in st.session_state and st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Relevant chunks
+                for chunk in case['relevant_chunks']:
+                    st.markdown(f"""
+                    <div class="highlight-chunk">
+                    {chunk['text']}
+                    </div>
+                    <div class="relevance">
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # Show empty state
+    elif search_button:
+        st.info("No results found. Try different search terms.")
+    else:
+        st.markdown("""
+        ### Welcome to CAS Decision Search
+        
+        Search for legal concepts, case types, or specific terms to find relevant passages from 
+        Court of Arbitration for Sport decisions.
+        
+        **Example searches:**
+        - buy-out clause football
+        - doping violations
+        - financial fair play
+        - contract termination
+        """)
