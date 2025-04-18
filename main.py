@@ -48,19 +48,24 @@ st.markdown("""
     /* Highlight chunk */
     .highlight-chunk {
         background-color: #dcfce7;
-        padding: 0.75rem;
-        border-left: 3px solid #10b981;
+        padding: 1rem;
+        border-left: 4px solid #10b981;
         margin-bottom: 0.75rem;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
     
-    /* Relevance explanation */
+    /* Relevance explanation - emphasized */
     .relevance {
-        font-size: 0.9rem;
-        color: #4b5563;
-        background-color: #f9fafb;
-        padding: 0.5rem;
-        border-radius: 2px;
-        margin-bottom: 1rem;
+        font-size: 0.95rem;
+        color: #1f2937;
+        background-color: #f0fdf4;
+        border: 1px solid #10b981;
+        border-left: 4px solid #10b981;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
     }
     
     /* Simple button */
@@ -448,7 +453,7 @@ if 'search_results' not in st.session_state:
 if 'chunks' not in st.session_state:
     st.session_state.chunks = []
 
-# Simple semantic search function focused on finding relevant chunks
+# Enhanced semantic search function that includes context around matching chunks
 def semantic_search(query):
     if not query or query.strip() == "":
         return [], []
@@ -477,11 +482,56 @@ def semantic_search(query):
             
             # Only include if it has some relevance
             if score > 0:
-                # Create a chunk with paragraph and metadata
+                # Get context from surrounding paragraphs
+                context_before = ""
+                context_after = ""
+                
+                # Get paragraph before (if exists)
+                if para_idx > 0:
+                    prev_para = paragraphs[para_idx - 1].strip()
+                    if prev_para:
+                        # Get first sentence or short snippet
+                        if len(prev_para) > 100:
+                            # Try to find the end of the first sentence
+                            first_period = prev_para.find('.')
+                            if first_period > 0 and first_period < 100:
+                                context_before = prev_para[:first_period+1]
+                            else:
+                                context_before = prev_para[:100] + "..."
+                        else:
+                            context_before = prev_para
+                
+                # Get paragraph after (if exists)
+                if para_idx < len(paragraphs) - 1:
+                    next_para = paragraphs[para_idx + 1].strip()
+                    if next_para:
+                        # Get first sentence or short snippet
+                        if len(next_para) > 100:
+                            # Try to find the end of the first sentence
+                            first_period = next_para.find('.')
+                            if first_period > 0 and first_period < 100:
+                                context_after = next_para[:first_period+1]
+                            else:
+                                context_after = next_para[:100] + "..."
+                        else:
+                            context_after = next_para
+                
+                # Create the full context text
+                full_text = ""
+                if context_before:
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; margin-bottom: 0.5em;'>{context_before}</div>"
+                
+                full_text += f"<div>{para.strip()}</div>"
+                
+                if context_after:
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; margin-top: 0.5em;'>{context_after}</div>"
+                
+                # Create a chunk with paragraph, context, and metadata
                 chunk = {
                     "case_id": case["id"],
                     "case_title": case["title"],
-                    "text": para.strip(),
+                    "text": full_text,
+                    "raw_text": para.strip(),  # Keep the raw text for relevance calculation
                     "relevance_score": score,
                     "relevance_explanation": generate_relevance_explanation(para, query_terms)
                 }
@@ -514,7 +564,7 @@ def semantic_search(query):
     
     return all_results, all_chunks
 
-# Generate a simple explanation of why a chunk is relevant
+    # Generate a detailed explanation of why a chunk is relevant
 def generate_relevance_explanation(text, query_terms):
     # Count term frequency
     term_counts = {}
@@ -541,6 +591,12 @@ def generate_relevance_explanation(text, query_terms):
         legal_concepts.append("evidentiary standards")
     if "jurisdiction" in text.lower() or "competence" in text.lower():
         legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
     
     if not legal_concepts:
         legal_concepts.append("procedural aspects")
@@ -555,7 +611,7 @@ def generate_relevance_explanation(text, query_terms):
     if legal_concepts:
         if term_counts:
             explanation += " and addresses "
-        concepts_list = ", ".join(legal_concepts[:2])  # Limit to 2 concepts for brevity
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
         explanation += f"legal concepts related to {concepts_list}"
     
     explanation += "."
@@ -652,7 +708,7 @@ with col2:
                     {chunk['text']}
                     </div>
                     <div class="relevance">
-                    <strong>Relevance:</strong> {chunk['relevance_explanation']}
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
                     </div>
                     """, unsafe_allow_html=True)
     
