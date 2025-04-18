@@ -92,10 +92,29 @@ st.markdown("""
         background-color: #f9fafb;
         padding: 1.5rem 1rem;
     }
+    
+    /* Context text */
+    .context-before {
+        color: #6B7280; 
+        font-size: 0.9em; 
+        font-style: italic; 
+        margin-bottom: 0.75em;
+        border-left: 2px solid #d1d5db;
+        padding-left: 10px;
+    }
+    
+    .context-after {
+        color: #6B7280; 
+        font-size: 0.9em; 
+        font-style: italic; 
+        margin-top: 0.75em;
+        border-left: 2px solid #d1d5db;
+        padding-left: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Sample CAS decision content with longer text chunks for highlighting
+# Sample CAS decision content - keeping the first few cases for brevity
 cas_decisions = [
     {
         "id": "CAS 2020/A/6978",
@@ -228,10 +247,20 @@ if 'search_history' not in st.session_state:
     st.session_state.search_history = [
         {"query": "buy-out clause football", "timestamp": "2024-04-18 15:32:42"},
         {"query": "doping violations", "timestamp": "2024-04-18 14:20:23"},
-        {"query": "financial fair play", "timestamp": "2024-04-17 09:45:18"}
+        {"query": "coach contract", "timestamp": "2024-04-18 11:45:18"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'chunks' not in st.session_state:
+    st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 
 # Enhanced semantic search function that includes context around matching chunks
 def semantic_search(query):
@@ -266,11 +295,17 @@ def semantic_search(query):
                 context_before = ""
                 context_after = ""
                 
+                # Get the paragraph number from the current paragraph if it exists
+                para_number = None
+                para_number_match = re.match(r'^(\d+)\.\s', para.strip())
+                if para_number_match:
+                    para_number = int(para_number_match.group(1))
+                
                 # Get paragraph before (if exists)
                 if para_idx > 0:
                     prev_para = paragraphs[para_idx - 1].strip()
-                    # Check if it's just a number or very short
-                    if len(prev_para) > 5 and not re.match(r'^\d+\.\s*$', prev_para):
+                    # Check if it's not empty
+                    if prev_para:
                         # Get first sentence or short snippet
                         if len(prev_para) > 100:
                             # Try to find the end of the first sentence
@@ -282,13 +317,7 @@ def semantic_search(query):
                         else:
                             context_before = prev_para
                 
-                # Get the paragraph number from the current paragraph if it exists
-                para_number = None
-                para_number_match = re.match(r'^(\d+)\.\s', para.strip())
-                if para_number_match:
-                    para_number = int(para_number_match.group(1))
-                
-                # Generate appropriate context before
+                # Always ensure we have context_before text
                 if not context_before:
                     # If we have a paragraph number, generate context with previous number
                     if para_number and para_number > 1:
@@ -296,12 +325,28 @@ def semantic_search(query):
                         
                         if "buy-out" in query.lower() or "clause" in query.lower():
                             context_before = f"{prev_number}. The Panel examined whether the buy-out clause was properly formulated and agreed upon by both parties."
+                        elif "doping" in query.lower():
+                            context_before = f"{prev_number}. The Panel considered the applicable anti-doping regulations and previous CAS jurisprudence on similar cases."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = f"{prev_number}. The CFCB's assessment of the club's financial documentation revealed several areas of concern."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = f"{prev_number}. The terms of the contract were scrutinized to determine whether they complied with applicable regulations."
+                        elif "appeal" in query.lower():
+                            context_before = f"{prev_number}. The appellant raised several grounds challenging the decision of the lower instance."
                         elif "coach" in query.lower() or "sporting results" in query.lower():
                             context_before = f"{prev_number}. The Panel assessed whether poor sporting results could constitute just cause for terminating a coach's contract."
                         else:
                             context_before = f"{prev_number}. The Panel established the legal framework applicable to the present dispute."
                     else:
-                        if "coach" in query.lower() or "sporting results" in query.lower():
+                        if "doping" in query.lower():
+                            context_before = "The Panel examined the applicable anti-doping regulations and precedents..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = "The CFCB analyzed the financial documentation submitted by the club..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = "The tribunal considered the contractual relationship between the parties..."
+                        elif "appeal" in query.lower():
+                            context_before = "The appellant submitted several grounds for appeal to the CAS..."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
                             context_before = "The Panel considered the circumstances surrounding the coach's dismissal..."
                         else:
                             context_before = "The Court considered the precedents and applicable regulations..."
@@ -309,8 +354,8 @@ def semantic_search(query):
                 # Get paragraph after (if exists)
                 if para_idx < len(paragraphs) - 1:
                     next_para = paragraphs[para_idx + 1].strip()
-                    # Check if it's just a number or very short
-                    if len(next_para) > 5 and not re.match(r'^\d+\.\s*$', next_para):
+                    # Check if it's not empty
+                    if next_para:
                         # Get first sentence or short snippet
                         if len(next_para) > 100:
                             # Try to find the end of the first sentence
@@ -322,7 +367,7 @@ def semantic_search(query):
                         else:
                             context_after = next_para
                 
-                # Generate appropriate context after
+                # Always ensure we have context_after text
                 if not context_after:
                     # If we have a paragraph number, generate context with next number
                     if para_number:
@@ -330,31 +375,39 @@ def semantic_search(query):
                         
                         if "buy-out" in query.lower() or "clause" in query.lower():
                             context_after = f"{next_number}. The Panel further considered whether the amount set in the buy-out clause was proportionate and reasonable."
+                        elif "doping" in query.lower():
+                            context_after = f"{next_number}. The burden of proof for establishing the alleged anti-doping rule violation rests with the anti-doping organization."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = f"{next_number}. The Panel assessed whether these financial arrangements complied with the FFP regulations."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = f"{next_number}. The legal effect of this contractual provision must be evaluated under the applicable law."
+                        elif "appeal" in query.lower():
+                            context_after = f"{next_number}. The standard of review applied by the Panel is one of de novo review."
                         elif "coach" in query.lower() or "sporting results" in query.lower():
                             context_after = f"{next_number}. The Panel examined the compensation owed to the coach following termination without just cause."
                         else:
                             context_after = f"{next_number}. Based on these principles, the Panel proceeded to analyze the specific circumstances of the case."
                     else:
-                        if "coach" in query.lower() or "sporting results" in query.lower():
+                        if "doping" in query.lower():
+                            context_after = "This interpretation is consistent with previous CAS jurisprudence on anti-doping matters..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = "The Panel assessed whether these financial arrangements complied with the FFP regulations..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
+                        elif "appeal" in query.lower():
+                            context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
                             context_after = "The Panel proceeded to calculate the appropriate compensation for the terminated contract..."
                         else:
                             context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
-                
-                # Create the full context text
-                full_text = ""
-                if context_before:
-                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-bottom: 0.75em;'>{context_before}</div>"
-                
-                full_text += f"<div>{para.strip()}</div>"
-                
-                if context_after:
-                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-top: 0.75em;'>{context_after}</div>"
                 
                 # Create a chunk with paragraph, context, and metadata
                 chunk = {
                     "case_id": case["id"],
                     "case_title": case["title"],
-                    "text": full_text,
+                    "text": para.strip(),
+                    "context_before": context_before,
+                    "context_after": context_after,
                     "raw_text": para.strip(),  # Keep the raw text for relevance calculation
                     "relevance_score": score,
                     "relevance_explanation": generate_relevance_explanation(para, query_terms)
@@ -405,6 +458,22 @@ def generate_relevance_explanation(text, query_terms):
         legal_concepts.append("compensation assessment")
     if "buy-out" in text.lower() or "clause" in text.lower():
         legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
     if "coach" in text.lower() or "sporting results" in text.lower():
         legal_concepts.append("coach employment")
     if "termination" in text.lower() or "just cause" in text.lower():
@@ -472,14 +541,10 @@ with col1:
             label_visibility="collapsed",
             index=0 if i == 0 else None
         ):
-            with st.spinner(f"Searching for '{item['query']}'..."):
-                time.sleep(2)  # Show spinner for 2 seconds
-                results, chunks = semantic_search(item["query"])
-            
-            # Display results count
-            if results:
-                st.session_state.selected_case = results
-                st.session_state.search_results = chunks
+            st.session_state.current_query = item["query"]
+            st.session_state.is_searching = True
+            st.session_state.search_complete = False
+            st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
                 
         st.caption(item["timestamp"])
 
@@ -494,55 +559,64 @@ with col2:
     with col_button:
         search_button = st.button("Search", key="search_btn")
     
-    search_executed = False
-    
-    # Execute search when button clicked
+    # If search button clicked, start the search process
     if search_button and search_query:
+        st.session_state.current_query = search_query
+        st.session_state.is_searching = True
+        st.session_state.search_complete = False
         add_to_history(search_query)
-        
-        with st.spinner(f"Searching for '{search_query}'..."):
-            time.sleep(2)  # Show spinner for 2 seconds
-            results, chunks = semantic_search(search_query)
-        
-        st.session_state.selected_case = results
-        st.session_state.search_results = chunks
-        search_executed = True
     
-    # Show results
-    if 'selected_case' in st.session_state and st.session_state.selected_case:
-        results = st.session_state.selected_case
-        chunks = st.session_state.search_results
-        
-        st.markdown(f"**Found {len(chunks)} relevant passages in {len(results)} decisions**")
-        
-        # Display results grouped by case
-        for case in results:
-            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Case metadata
-                st.markdown(f"""
-                <div class="case-meta">
-                    <strong>Date:</strong> {case['date']} | 
-                    <strong>Type:</strong> {case['type']} | 
-                    <strong>Sport:</strong> {case['sport']} | 
-                    <strong>Panel:</strong> {case['panel']}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Relevant chunks
-                for chunk in case['relevant_chunks']:
+    # Display loading state
+    if st.session_state.is_searching:
+        with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
+            # Simulate search processing time
+            time.sleep(3)  # 3 second delay
+            
+            # Perform the actual search
+            results, chunks = semantic_search(st.session_state.current_query)
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+            
+            # Update state
+            st.session_state.is_searching = False
+            st.session_state.search_complete = True
+    
+    # Show results when search is complete
+    if st.session_state.search_complete and 'search_results' in st.session_state:
+        if st.session_state.search_results:
+            st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+            
+            # Display results grouped by case
+            for case in st.session_state.search_results:
+                with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                    # Case metadata
                     st.markdown(f"""
-                    <div class="relevance">
-                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
-                    </div>
-                    <div class="highlight-chunk">
-                    {chunk['text']}
+                    <div class="case-meta">
+                        <strong>Date:</strong> {case['date']} | 
+                        <strong>Type:</strong> {case['type']} | 
+                        <strong>Sport:</strong> {case['sport']} | 
+                        <strong>Panel:</strong> {case['panel']}
                     </div>
                     """, unsafe_allow_html=True)
+                    
+                    # Relevant chunks - now with improved context display
+                    for chunk in case['relevant_chunks']:
+                        st.markdown(f"""
+                        <div class="relevance">
+                        <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                        </div>
+                        
+                        <div class="highlight-chunk">
+                            <div class="context-before">{chunk['context_before']}</div>
+                            <div>{chunk['text']}</div>
+                            <div class="context-after">{chunk['context_after']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.info("No results found. Try different search terms.")
     
-    # Show empty state
-    elif search_button and search_query:
-        st.info("No results found. Try different search terms.")
-    elif not search_executed and not ('selected_case' in st.session_state and st.session_state.selected_case):
+    # Show welcome screen if no search has been done
+    if not st.session_state.is_searching and not st.session_state.search_complete:
         st.markdown("""
         ### Welcome to CAS Decision Search
         
@@ -551,7 +625,9 @@ with col2:
         
         **Example searches:**
         - buy-out clause football
-        - coach employment
+        - coach contract
         - sporting results
         - contract termination
+        - employment disputes
+        - just cause
         """)
