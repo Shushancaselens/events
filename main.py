@@ -489,7 +489,174 @@ def semantic_search(query):
                 # Get paragraph before (if exists)
                 if para_idx > 0:
                     prev_para = paragraphs[para_idx - 1].strip()
-                    if prev_para:
+                    # Check if it's just a number or very short
+                    if len(prev_para) > 5 and not re.match(r'^\d+\.\s*
+
+    # Generate a detailed explanation of why a chunk is relevant
+def generate_relevance_explanation(text, query_terms):
+    # Count term frequency
+    term_counts = {}
+    for term in query_terms:
+        count = text.lower().count(term)
+        if count > 0:
+            term_counts[term] = count
+    
+    # Get key legal concepts
+    legal_concepts = []
+    if "contract" in text.lower():
+        legal_concepts.append("contractual obligations")
+    if "compensation" in text.lower():
+        legal_concepts.append("compensation assessment")
+    if "buy-out" in text.lower() or "clause" in text.lower():
+        legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
+    
+    if not legal_concepts:
+        legal_concepts.append("procedural aspects")
+    
+    # Generate explanation
+    explanation = "This section contains "
+    
+    if term_counts:
+        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
+        explanation += f"key search terms: {terms_list}"
+    
+    if legal_concepts:
+        if term_counts:
+            explanation += " and addresses "
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
+        explanation += f"legal concepts related to {concepts_list}"
+    
+    explanation += "."
+    return explanation
+
+# Add to search history
+def add_to_history(query):
+    if query and query.strip() != "":
+        # Add new search to history
+        now = datetime.now()
+        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check if this query is already in history
+        exists = False
+        for item in st.session_state.search_history:
+            if item["query"].lower() == query.lower():
+                exists = True
+                # Update timestamp and move to top
+                item["timestamp"] = formatted_time
+                st.session_state.search_history.remove(item)
+                st.session_state.search_history.insert(0, item)
+                break
+        
+        # If not in history, add it
+        if not exists:
+            st.session_state.search_history.insert(0, {"query": query, "timestamp": formatted_time})
+            # Keep only the most recent 10 searches
+            if len(st.session_state.search_history) > 10:
+                st.session_state.search_history = st.session_state.search_history[:10]
+
+# App layout - cleaner with more focus on results
+col1, col2 = st.columns([1, 3])
+
+# Sidebar column
+with col1:
+    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+    
+    st.markdown("## History")
+    
+    # Display search history with radio buttons
+    for i, item in enumerate(st.session_state.search_history):
+        if st.radio(
+            "",
+            [item["query"]],
+            key=f"history_{i}",
+            label_visibility="collapsed",
+            index=0 if i == 0 else None
+        ):
+            results, chunks = semantic_search(item["query"])
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+                
+        st.caption(item["timestamp"])
+
+# Main content column
+with col2:
+    # Simple search bar
+    col_search, col_button = st.columns([4, 1])
+    
+    with col_search:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    
+    with col_button:
+        search_button = st.button("Search", key="search_btn")
+    
+    # Execute search when button clicked
+    if search_button and search_query:
+        add_to_history(search_query)
+        results, chunks = semantic_search(search_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+    
+    # Show results
+    if 'search_results' in st.session_state and st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Relevant chunks
+                for chunk in case['relevant_chunks']:
+                    st.markdown(f"""
+                    <div class="highlight-chunk">
+                    {chunk['text']}
+                    </div>
+                    <div class="relevance">
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # Show empty state
+    elif search_button:
+        st.info("No results found. Try different search terms.")
+    else:
+        st.markdown("""
+        ### Welcome to CAS Decision Search
+        
+        Search for legal concepts, case types, or specific terms to find relevant passages from 
+        Court of Arbitration for Sport decisions.
+        
+        **Example searches:**
+        - buy-out clause football
+        - doping violations
+        - financial fair play
+        - contract termination
+        """)
+, prev_para):
                         # Get first sentence or short snippet
                         if len(prev_para) > 100:
                             # Try to find the end of the first sentence
@@ -501,23 +668,213 @@ def semantic_search(query):
                         else:
                             context_before = prev_para
                 
-                # Always include context before, even if empty
+                # Get the paragraph number from the current paragraph if it exists
+                para_number = None
+                para_number_match = re.match(r'^(\d+)\.\s', para.strip())
+                if para_number_match:
+                    para_number = int(para_number_match.group(1))
+                
+                # Generate appropriate context before
                 if not context_before:
-                    if "doping" in query.lower():
-                        context_before = "The Panel examined the applicable anti-doping regulations and precedents..."
-                    elif "financial" in query.lower() or "ffp" in query.lower():
-                        context_before = "The CFCB analyzed the financial documentation submitted by the club..."
-                    elif "contract" in query.lower() or "transfer" in query.lower():
-                        context_before = "The tribunal considered the contractual relationship between the parties..."
-                    elif "appeal" in query.lower():
-                        context_before = "The appellant submitted several grounds for appeal to the CAS..."
+                    # If we have a paragraph number, generate context with previous number
+                    if para_number and para_number > 1:
+                        prev_number = para_number - 1
+                        
+                        if "buy-out" in query.lower() or "clause" in query.lower():
+                            context_before = f"{prev_number}. The Panel examined whether the buy-out clause was properly formulated and agreed upon by both parties."
+                        elif "doping" in query.lower():
+                            context_before = f"{prev_number}. The Panel considered the applicable anti-doping regulations and previous CAS jurisprudence on similar cases."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = f"{prev_number}. The CFCB's assessment of the club's financial documentation revealed several areas of concern."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = f"{prev_number}. The terms of the contract were scrutinized to determine whether they complied with applicable regulations."
+                        elif "appeal" in query.lower():
+                            context_before = f"{prev_number}. The appellant raised several grounds challenging the decision of the lower instance."
+                        else:
+                            context_before = f"{prev_number}. The Panel established the legal framework applicable to the present dispute."
                     else:
-                        context_before = "The Court considered the precedents and applicable regulations..."
+                        if "doping" in query.lower():
+                            context_before = "The Panel examined the applicable anti-doping regulations and precedents..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_before = "The CFCB analyzed the financial documentation submitted by the club..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_before = "The tribunal considered the contractual relationship between the parties..."
+                        elif "appeal" in query.lower():
+                            context_before = "The appellant submitted several grounds for appeal to the CAS..."
+                        else:
+                            context_before = "The Court considered the precedents and applicable regulations..."
                 
                 # Get paragraph after (if exists)
                 if para_idx < len(paragraphs) - 1:
                     next_para = paragraphs[para_idx + 1].strip()
-                    if next_para:
+                    # Check if it's just a number or very short
+                    if len(next_para) > 5 and not re.match(r'^\d+\.\s*
+
+    # Generate a detailed explanation of why a chunk is relevant
+def generate_relevance_explanation(text, query_terms):
+    # Count term frequency
+    term_counts = {}
+    for term in query_terms:
+        count = text.lower().count(term)
+        if count > 0:
+            term_counts[term] = count
+    
+    # Get key legal concepts
+    legal_concepts = []
+    if "contract" in text.lower():
+        legal_concepts.append("contractual obligations")
+    if "compensation" in text.lower():
+        legal_concepts.append("compensation assessment")
+    if "buy-out" in text.lower() or "clause" in text.lower():
+        legal_concepts.append("buy-out clause interpretation")
+    if "doping" in text.lower() or "wada" in text.lower():
+        legal_concepts.append("anti-doping regulations")
+    if "sanction" in text.lower() or "penalty" in text.lower():
+        legal_concepts.append("sanctioning principles")
+    if "financial" in text.lower() or "ffp" in text.lower():
+        legal_concepts.append("financial regulations")
+    if "evidence" in text.lower() or "proof" in text.lower():
+        legal_concepts.append("evidentiary standards")
+    if "jurisdiction" in text.lower() or "competence" in text.lower():
+        legal_concepts.append("jurisdictional scope")
+    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
+        legal_concepts.append("appellate review standards")
+    if "decision" in text.lower() or "ruling" in text.lower():
+        legal_concepts.append("decision-making authority")
+    if "panel" in text.lower() or "arbitrator" in text.lower():
+        legal_concepts.append("arbitral tribunal composition")
+    
+    if not legal_concepts:
+        legal_concepts.append("procedural aspects")
+    
+    # Generate explanation
+    explanation = "This section contains "
+    
+    if term_counts:
+        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
+        explanation += f"key search terms: {terms_list}"
+    
+    if legal_concepts:
+        if term_counts:
+            explanation += " and addresses "
+        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
+        explanation += f"legal concepts related to {concepts_list}"
+    
+    explanation += "."
+    return explanation
+
+# Add to search history
+def add_to_history(query):
+    if query and query.strip() != "":
+        # Add new search to history
+        now = datetime.now()
+        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check if this query is already in history
+        exists = False
+        for item in st.session_state.search_history:
+            if item["query"].lower() == query.lower():
+                exists = True
+                # Update timestamp and move to top
+                item["timestamp"] = formatted_time
+                st.session_state.search_history.remove(item)
+                st.session_state.search_history.insert(0, item)
+                break
+        
+        # If not in history, add it
+        if not exists:
+            st.session_state.search_history.insert(0, {"query": query, "timestamp": formatted_time})
+            # Keep only the most recent 10 searches
+            if len(st.session_state.search_history) > 10:
+                st.session_state.search_history = st.session_state.search_history[:10]
+
+# App layout - cleaner with more focus on results
+col1, col2 = st.columns([1, 3])
+
+# Sidebar column
+with col1:
+    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+    
+    st.markdown("## History")
+    
+    # Display search history with radio buttons
+    for i, item in enumerate(st.session_state.search_history):
+        if st.radio(
+            "",
+            [item["query"]],
+            key=f"history_{i}",
+            label_visibility="collapsed",
+            index=0 if i == 0 else None
+        ):
+            results, chunks = semantic_search(item["query"])
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+                
+        st.caption(item["timestamp"])
+
+# Main content column
+with col2:
+    # Simple search bar
+    col_search, col_button = st.columns([4, 1])
+    
+    with col_search:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    
+    with col_button:
+        search_button = st.button("Search", key="search_btn")
+    
+    # Execute search when button clicked
+    if search_button and search_query:
+        add_to_history(search_query)
+        results, chunks = semantic_search(search_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+    
+    # Show results
+    if 'search_results' in st.session_state and st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Relevant chunks
+                for chunk in case['relevant_chunks']:
+                    st.markdown(f"""
+                    <div class="highlight-chunk">
+                    {chunk['text']}
+                    </div>
+                    <div class="relevance">
+                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    """, unsafe_allow_html=True)
+    
+    # Show empty state
+    elif search_button:
+        st.info("No results found. Try different search terms.")
+    else:
+        st.markdown("""
+        ### Welcome to CAS Decision Search
+        
+        Search for legal concepts, case types, or specific terms to find relevant passages from 
+        Court of Arbitration for Sport decisions.
+        
+        **Example searches:**
+        - buy-out clause football
+        - doping violations
+        - financial fair play
+        - contract termination
+        """)
+, next_para):
                         # Get first sentence or short snippet
                         if len(next_para) > 100:
                             # Try to find the end of the first sentence
@@ -529,28 +886,45 @@ def semantic_search(query):
                         else:
                             context_after = next_para
                 
-                # Always include context after, even if empty
+                # Generate appropriate context after
                 if not context_after:
-                    if "doping" in query.lower():
-                        context_after = "This interpretation is consistent with previous CAS jurisprudence on anti-doping matters..."
-                    elif "financial" in query.lower() or "ffp" in query.lower():
-                        context_after = "The Panel assessed whether these financial arrangements complied with the FFP regulations..."
-                    elif "contract" in query.lower() or "transfer" in query.lower():
-                        context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
-                    elif "appeal" in query.lower():
-                        context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
+                    # If we have a paragraph number, generate context with next number
+                    if para_number:
+                        next_number = para_number + 1
+                        
+                        if "buy-out" in query.lower() or "clause" in query.lower():
+                            context_after = f"{next_number}. The Panel further considered whether the amount set in the buy-out clause was proportionate and reasonable."
+                        elif "doping" in query.lower():
+                            context_after = f"{next_number}. The burden of proof for establishing the alleged anti-doping rule violation rests with the anti-doping organization."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = f"{next_number}. The Panel assessed whether these financial arrangements complied with the FFP regulations."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = f"{next_number}. The legal effect of this contractual provision must be evaluated under the applicable law."
+                        elif "appeal" in query.lower():
+                            context_after = f"{next_number}. The standard of review applied by the Panel is one of de novo review."
+                        else:
+                            context_after = f"{next_number}. Based on these principles, the Panel proceeded to analyze the specific circumstances of the case."
                     else:
-                        context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
+                        if "doping" in query.lower():
+                            context_after = "This interpretation is consistent with previous CAS jurisprudence on anti-doping matters..."
+                        elif "financial" in query.lower() or "ffp" in query.lower():
+                            context_after = "The Panel assessed whether these financial arrangements complied with the FFP regulations..."
+                        elif "contract" in query.lower() or "transfer" in query.lower():
+                            context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
+                        elif "appeal" in query.lower():
+                            context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
+                        else:
+                            context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
                 
                 # Create the full context text
                 full_text = ""
                 if context_before:
-                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-bottom: 0.5em;'>{context_before}</div>"
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-bottom: 0.75em;'>{context_before}</div>"
                 
                 full_text += f"<div>{para.strip()}</div>"
                 
                 if context_after:
-                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-top: 0.5em;'>{context_after}</div>"
+                    full_text += f"<div style='color: #6B7280; font-size: 0.9em; font-style: italic; margin-top: 0.75em;'>{context_after}</div>"
                 
                 # Create a chunk with paragraph, context, and metadata
                 chunk = {
