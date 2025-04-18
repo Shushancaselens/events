@@ -65,64 +65,165 @@ def get_common_words(text):
     
     return words
 
-def simple_similarity(text1, text2):
-    """Calculate simple similarity between two texts based on word overlap"""
-    if not text1 or not text2:
-        return 0.0
-        
-    words1 = get_common_words(text1)
-    words2 = get_common_words(text2)
-    
-    if not words1 or not words2:
-        return 0.0
-    
-    # Calculate Jaccard similarity (intersection over union)
-    intersection = len(words1.intersection(words2))
-    union = len(words1.union(words2))
-    
-    if union == 0:
-        return 0.0
-        
-    return intersection / union
-
-def search_documents(query, doc_contents, threshold=0.2):
-    """Search documents using simple text similarity"""
-    if not doc_contents or not query:
-        return []
-    
-    # Get query words
-    query_words = get_common_words(query)
-    if not query_words:
-        return []
-    
-    # Results list
+def improved_search(query, doc_contents, threshold=0.1):
+    """Enhanced search functionality with multiple strategies"""
     results = []
+    query = query.strip()
     
-    # For each document
+    if not query or not doc_contents:
+        return results
+    
+    # 1. Direct search (exact phrase matching with highest priority)
     for doc_id, content in doc_contents.items():
-        # Split content into paragraphs
+        # Split content into paragraphs or sentences
         paragraphs = re.split(r'\n\s*\n', content)
         
-        # For each paragraph
         for i, paragraph in enumerate(paragraphs):
             if len(paragraph.strip()) < 20:  # Skip very short paragraphs
                 continue
-                
-            # Calculate similarity with query
-            similarity = simple_similarity(query, paragraph)
             
-            # Check if it meets threshold
-            if similarity >= threshold:
+            # Check for exact phrase match (case insensitive)
+            if query.lower() in paragraph.lower():
                 results.append({
                     'doc_id': doc_id,
                     'paragraph_index': i,
                     'text': paragraph,
-                    'similarity': round(similarity, 3),
-                    'start_pos': content.find(paragraph)
+                    'similarity': 0.95,  # High score for exact matches
+                    'start_pos': content.find(paragraph),
+                    'match_type': 'exact phrase'
                 })
     
+    # 2. Keyword search (check if all keywords are present)
+    query_words = set(preprocess_text(query).split())
+    if query_words:
+        for doc_id, content in doc_contents.items():
+            paragraphs = re.split(r'\n\s*\n', content)
+            
+            for i, paragraph in enumerate(paragraphs):
+                if len(paragraph.strip()) < 20:
+                    continue
+                
+                paragraph_words = set(preprocess_text(paragraph).split())
+                if not paragraph_words:
+                    continue
+                
+                # Check how many query words are in the paragraph
+                matches = query_words.intersection(paragraph_words)
+                if matches:
+                    # Calculate score based on % of query words found
+                    score = len(matches) / len(query_words)
+                    
+                    # Only include if score is above threshold and not already included
+                    if score >= threshold:
+                        # Check if this paragraph is already in results
+                        if not any(r['doc_id'] == doc_id and r['paragraph_index'] == i for r in results):
+                            results.append({
+                                'doc_id': doc_id,
+                                'paragraph_index': i,
+                                'text': paragraph,
+                                'similarity': round(score, 3),
+                                'start_pos': content.find(paragraph),
+                                'match_type': 'keyword'
+                            })
+    
+    # 3. Semantic search (word overlap)
+    for doc_id, content in doc_contents.items():
+        paragraphs = re.split(r'\n\s*\n', content)
+        
+        for i, paragraph in enumerate(paragraphs):
+            if len(paragraph.strip()) < 20:
+                continue
+                
+            # Skip if already matched exactly
+            if any(r['doc_id'] == doc_id and r['paragraph_index'] == i and r['match_type'] == 'exact phrase' for r in results):
+                continue
+            
+            # Get words from query and paragraph
+            para_words = get_common_words(paragraph)
+            query_words_set = get_common_words(query)
+            
+            if para_words and query_words_set:
+                # Calculate Jaccard similarity
+                intersection = len(para_words.intersection(query_words_set))
+                union = len(para_words.union(query_words_set))
+                
+                if union > 0:
+                    similarity = intersection / union
+                    
+                    # Only add if above threshold and better than existing
+                    if similarity >= threshold:
+                        existing = next((r for r in results if r['doc_id'] == doc_id and r['paragraph_index'] == i), None)
+                        
+                        if existing is None:
+                            results.append({
+                                'doc_id': doc_id,
+                                'paragraph_index': i,
+                                'text': paragraph,
+                                'similarity': round(similarity, 3),
+                                'start_pos': content.find(paragraph),
+                                'match_type': 'semantic'
+                            })
+                        elif existing['similarity'] < similarity:
+                            # Update with better similarity score
+                            existing['similarity'] = round(similarity, 3)
+                            existing['match_type'] = 'semantic'
+    
+    # 4. Special patterns search (legal terminology and structures)
+    legal_patterns = [
+        (r'(?i)(?:article|section|clause)\s+\d+(?:\.\d+)*', 'contract reference'),
+        (r'(?i)(?:exhibit|evidence|document)\s+[A-Z0-9\-]+', 'evidence reference'),
+        (r'(?i)(?:contends?|submits?|argues?|claims?|asserts?)\s+that', 'legal argument'),
+        (r'(?i)(?:claimant|respondent|appellant|defendant)', 'party reference'),
+        (r'(?i)(?:tribunal|arbitrator|hearing|proceedings?)', 'procedural reference')
+    ]
+    
+    query_terms = query.lower().split()
+    
+    # Check if any query terms match special legal terms
+    for pattern, pattern_type in legal_patterns:
+        if any(re.search(pattern.lower(), term.lower()) for term in query_terms):
+            # Search for this pattern in documents
+            for doc_id, content in doc_contents.items():
+                paragraphs = re.split(r'\n\s*\n', content)
+                
+                for i, paragraph in enumerate(paragraphs):
+                    if len(paragraph.strip()) < 20:
+                        continue
+                    
+                    # Skip if already matched with high score
+                    if any(r['doc_id'] == doc_id and r['paragraph_index'] == i and r['similarity'] > 0.7 for r in results):
+                        continue
+                    
+                    if re.search(pattern, paragraph):
+                        # Check if paragraph contains any query words
+                        if any(term.lower() in paragraph.lower() for term in query_terms):
+                            # Only add if not already present with higher score
+                            existing = next((r for r in results if r['doc_id'] == doc_id and r['paragraph_index'] == i), None)
+                            
+                            if existing is None:
+                                results.append({
+                                    'doc_id': doc_id,
+                                    'paragraph_index': i,
+                                    'text': paragraph,
+                                    'similarity': 0.6,  # Medium-high score for pattern matches
+                                    'start_pos': content.find(paragraph),
+                                    'match_type': pattern_type
+                                })
+    
     # Sort by similarity score (highest first)
-    return sorted(results, key=lambda x: x['similarity'], reverse=True)
+    results.sort(key=lambda x: x['similarity'], reverse=True)
+    
+    # Remove duplicates (keeping the highest scoring version)
+    unique_results = []
+    seen_paragraphs = set()
+    
+    for result in results:
+        key = (result['doc_id'], result['paragraph_index'])
+        if key not in seen_paragraphs:
+            seen_paragraphs.add(key)
+            unique_results.append(result)
+    
+    return unique_results
 
 def compare_documents(doc1_id, doc2_id):
     """Compare two documents and highlight differences"""
@@ -150,10 +251,16 @@ def compare_documents(doc1_id, doc2_id):
             para2_words = get_common_words(para2)
             
             # Calculate similarity
-            similarity = simple_similarity(para1, para2)
+            similarity = 0
+            if para1_words and para2_words:
+                intersection = len(para1_words.intersection(para2_words))
+                union = len(para1_words.union(para2_words))
+                
+                if union > 0:
+                    similarity = intersection / union
             
             # Only consider paragraphs that are somewhat similar
-            if similarity > 0.5:
+            if similarity > 0.4:
                 # Use difflib to find differences
                 d = difflib.Differ()
                 diff = list(d.compare(para1.splitlines(), para2.splitlines()))
@@ -260,6 +367,7 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
         for i, result in enumerate(search_results, 1):
             report.append(f"## Result {i} (Similarity: {result['similarity']})\n")
             report.append(f"Document: {result['doc_id']}\n")
+            report.append(f"Match type: {result.get('match_type', 'similarity')}\n")
             report.append(f"Text: {result['text']}\n\n")
     
     if compare_results:
@@ -288,6 +396,27 @@ def create_downloadable_report(search_results=None, compare_results=None, summar
             report.append("\n")
     
     return "\n".join(report)
+
+def highlight_search_terms(text, search_terms):
+    """Highlight search terms in text with better accuracy"""
+    if not text or not search_terms:
+        return text
+    
+    # First try exact phrase highlighting
+    highlighted_text = text
+    search_phrase = " ".join(search_terms).strip()
+    if len(search_phrase) > 3:
+        pattern = re.compile(re.escape(search_phrase), re.IGNORECASE)
+        highlighted_text = pattern.sub(f"<mark>{search_phrase}</mark>", highlighted_text)
+    
+    # Then try individual terms
+    for term in search_terms:
+        if len(term) > 2:  # Only highlight terms with more than 2 characters
+            # Make sure we're highlighting whole words, not parts of words
+            pattern = re.compile(r'\b(' + re.escape(term) + r')\b', re.IGNORECASE)
+            highlighted_text = pattern.sub(r'<mark>\1</mark>', highlighted_text)
+    
+    return highlighted_text
 
 # UI Components
 st.title("Sports Arbitration Smart Search")
@@ -381,10 +510,38 @@ if not st.session_state.documents:
         3. Order the Claimant to pay the costs of this arbitration.
         """
         
-        st.session_state.documents = {"Claimant_Submission.txt": None, "Respondent_Reply.txt": None}
+        # Sample sports-specific arbitration text
+        sample3 = """
+        Appeal to the Court of Arbitration for Sport
+        
+        The Appellant, FC United, challenges the decision of the FIFA Disciplinary Committee dated October 12, 2024, in which the Committee imposed a transfer ban for two registration periods and a fine of CHF 500,000 for alleged violations of Article 19 of the FIFA Regulations on the Status and Transfer of Players regarding the international transfer of minors.
+        
+        Firstly, the Appellant contends that no breach of Article 19 has occurred, as all transfers in question fall under the exceptions listed in Article 19.2, specifically that the players' parents moved to the country for reasons not linked to football (Article 19.2.a).
+        
+        According to the documentation submitted as Exhibit A-5, the parents of Player X moved to the country for employment opportunities unrelated to football. The Disciplinary Committee erred in its assessment that the employment was arranged by the club.
+        
+        Moreover, the Appellant argues that the Committee failed to properly consider the welfare of the players in question, as mandated by Article 19.1, which states that international transfers are only permitted when "the players' welfare and sporting development are guaranteed."
+        
+        The Appellant submits that the sanctions imposed are disproportionate to the alleged infringements, especially in light of the jurisprudence established in CAS 2014/A/3793 where significantly more lenient sanctions were imposed for similar violations.
+        
+        Furthermore, the Appellant maintains that procedural violations occurred during the FIFA disciplinary proceedings, as specified in Exhibit A-12, where it is demonstrated that the Appellant was not granted sufficient time to prepare its defense.
+        
+        In conclusion, the Appellant requests that the Panel:
+        1. Annul the decision of the FIFA Disciplinary Committee;
+        2. Determine that no violation of Article 19 has occurred;
+        3. Alternatively, reduce the sanctions to a level consistent with CAS jurisprudence;
+        4. Order FIFA to pay the costs of the arbitration proceedings.
+        """
+        
+        st.session_state.documents = {
+            "Claimant_Submission.txt": None, 
+            "Respondent_Reply.txt": None,
+            "CAS_Appeal.txt": None
+        }
         st.session_state.document_content = {
             "Claimant_Submission.txt": sample1,
-            "Respondent_Reply.txt": sample2
+            "Respondent_Reply.txt": sample2,
+            "CAS_Appeal.txt": sample3
         }
         st.success("Sample data loaded successfully!")
         st.rerun()
@@ -395,6 +552,15 @@ tab1, tab2, tab3, tab4 = st.tabs(["Smart Search", "Document Compare", "Argument 
 # Tab 1: Smart Search
 with tab1:
     st.header("Smart Search")
+    
+    with st.container():
+        st.markdown("""
+        ### Search Examples:
+        - Legal concepts: "force majeure", "liquidated damages", "breach of contract"
+        - Document references: "Article 3.2", "Exhibit A-1"
+        - Legal arguments: "claimant contends", "respondent argues" 
+        - Sports terms: "transfer ban", "FIFA regulations", "player registration"
+        """)
     
     col1, col2 = st.columns([3, 1])
     
@@ -410,7 +576,7 @@ with tab1:
     
     if search_button and search_query:
         with st.spinner("Searching documents..."):
-            search_results = search_documents(search_query, st.session_state.document_content, search_threshold)
+            search_results = improved_search(search_query, st.session_state.document_content, search_threshold)
             st.session_state.search_results = search_results
     
     if st.session_state.search_results:
@@ -419,174 +585,43 @@ with tab1:
         # No results message
         if len(st.session_state.search_results) == 0:
             st.info("No matching results found. Try lowering the similarity threshold or using different search terms.")
-        
-        # Display results
-        for i, result in enumerate(st.session_state.search_results):
-            with st.expander(f"Result {i+1} - {result['doc_id']} (Similarity: {result['similarity']})"):
-                # Display the paragraph with context
-                st.markdown(f"**Document:** {result['doc_id']}")
-                st.markdown(f"**Paragraph {result['paragraph_index']}:**")
-                
-                # Highlight the matching text
-                highlighted_text = result['text']
-                for term in search_query.lower().split():
-                    if len(term) > 3:  # Only highlight meaningful terms
-                        pattern = re.compile(re.escape(term), re.IGNORECASE)
-                        highlighted_text = pattern.sub(f"<mark>{term}</mark>", highlighted_text)
-                
-                st.markdown(highlighted_text, unsafe_allow_html=True)
-        
-        # Download results button
-        if st.button("Download Search Results", key="download_search"):
-            report = create_downloadable_report(search_results=st.session_state.search_results)
-            b64 = base64.b64encode(report.encode()).decode()
-            href = f'<a href="data:text/plain;base64,{b64}" download="search_results.txt">Download search results</a>'
-            st.markdown(href, unsafe_allow_html=True)
-
-# Tab 2: Document Compare
-with tab2:
-    st.header("Document Compare")
-    
-    if not st.session_state.documents or len(st.session_state.documents) < 2:
-        st.warning("Please upload at least two documents to compare.")
-    else:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            doc1_id = st.selectbox("Select first document", 
-                                  options=list(st.session_state.documents.keys()),
-                                  key="compare_doc1")
-        
-        with col2:
-            doc2_options = [doc for doc in st.session_state.documents.keys() if doc != doc1_id]
-            doc2_id = st.selectbox("Select second document", 
-                                 options=doc2_options,
-                                 key="compare_doc2")
-        
-        compare_button = st.button("Compare Documents", type="primary", key="compare_button")
-        
-        if compare_button:
-            with st.spinner("Comparing documents..."):
-                compare_results = compare_documents(doc1_id, doc2_id)
-                st.session_state.compare_results = compare_results
-        
-        if st.session_state.compare_results:
-            st.subheader(f"Comparison Results ({len(st.session_state.compare_results)} differences)")
+            st.markdown("""
+            **Search Tips:**
+            - Use more specific legal terminology
+            - Try searching for document references (e.g., "Article 8.3", "Exhibit R-1")
+            - Use phrases that typically appear in legal documents (e.g., "the claimant submits")
+            - Consider searching for dates or specific entities mentioned in the documents
+            """)
+        else:
+            # Display results with grouping by document
+            docs = sorted(set(r['doc_id'] for r in st.session_state.search_results))
             
-            # Filter options
-            show_substantial_only = st.checkbox("Show substantial differences only", value=True)
+            # Option to filter by document
+            selected_docs = st.multiselect("Filter by document", options=docs, default=docs)
             
-            # Filter results if needed
-            filtered_results = [r for r in st.session_state.compare_results 
-                              if not show_substantial_only or r['is_substantial']]
+            # Group results by document and filter
+            filtered_results = [r for r in st.session_state.search_results if r['doc_id'] in selected_docs]
             
             if not filtered_results:
-                st.info("No substantial differences found. Uncheck 'Show substantial differences only' to see all differences.")
+                st.info("No results in the selected documents.")
             
-            for i, result in enumerate(filtered_results):
-                with st.expander(f"Difference {i+1} - " + 
-                               f"{'Substantial' if result['is_substantial'] else 'Minor'} " +
-                               f"(Similarity: {result['similarity']:.2f})"):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown(f"**Document: {result['doc1_id']}**")
-                        st.markdown(result['doc1_formatted'], unsafe_allow_html=True)
-                    
-                    with col2:
-                        st.markdown(f"**Document: {result['doc2_id']}**")
-                        st.markdown(result['doc2_formatted'], unsafe_allow_html=True)
-            
-            # Download results button
-            if st.button("Download Comparison Results", key="download_compare"):
-                report = create_downloadable_report(compare_results=st.session_state.compare_results)
-                b64 = base64.b64encode(report.encode()).decode()
-                href = f'<a href="data:text/plain;base64,{b64}" download="comparison_results.txt">Download comparison results</a>'
-                st.markdown(href, unsafe_allow_html=True)
-
-# Tab 3: Argument Summary
-with tab3:
-    st.header("Argument Summary")
-    
-    if not st.session_state.documents:
-        st.warning("Please upload documents to summarize.")
-    else:
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            doc_id = st.selectbox("Select document to summarize", 
-                                options=list(st.session_state.documents.keys()),
-                                key="summary_doc")
-        
-        with col2:
-            doc_type = st.selectbox("Document type", 
-                                   options=["submission", "exhibit"],
-                                   key="summary_type")
-            summarize_button = st.button("Generate Summary", type="primary", key="summarize_button")
-        
-        if summarize_button:
-            with st.spinner("Generating argument summary..."):
-                summary = create_summary(doc_id, doc_type)
-                st.session_state.summary = summary
-        
-        if st.session_state.summary:
-            st.subheader(f"Argument Summary ({st.session_state.summary['argument_count']} arguments)")
-            
-            if st.session_state.summary['argument_count'] == 0:
-                st.info("No clear arguments found in this document. This could be because the document doesn't contain typical argument patterns or uses different phrasing.")
-                st.write("You can try:")
-                st.write("1. Selecting a different document type")
-                st.write("2. Using the Smart Search tab to search for specific legal terms")
-            
-            for i, arg in enumerate(st.session_state.summary['arguments']):
-                with st.expander(f"Argument {i+1}"):
-                    st.markdown(f"**Text:** {arg['text']}")
-                    
-                    if arg['evidence']:
-                        st.markdown("**Evidence cited:**")
-                        for ev in arg['evidence']:
-                            st.markdown(f"- {ev}")
-                    
-                    st.markdown("**Context:**")
-                    st.text(arg['context'])
-            
-            # Download results button
-            if st.button("Download Argument Summary", key="download_summary"):
-                report = create_downloadable_report(summary=st.session_state.summary)
-                b64 = base64.b64encode(report.encode()).decode()
-                href = f'<a href="data:text/plain;base64,{b64}" download="argument_summary.txt">Download argument summary</a>'
-                st.markdown(href, unsafe_allow_html=True)
-
-# Tab 4: Document Viewer
-with tab4:
-    st.header("Document Viewer")
-    
-    if not st.session_state.documents:
-        st.warning("Please upload documents to view.")
-    else:
-        doc_id = st.selectbox("Select document to view", 
-                            options=list(st.session_state.documents.keys()),
-                            key="view_doc")
-        
-        if doc_id in st.session_state.document_content:
-            content = st.session_state.document_content[doc_id]
-            
-            # Add search within document feature
-            search_term = st.text_input("Search within document", key="doc_search")
-            if search_term:
-                highlighted_content = content
-                for term in search_term.split():
-                    if len(term) > 2:  # Only highlight terms with more than 2 characters
-                        pattern = re.compile(f'({re.escape(term)})', re.IGNORECASE)
-                        highlighted_content = pattern.sub(r'<mark>\1</mark>', highlighted_content)
+            # Display match type distribution
+            if filtered_results:
+                match_types = {}
+                for r in filtered_results:
+                    match_type = r.get('match_type', 'other')
+                    match_types[match_type] = match_types.get(match_type, 0) + 1
                 
-                # Convert newlines to HTML breaks for proper display
-                highlighted_content = highlighted_content.replace('\n', '<br>')
-                st.markdown(highlighted_content, unsafe_allow_html=True)
-            else:
-                # Show plain text with a scrollable area
-                st.text_area("Document Content", value=content, height=500, key="doc_content")
-
-# Footer
-st.markdown("---")
-st.markdown("**Sports Arbitration Smart Search Tool** - Developed to assist legal professionals in analyzing arbitration documents")
+                st.write("**Match types found:**")
+                for match_type, count in match_types.items():
+                    st.write(f"- {match_type.title()}: {count}")
+            
+            # Organize by document
+            for doc in selected_docs:
+                doc_results = [r for r in filtered_results if r['doc_id'] == doc]
+                if doc_results:
+                    with st.expander(f"**{doc}** ({len(doc_results)} matches)", expanded=True):
+                        for i, result in enumerate(doc_results):
+                            st.markdown(f"#### Match {i+1} - {result.get('match_type', 'similarity match').title()} (Similarity: {result['similarity']})")
+                            
+                            # Highlight the
