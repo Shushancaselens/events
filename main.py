@@ -632,11 +632,11 @@ with col2:
                 # Relevant chunks
                 for chunk in case['relevant_chunks']:
                     st.markdown(f"""
-                    <div class="highlight-chunk">
-                    {chunk['text']}
-                    </div>
                     <div class="relevance">
                     <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                    </div>
+                    <div class="highlight-chunk">
+                    {chunk['text']}
                     </div>
                     """, unsafe_allow_html=True)
     
@@ -830,8 +830,8 @@ with col2:
         st.session_state.search_results = results
         st.session_state.chunks = chunks
     
-    # Show results
-    if 'search_results' in st.session_state and st.session_state.search_results:
+    # Show results only after a search is performed
+    if search_button and 'search_results' in st.session_state and st.session_state.search_results:
         st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
         
         # Display results grouped by case
@@ -847,19 +847,19 @@ with col2:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Relevant chunks
+                # Relevant chunks with relevance above them
                 for chunk in case['relevant_chunks']:
                     st.markdown(f"""
-                    <div class="highlight-chunk">
-                    {chunk['text']}
-                    </div>
                     <div class="relevance">
                     <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
                     </div>
+                    <div class="highlight-chunk">
+                    {chunk['text']}
+                    </div>
                     """, unsafe_allow_html=True)
     
-    # Show empty state
-    elif search_button:
+    # Show empty state if no search or no results
+    elif search_button and search_query:
         st.info("No results found. Try different search terms.")
     else:
         st.markdown("""
