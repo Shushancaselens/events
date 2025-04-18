@@ -5,48 +5,134 @@ import re
 import time
 
 # Set page configuration
-st.set_page_config(page_title="CAS Decision Search", layout="wide")
+st.set_page_config(page_title="CaseLens - CAS Decision Search", layout="wide")
 
 # Basic styling - clean and simple
 st.markdown("""
 <style>
     body {font-family: Arial, sans-serif;}
     
-    /* Simple header */
-    .header {
-        padding: 1rem 0;
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 1rem;
+    /* Sidebar styling to match screenshot */
+    section[data-testid="stSidebar"] {
+        background-color: #f1f3f9;
+        padding: 2rem 1rem;
     }
     
-    /* Clean search container */
-    .search-container {
+    /* Logo styling */
+    .sidebar-logo {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .logo-icon {
+        background-color: #4a66f0;
+        color: white;
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    
+    .logo-text {
+        color: #333;
+        font-size: 30px;
+        font-weight: bold;
+    }
+    
+    /* History item styling */
+    .history-section {
+        margin-top: 2rem;
+        margin-bottom: 3rem;
+    }
+    
+    .history-title {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 1.5rem;
+        color: #333;
+    }
+    
+    .history-item {
+        display: flex;
+        align-items: center;
         margin-bottom: 1.5rem;
     }
     
-    /* Results container */
-    .results-container {
-        border: 1px solid #e5e7eb;
-        border-radius: 4px;
-        padding: 1rem;
+    .history-radio {
+        margin-right: 10px;
+    }
+    
+    .history-query {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+    
+    .history-time {
+        font-size: 14px;
+        color: #888;
+        margin-top: 0.2rem;
+    }
+    
+    /* User profile section */
+    .profile-section {
+        border-top: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    
+    .profile-name {
+        font-size: 20px;
+        font-weight: bold;
         margin-bottom: 1rem;
     }
     
-    /* Case title */
-    .case-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        margin-bottom: 0.5rem;
+    .logout-btn {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 0.5rem 1.5rem;
+        background-color: white;
+        color: #333;
+        font-weight: 500;
+        text-align: center;
+        width: fit-content;
+        cursor: pointer;
     }
     
-    /* Case metadata */
-    .case-meta {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin-bottom: 0.75rem;
+    /* Social media section */
+    .social-section {
+        margin-top: 1rem;
     }
     
-    /* Explanation box - blue background */
+    .social-title {
+        font-size: 16px;
+        color: #888;
+        margin-bottom: 1rem;
+    }
+    
+    .social-icons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .social-icon {
+        width: 40px;
+        height: 40px;
+        background-color: #000;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Main content styling */
     .explanation {
         font-size: 0.95rem;
         color: #1e3a8a;
@@ -57,48 +143,27 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Highlighted relevant paragraph - green background */
     .relevant-paragraph {
         background-color: #d1fae5;  /* Light green background */
         padding: 1rem;
         margin: 0;
     }
     
-    /* Context paragraphs - normal styling */
     .context-paragraph {
         padding: 1rem;
         margin: 0;
     }
     
-    /* Document section containing context and relevant paragraph */
     .document-section {
         border: 1px solid #e5e7eb;
         border-radius: 4px;
         margin-bottom: 1.5rem;
     }
     
-    /* Simple button */
-    .stButton>button {
-        background-color: #2563eb;
-        color: white;
-        border: none;
-    }
-    
-    /* Remove excess padding */
-    .stTextInput>div>div>input {
-        padding: 0.5rem;
-    }
-    
-    /* History item */
-    .history-item {
-        padding: 0.5rem;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    
-    /* Make sidebar cleaner */
-    section[data-testid="stSidebar"] > div {
-        background-color: #f9fafb;
-        padding: 1.5rem 1rem;
+    .case-meta {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -313,9 +378,9 @@ df_decisions = pd.DataFrame(cas_decisions)
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = [
-        {"query": "buy-out clause", "timestamp": "2024-04-18 15:32:42"},
-        {"query": "sporting results", "timestamp": "2024-04-18 14:20:23"},
-        {"query": "satellite collision", "timestamp": "2024-04-18 11:45:18"}
+        {"query": "Processing of satellite collision events", "timestamp": "2024-07-14 18:22:42"},
+        {"query": "facts related to national security in the problem", "timestamp": "2024-07-14 18:20:23"},
+        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:15:18"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
@@ -428,7 +493,8 @@ def generate_relevance_explanation(text, query_terms):
         "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
         "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
         "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
-        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests."
+        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
+        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes."
     }
     
     # Check if any of our pre-defined topics match the query
@@ -465,123 +531,154 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
-# App layout - cleaner with more focus on results
-col1, col2 = st.columns([1, 3])
-
-# Sidebar column
-with col1:
-    st.markdown("<h2>CAS Decision Search</h2>", unsafe_allow_html=True)
+# ===== SIDEBAR COMPONENTS =====
+with st.sidebar:
+    # Logo and app title
+    st.markdown("""
+    <div class="sidebar-logo">
+        <div class="logo-icon">c</div>
+        <div class="logo-text">caselens</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.markdown("## History")
+    # History section
+    st.markdown('<div class="history-section">', unsafe_allow_html=True)
+    st.markdown('<div class="history-title">History</div>', unsafe_allow_html=True)
     
     # Display search history with radio buttons
     for i, item in enumerate(st.session_state.search_history):
-        if st.radio(
-            "",
-            [item["query"]],
-            key=f"history_{i}",
-            label_visibility="collapsed",
-            index=0 if i == 0 else None
-        ):
-            st.session_state.current_query = item["query"]
-            st.session_state.is_searching = True
-            st.session_state.search_complete = False
-                
-        st.caption(item["timestamp"])
+        col1, col2 = st.columns([1, 9])
+        
+        with col1:
+            selected = st.radio("", [""], key=f"history_{i}", label_visibility="collapsed")
+            if selected:
+                st.session_state.current_query = item["query"]
+                st.session_state.is_searching = True
+                st.session_state.search_complete = False
+        
+        with col2:
+            st.markdown(f"<div class='history-query'>{item['query']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='history-time'>{item['timestamp']}</div>", unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # User profile section
+    st.markdown('<div class="profile-section">', unsafe_allow_html=True)
+    st.markdown('<div class="profile-name">Shushan Yazichyan</div>', unsafe_allow_html=True)
+    st.markdown('<div class="logout-btn">Logout</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Social media section
+    st.markdown('<div class="social-section">', unsafe_allow_html=True)
+    st.markdown('<div class="social-title">Connect with us!</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="social-icons">
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+            </svg>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Main content column
-with col2:
-    # Simple search bar
-    col_search, col_button = st.columns([4, 1])
-    
-    with col_search:
-        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
-    
-    with col_button:
-        search_button = st.button("Search", key="search_btn")
-    
-    # If search button clicked, start the search process
-    if search_button and search_query:
-        st.session_state.current_query = search_query
-        st.session_state.is_searching = True
-        st.session_state.search_complete = False
-        add_to_history(search_query)
-    
-    # Display loading state
-    if st.session_state.is_searching:
-        with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
-            # Simulate search processing time
-            time.sleep(2)  # 2 second delay
-            
-            # Perform the actual search
-            results, chunks = semantic_search(st.session_state.current_query)
-            st.session_state.search_results = results
-            st.session_state.chunks = chunks
-            
-            # Update state
-            st.session_state.is_searching = False
-            st.session_state.search_complete = True
-    
-    # Show results when search is complete
-    if st.session_state.search_complete and 'search_results' in st.session_state:
-        if st.session_state.search_results:
-            st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
-            
-            # Display results grouped by case
-            for case in st.session_state.search_results:
-                with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                    # Case metadata
+# Main content area
+# Simple search bar at top
+search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+search_button = st.button("Search", key="search_btn")
+
+# If search button clicked, start the search process
+if search_button and search_query:
+    st.session_state.current_query = search_query
+    st.session_state.is_searching = True
+    st.session_state.search_complete = False
+    add_to_history(search_query)
+
+# Display loading state
+if st.session_state.is_searching:
+    with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
+        # Simulate search processing time
+        time.sleep(2)  # 2 second delay
+        
+        # Perform the actual search
+        results, chunks = semantic_search(st.session_state.current_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+        
+        # Update state
+        st.session_state.is_searching = False
+        st.session_state.search_complete = True
+
+# Show results when search is complete
+if st.session_state.search_complete and 'search_results' in st.session_state:
+    if st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display each relevant chunk with its context
+                for chunk in case['relevant_chunks']:
+                    # First, show the explanation box
                     st.markdown(f"""
-                    <div class="case-meta">
-                        <strong>Date:</strong> {case['date']} | 
-                        <strong>Type:</strong> {case['type']} | 
-                        <strong>Sport:</strong> {case['sport']} | 
-                        <strong>Panel:</strong> {case['panel']}
+                    <div class="explanation">
+                    <strong>Explanation:</strong> {chunk['explanation']}
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Display each relevant chunk with its context
-                    for chunk in case['relevant_chunks']:
-                        # First, show the explanation box
-                        st.markdown(f"""
-                        <div class="explanation">
-                        <strong>Explanation:</strong> {chunk['explanation']}
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Now display the paragraphs in their natural order
-                        paragraphs_html = ""
-                        
-                        for para in chunk['paragraphs']:
-                            if para['position'] == 'match':
-                                # This is the matching paragraph - highlight it with green background
-                                paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
-                            else:
-                                # This is a context paragraph - normal styling
-                                paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
-                        
-                        # Output the entire document section
-                        st.markdown(f"""
-                        <div class="document-section">
-                        {paragraphs_html}
-                        </div>
-                        """, unsafe_allow_html=True)
-        else:
-            st.info("No results found. Try different search terms.")
+                    # Now display the paragraphs in their natural order
+                    paragraphs_html = ""
+                    
+                    for para in chunk['paragraphs']:
+                        if para['position'] == 'match':
+                            # This is the matching paragraph - highlight it with green background
+                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                        else:
+                            # This is a context paragraph - normal styling
+                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
+                    
+                    # Output the entire document section
+                    st.markdown(f"""
+                    <div class="document-section">
+                    {paragraphs_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+    else:
+        st.info("No results found. Try different search terms.")
+
+# Show welcome screen if no search has been done
+if not st.session_state.is_searching and not st.session_state.search_complete:
+    st.markdown("""
+    ### Welcome to CaseLens
     
-    # Show welcome screen if no search has been done
-    if not st.session_state.is_searching and not st.session_state.search_complete:
-        st.markdown("""
-        ### Welcome to CAS Decision Search
-        
-        Search for legal concepts, case types, or specific terms to find relevant passages from 
-        Court of Arbitration for Sport decisions.
-        
-        **Example searches:**
-        - buy-out clause
-        - sporting results
-        - satellite collision
-        - coach contract
-        - just cause
-        - compensation
-        """)
+    Search for legal concepts, case types, or specific terms to find relevant passages from 
+    Court of Arbitration for Sport decisions.
+    
+    **Example searches:**
+    - buy-out clause
+    - sporting results
+    - satellite collision
+    - national security
+    - contract termination
+    - compensation
+    """)
