@@ -1,594 +1,366 @@
 import streamlit as st
 import pandas as pd
 import re
-from datetime import datetime
+from io import StringIO
+import PyPDF2
+import docx
+import numpy as np
 from collections import Counter
-import base64
+import tempfile
+import os
 
-# Initialize session state for document storage
-if 'documents' not in st.session_state:
-    st.session_state['documents'] = {}
-if 'current_case' not in st.session_state:
-    st.session_state['current_case'] = None
-if 'cases' not in st.session_state:
-    st.session_state['cases'] = []
-if 'search_history' not in st.session_state:
-    st.session_state['search_history'] = []
+st.set_page_config(page_title="Sports Arbitration Document Assistant", layout="wide")
+st.title("Sports Arbitration Document Assistant")
 
-# Common English stopwords
-STOP_WORDS = {
-    'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
-    'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers',
-    'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves',
-    'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are',
-    'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does',
-    'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until',
-    'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into',
-    'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
-    'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here',
-    'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more',
-    'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
-    'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
-}
+# Function to read PDF files
+def read_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    text = ""
+    for page_num in range(len(pdf_reader.pages)):
+        page = pdf_reader.pages[page_num]
+        text += page.extract_text() + "\n--- Page Break ---\n"
+    return text
 
-# Add domain-specific stopwords
-LEGAL_STOPWORDS = {
-    'court', 'case', 'appeal', 'defendant', 'plaintiff', 'appellant', 'respondent', 
-    'exhibit', 'document', 'evidence', 'witness', 'testimony', 'judge', 'tribunal', 
-    'arbitration', 'arbitrator', 'law', 'legal', 'paragraph', 'submission'
-}
-STOP_WORDS.update(LEGAL_STOPWORDS)
+# Function to read DOCX files
+def read_docx(file):
+    doc = docx.Document(file)
+    text = ""
+    for para in doc.paragraphs:
+        text += para.text + "\n"
+    return text
 
-def preprocess_text(text):
-    """Clean and preprocess text for better search"""
-    # Convert to lowercase
-    text = text.lower()
-    # Remove special characters and numbers
-    text = re.sub(r'[^\w\s]', ' ', text)
-    text = re.sub(r'\d+', ' ', text)
-    # Split on whitespace
-    tokens = text.split()
-    # Remove stopwords and short words
-    tokens = [word for word in tokens if word not in STOP_WORDS and len(word) > 2]
-    return ' '.join(tokens)
+# Function to read TXT files
+def read_txt(file):
+    return file.getvalue().decode("utf-8")
 
-def get_document_type(filename):
-    """Detect document type based on filename patterns"""
-    filename = filename.lower()
+# Function to extract text from uploaded files
+def extract_text(uploaded_file):
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        tmp_file_path = tmp_file.name
     
-    if any(term in filename for term in ['submission', 'brief', 'memo', 'argument']):
-        return 'Submission'
-    elif any(term in filename for term in ['exhibit', 'evidence', 'appendix']):
-        return 'Exhibit'
-    elif any(term in filename for term in ['decision', 'award', 'ruling']):
-        return 'Decision'
-    elif any(term in filename for term in ['transcript', 'hearing']):
-        return 'Transcript'
-    elif any(term in filename for term in ['contract', 'agreement']):
-        return 'Contract'
-    else:
-        return 'Other'
-
-def get_party(filename):
-    """Detect party based on filename patterns"""
-    filename = filename.lower()
-    
-    if any(term in filename for term in ['appellant', 'claimant', 'plaintiff']):
-        return 'Appellant/Claimant'
-    elif any(term in filename for term in ['respondent', 'defendant']):
-        return 'Respondent/Defendant'
-    else:
-        return 'Unknown'
-
-def create_document_chunks(text, chunk_size=500):
-    """Split document into manageable chunks for better search"""
-    # Split on periods followed by whitespace as a basic sentence detection
-    sentences = re.split(r'\.(?=\s)', text)
-    chunks = []
-    current_chunk = ""
-    
-    for sentence in sentences:
-        if len(current_chunk) + len(sentence) <= chunk_size:
-            current_chunk += sentence + ". "
+    try:
+        file_extension = uploaded_file.name.split(".")[-1].lower()
+        
+        if file_extension == "pdf":
+            with open(tmp_file_path, "rb") as f:
+                text = read_pdf(f)
+        elif file_extension in ["docx", "doc"]:
+            text = read_docx(tmp_file_path)
+        elif file_extension == "txt":
+            text = uploaded_file.getvalue().decode("utf-8")
         else:
-            chunks.append(current_chunk.strip())
-            current_chunk = sentence + ". "
-    
-    # Add the last chunk if it's not empty
-    if current_chunk.strip():
-        chunks.append(current_chunk.strip())
-    
-    return chunks
+            text = "Unsupported file type."
+            
+        return text
+    finally:
+        # Delete the temporary file
+        os.unlink(tmp_file_path)
 
-def add_document(text, filename, doc_type=None, party=None, date=None, language=None, case_name=None):
-    """Add document to the session state"""
-    if text:
-        # Auto-detect document type and party if not provided
-        detected_doc_type = doc_type or get_document_type(filename)
-        detected_party = party or get_party(filename)
-        
-        # Create document chunks for better search
-        chunks = create_document_chunks(text)
-        
-        # Create document entry
-        doc_id = f"doc_{len(st.session_state['documents']) + 1}"
-        doc_data = {
-            'id': doc_id,
-            'filename': filename,
-            'type': detected_doc_type,
-            'party': detected_party,
-            'date': date or datetime.now().strftime("%Y-%m-%d"),
-            'language': language or 'English',
-            'case': case_name or st.session_state['current_case'],
-            'text': text,
-            'processed_text': preprocess_text(text),
-            'chunks': chunks,
-            'processed_chunks': [preprocess_text(chunk) for chunk in chunks]
-        }
-        
-        # Add to session state
-        st.session_state['documents'][doc_id] = doc_data
-        return doc_id
-    return None
+# Function to analyze document structure
+def analyze_document(text):
+    # Split text into paragraphs
+    paragraphs = text.split("\n")
+    paragraphs = [p for p in paragraphs if p.strip()]
+    
+    # Identify potential section headers
+    potential_headers = []
+    for i, para in enumerate(paragraphs):
+        if len(para.strip()) < 100 and (para.strip().endswith(":") or para.strip().isupper() or re.match(r'^\d+\.', para.strip())):
+            potential_headers.append((i, para.strip()))
+    
+    return {
+        "total_paragraphs": len(paragraphs),
+        "potential_sections": len(potential_headers),
+        "sample_sections": potential_headers[:5] if potential_headers else [],
+        "word_count": len(text.split())
+    }
 
-def search_documents(query, case_filter=None, doc_type_filter=None, party_filter=None, date_range=None):
-    """Search across all documents with filters"""
+# Function to find context around search term
+def find_context(text, search_term, context_size=100):
+    if not search_term:
+        return []
+    
+    search_pattern = re.compile(re.escape(search_term), re.IGNORECASE)
+    matches = list(search_pattern.finditer(text))
     results = []
     
-    # Preprocess query
-    processed_query = preprocess_text(query)
-    query_terms = processed_query.split()
-    
-    for doc_id, doc in st.session_state['documents'].items():
-        # Apply filters
-        if case_filter and doc['case'] != case_filter:
-            continue
-        if doc_type_filter and doc['type'] != doc_type_filter:
-            continue
-        if party_filter and doc['party'] != party_filter:
-            continue
+    for match in matches:
+        start = max(0, match.start() - context_size)
+        end = min(len(text), match.end() + context_size)
+        context = text[start:end]
         
-        # Search in chunks for more precise results
-        for i, (chunk, processed_chunk) in enumerate(zip(doc['chunks'], doc['processed_chunks'])):
-            score = 0
-            for term in query_terms:
-                if term in processed_chunk:
-                    # Basic term frequency scoring
-                    term_count = processed_chunk.count(term)
-                    score += term_count
-            
-            if score > 0:
-                # Basic highlighting
-                highlighted_chunk = chunk
-                for term in query_terms:
-                    pattern = re.compile(re.escape(term), re.IGNORECASE)
-                    highlighted_chunk = pattern.sub(f"**{term}**", highlighted_chunk)
-                
-                results.append({
-                    'doc_id': doc_id,
-                    'filename': doc['filename'],
-                    'type': doc['type'],
-                    'party': doc['party'],
-                    'case': doc['case'],
-                    'chunk_id': i,
-                    'chunk': chunk,
-                    'highlighted_chunk': highlighted_chunk,
-                    'score': score
-                })
-    
-    # Sort by score (descending)
-    results.sort(key=lambda x: x['score'], reverse=True)
-    
-    # Add to search history
-    if query and len(results) > 0:
-        st.session_state['search_history'].append({
-            'query': query,
-            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'results_count': len(results)
+        # Highlight the match
+        match_start_in_context = match.start() - start
+        match_end_in_context = match.end() - start
+        highlighted = context[:match_start_in_context] + f"**{context[match_start_in_context:match_end_in_context]}**" + context[match_end_in_context:]
+        
+        # Find the page if available
+        page_match = re.findall(r'--- Page Break ---', text[:match.start()])
+        page_number = len(page_match) + 1 if page_match else "N/A"
+        
+        results.append({
+            "context": highlighted,
+            "page": page_number
         })
     
     return results
 
-def export_results(results, format_type="markdown"):
-    """Export search results to various formats"""
-    if format_type == "markdown":
-        output = "# Search Results\n\n"
-        for i, result in enumerate(results):
-            output += f"## Result {i+1}: {result['filename']}\n"
-            output += f"**Document Type:** {result['type']}\n"
-            output += f"**Party:** {result['party']}\n"
-            output += f"**Case:** {result['case']}\n\n"
-            output += f"{result['highlighted_chunk']}\n\n"
-            output += "---\n\n"
-        
-        return output
+# Function to extract key arguments
+def extract_key_arguments(text):
+    # Look for argumentative phrases
+    arg_phrases = [
+        r'(?:submit|argue|allege|claim|assert|contend)(?:s|ed)?(?:\s+that)?',
+        r'(?:in (?:our|their) (?:view|opinion|submission))',
+        r'(?:maintain(?:s|ed)?)',
+        r'(?:position is)',
+        r'(?:according to)',
+    ]
     
-    elif format_type == "csv":
-        output = "Result,Filename,Document Type,Party,Case,Text\n"
-        for i, result in enumerate(results):
-            # Clean the text for CSV
-            clean_text = result['chunk'].replace('"', '""')
-            output += f"{i+1},\"{result['filename']}\",\"{result['type']}\",\"{result['party']}\",\"{result['case']}\",\"{clean_text}\"\n"
-        
-        return output
+    pattern = '|'.join(arg_phrases)
+    matches = re.finditer(pattern, text, re.IGNORECASE)
     
-    return None
-
-def main():
-    st.set_page_config(page_title="Sports Arbitration Search", layout="wide")
-    
-    # Title
-    st.title("Sports Arbitration Document Search")
-    st.markdown("A specialized search system for sports arbitration cases")
-    
-    # Sidebar
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Select Page", ["Home", "Case Management", "Document Upload", "Search"])
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Current Case")
-    
-    # Case selection or creation
-    if st.session_state['cases']:
-        current_case_index = 0
-        if st.session_state['current_case'] in st.session_state['cases']:
-            current_case_index = st.session_state['cases'].index(st.session_state['current_case'])
-            
-        current_case = st.sidebar.selectbox(
-            "Select Case", 
-            st.session_state['cases'],
-            index=current_case_index
-        )
-        if current_case != st.session_state['current_case']:
-            st.session_state['current_case'] = current_case
-    
-    new_case = st.sidebar.text_input("Create New Case")
-    if st.sidebar.button("Add Case") and new_case:
-        if new_case not in st.session_state['cases']:
-            st.session_state['cases'].append(new_case)
-            st.session_state['current_case'] = new_case
-    
-    # Document statistics
-    if st.session_state['documents'] and st.session_state['current_case']:
-        st.sidebar.markdown("---")
-        st.sidebar.subheader("Document Statistics")
-        
-        case_docs = [doc for doc in st.session_state['documents'].values() 
-                    if doc['case'] == st.session_state['current_case']]
-        
-        st.sidebar.markdown(f"**Total Documents:** {len(case_docs)}")
-        
-        # Count by document type
-        doc_types = Counter([doc['type'] for doc in case_docs])
-        if doc_types:
-            st.sidebar.markdown("**By Document Type:**")
-            for doc_type, count in doc_types.items():
-                st.sidebar.markdown(f"- {doc_type}: {count}")
-    
-    # Main content based on selected page
-    if page == "Home":
-        st.header("Welcome to Sports Arbitration Document Search")
-        
-        st.markdown("""
-        This application helps legal professionals in sports arbitration to efficiently search through case documents.
-        
-        ### Key Features:
-        - **Upload and organize** documents by case
-        - **Intelligent search** across submissions, exhibits, and precedents
-        - **Filter results** by document type, party, and date
-        - **Export findings** for briefs and hearing preparation
-        
-        ### Getting Started:
-        1. Create a case in the sidebar
-        2. Upload your documents
-        3. Use the search functionality to find relevant information
-        4. Export your findings
-        """)
-        
-        # Sample data
-        if st.button("Load Sample Data"):
-            if 'Sample Case' not in st.session_state['cases']:
-                st.session_state['cases'].append('Sample Case')
-                st.session_state['current_case'] = 'Sample Case'
-                
-                # Add sample documents
-                sample_docs = [
-                    {
-                        'filename': 'claimant_submission.txt',
-                        'text': """CLAIMANT SUBMISSION
-                        
-This submission is made on behalf of FC United in the matter of the termination of the employment contract with Coach Smith.
-
-We submit that the termination was with just cause due to the following reasons:
-1. Coach Smith repeatedly failed to attend training sessions on time
-2. The team's performance severely declined under his leadership
-3. Coach Smith failed to maintain proper discipline among the players
-
-According to Article 14 of the FIFA Regulations on the Status and Transfer of Players, a contract may be terminated with just cause when there is a serious breach by either party.
-
-We request that the tribunal find the termination was justified and reject any claims for compensation.""",
-                        'type': 'Submission',
-                        'party': 'Appellant/Claimant'
-                    },
-                    {
-                        'filename': 'respondent_submission.txt',
-                        'text': """RESPONDENT SUBMISSION
-                        
-This submission is made on behalf of Coach Smith in response to FC United's claim.
-
-We submit that the termination was without just cause for the following reasons:
-1. No warning was given prior to termination
-2. Poor sporting results do not constitute just cause according to CAS jurisprudence
-3. The allegations of unprofessional behavior are unfounded
-
-According to CAS 2011/A/2596, the absence of sporting results cannot, as a general rule, constitute per se a reason to terminate a contractual relationship with just cause.
-
-We request that the tribunal find the termination was without just cause and award compensation for the remaining value of the contract.""",
-                        'type': 'Submission',
-                        'party': 'Respondent/Defendant'
-                    },
-                    {
-                        'filename': 'employment_contract.txt',
-                        'text': """EMPLOYMENT CONTRACT
-
-between FC United ("the Club") and John Smith ("the Coach")
-
-1. DURATION
-This contract is valid from 1 June 2022 until 31 May 2023.
-
-2. REMUNERATION
-The Coach shall receive a monthly salary of EUR 10,000.
-
-3. DUTIES
-The Coach shall be responsible for training and managing the first team.
-
-4. TERMINATION
-This contract may be terminated by mutual agreement or with just cause.
-
-5. APPLICABLE LAW
-This contract is governed by Swiss law.""",
-                        'type': 'Contract',
-                        'party': 'Unknown'
-                    },
-                    {
-                        'filename': 'cas_precedent.txt',
-                        'text': """CAS PRECEDENT: CAS 2011/A/2596
-
-AWARD EXCERPT:
-
-The absence of sporting results cannot, as a general rule, constitute per se a reason to terminate a contractual relationship with just cause.
-
-Article 337c of the Swiss Code of Obligations provides that in case of termination without just cause of an employment contract of set duration, the employer must, in principle, pay to the employee everything which the employee would have been entitled to receive until the agreed conclusion of the agreement.""",
-                        'type': 'Decision',
-                        'party': 'Unknown'
-                    }
-                ]
-                
-                for doc in sample_docs:
-                    add_document(
-                        text=doc['text'],
-                        filename=doc['filename'],
-                        doc_type=doc['type'],
-                        party=doc['party'],
-                        case_name='Sample Case'
-                    )
-                
-                st.success("Sample data loaded successfully!")
-                st.experimental_rerun()
-    
-    elif page == "Case Management":
-        st.header("Case Management")
-        
-        if not st.session_state['current_case']:
-            st.warning("Please create or select a case from the sidebar first.")
+    arguments = []
+    for match in matches:
+        start = match.start()
+        # Find the end of the sentence or next 200 characters
+        end_period = text.find('.', start)
+        if end_period == -1 or end_period > start + 200:
+            end_period = start + 200
         else:
-            st.subheader(f"Case: {st.session_state['current_case']}")
+            end_period += 1
+        
+        argument = text[start:end_period].strip()
+        if len(argument) > 20:  # Skip very short matches
+            arguments.append(argument)
+    
+    return arguments[:10]  # Return top 10 arguments
+
+# Function to compare documents
+def compare_documents(doc1, doc2):
+    # Simple word frequency comparison
+    words1 = Counter(re.findall(r'\b[a-zA-Z]{3,}\b', doc1.lower()))
+    words2 = Counter(re.findall(r'\b[a-zA-Z]{3,}\b', doc2.lower()))
+    
+    # Find unique words in each document
+    unique_to_doc1 = {word: count for word, count in words1.items() if word not in words2}
+    unique_to_doc2 = {word: count for word, count in words2.items() if word not in words1}
+    
+    # Find common words with different frequencies
+    common_words = {word: (words1[word], words2[word]) for word in set(words1) & set(words2)}
+    
+    # Sort by frequency difference
+    sorted_common = sorted(common_words.items(), key=lambda x: abs(x[1][0] - x[1][1]), reverse=True)
+    
+    return {
+        "unique_to_doc1": dict(sorted(unique_to_doc1.items(), key=lambda x: x[1], reverse=True)[:20]),
+        "unique_to_doc2": dict(sorted(unique_to_doc2.items(), key=lambda x: x[1], reverse=True)[:20]),
+        "different_usage": dict(sorted_common[:20])
+    }
+
+# Sidebar for document upload and management
+with st.sidebar:
+    st.header("Document Management")
+    
+    uploaded_files = st.file_uploader("Upload documents", accept_multiple_files=True, type=["pdf", "docx", "doc", "txt"])
+    
+    st.subheader("Document Labels")
+    doc_labels = {}
+    
+    if uploaded_files:
+        for i, file in enumerate(uploaded_files):
+            default_label = file.name
+            if "claim" in file.name.lower() or "appellant" in file.name.lower():
+                default_label = "Claimant/Appellant Document"
+            elif "respond" in file.name.lower():
+                default_label = "Respondent Document"
+            elif "exhibit" in file.name.lower() or "evidence" in file.name.lower():
+                default_label = "Exhibit"
             
-            # Case details section
-            with st.expander("Case Details"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.text_input("Case Number", key="case_number")
-                    st.selectbox("Jurisdiction", [
-                        "Court of Arbitration for Sport (CAS)",
-                        "FIFA Dispute Resolution Chamber",
-                        "FIFA Players' Status Committee",
-                        "Other"
-                    ], key="jurisdiction")
-                with col2:
-                    st.date_input("Filing Date", key="filing_date")
-                    st.selectbox("Status", [
-                        "Active",
-                        "Pending",
-                        "Closed"
-                    ], key="case_status")
+            doc_labels[i] = st.text_input(f"Label for {file.name}", value=default_label, key=f"label_{i}")
+    
+    st.subheader("Search Options")
+    search_term = st.text_input("Search term")
+    
+    advanced_search = st.checkbox("Advanced Search Options")
+    
+    if advanced_search:
+        search_doc_type = st.multiselect("Search in document types", 
+                                      options=["Claimant", "Respondent", "Exhibits", "All"],
+                                      default=["All"])
+        exact_match = st.checkbox("Exact match")
+    else:
+        search_doc_type = ["All"]
+        exact_match = False
+
+# Main content
+if not uploaded_files:
+    st.info("Please upload documents to begin analysis")
+else:
+    # Process uploaded files
+    documents = []
+    for i, file in enumerate(uploaded_files):
+        with st.spinner(f"Processing {file.name}..."):
+            text = extract_text(file)
+            doc_analysis = analyze_document(text)
+            documents.append({
+                "id": i,
+                "name": file.name,
+                "label": doc_labels[i],
+                "text": text,
+                "analysis": doc_analysis
+            })
+    
+    # Display tabs for different functionalities
+    tab1, tab2, tab3, tab4 = st.tabs(["Document Overview", "Search Results", "Document Comparison", "Argument Analysis"])
+    
+    with tab1:
+        st.header("Document Overview")
+        
+        for doc in documents:
+            with st.expander(f"{doc['label']} ({doc['name']})"):
+                st.write(f"**Word count:** {doc['analysis']['word_count']}")
+                st.write(f"**Paragraphs:** {doc['analysis']['total_paragraphs']}")
+                st.write(f"**Potential sections:** {doc['analysis']['potential_sections']}")
+                
+                if doc['analysis']['sample_sections']:
+                    st.write("**Sample sections:**")
+                    for idx, section in doc['analysis']['sample_sections']:
+                        st.write(f"- {section}")
+                
+                # Preview first 500 characters
+                st.subheader("Document Preview")
+                st.write(doc['text'][:500] + "...")
+    
+    with tab2:
+        st.header("Search Results")
+        
+        if search_term:
+            all_results = []
             
-            # Display documents in this case
-            st.subheader("Case Documents")
-            
-            case_docs = {doc_id: doc for doc_id, doc in st.session_state['documents'].items() 
-                        if doc['case'] == st.session_state['current_case']}
-            
-            if case_docs:
-                # Create a DataFrame for display
-                doc_list = []
-                for doc_id, doc in case_docs.items():
-                    doc_list.append({
-                        'ID': doc_id,
-                        'Filename': doc['filename'],
-                        'Type': doc['type'],
-                        'Party': doc['party'],
-                        'Date': doc['date']
+            for doc in documents:
+                # Filter by document type if needed
+                if "All" not in search_doc_type:
+                    doc_type_matches = False
+                    for search_type in search_doc_type:
+                        if search_type.lower() in doc['label'].lower():
+                            doc_type_matches = True
+                            break
+                    if not doc_type_matches:
+                        continue
+                
+                # Perform search
+                if exact_match:
+                    results = find_context(doc['text'], search_term)
+                else:
+                    # Split search term into words for non-exact matching
+                    search_words = search_term.split()
+                    if len(search_words) == 1:
+                        results = find_context(doc['text'], search_term)
+                    else:
+                        # Search for each word and then find common contexts
+                        all_word_results = []
+                        for word in search_words:
+                            if len(word) > 3:  # Skip short words
+                                all_word_results.extend(find_context(doc['text'], word))
+                        
+                        # Deduplicate results
+                        seen_contexts = set()
+                        results = []
+                        for res in all_word_results:
+                            context_key = res['context'][:50]  # Use first 50 chars as key
+                            if context_key not in seen_contexts:
+                                seen_contexts.add(context_key)
+                                results.append(res)
+                
+                for result in results:
+                    all_results.append({
+                        "document": doc['label'],
+                        "filename": doc['name'],
+                        "page": result['page'],
+                        "context": result['context']
                     })
+            
+            if all_results:
+                st.write(f"Found {len(all_results)} results for '{search_term}'")
                 
-                df = pd.DataFrame(doc_list)
-                st.dataframe(df)
+                results_df = pd.DataFrame(all_results)
                 
-                # Document preview
-                selected_doc_id = st.selectbox("Select document to preview", df['ID'].tolist())
-                
-                if selected_doc_id:
-                    doc = st.session_state['documents'][selected_doc_id]
-                    
-                    st.subheader(f"Preview: {doc['filename']}")
-                    st.text_area("Document Text", value=doc['text'], height=300)
+                # Group by document
+                for doc_name in results_df['document'].unique():
+                    doc_results = results_df[results_df['document'] == doc_name]
+                    with st.expander(f"{doc_name} ({len(doc_results)} results)"):
+                        for i, row in doc_results.iterrows():
+                            st.markdown(f"**Page {row['page']}:** {row['context']}")
+                            st.markdown("---")
             else:
-                st.info("No documents found for this case. Please upload documents from the Document Upload page.")
-    
-    elif page == "Document Upload":
-        st.header("Document Upload")
-        
-        if not st.session_state['current_case']:
-            st.warning("Please create or select a case from the sidebar first.")
+                st.warning(f"No results found for '{search_term}'")
         else:
-            st.subheader(f"Upload Documents for: {st.session_state['current_case']}")
-            
-            # Text area for document content
-            doc_text = st.text_area("Enter Document Text", height=300)
-            
-            # Document metadata
+            st.info("Enter a search term to find relevant content across documents")
+    
+    with tab3:
+        st.header("Document Comparison")
+        
+        if len(documents) >= 2:
             col1, col2 = st.columns(2)
+            
             with col1:
-                filename = st.text_input("Filename (e.g., submission.txt)")
-                doc_type = st.selectbox("Document Type", [
-                    "Submission",
-                    "Exhibit",
-                    "Decision",
-                    "Transcript",
-                    "Contract",
-                    "Other"
-                ])
+                doc1_idx = st.selectbox("Select first document", 
+                                     options=range(len(documents)),
+                                     format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
+            
             with col2:
-                party = st.selectbox("Party", [
-                    "Appellant/Claimant",
-                    "Respondent/Defendant",
-                    "Arbitrator/Tribunal",
-                    "Unknown"
-                ])
-                date = st.date_input("Document Date")
+                doc2_idx = st.selectbox("Select second document", 
+                                     options=range(len(documents)),
+                                     format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
             
-            if st.button("Add Document") and doc_text and filename:
-                doc_id = add_document(
-                    text=doc_text,
-                    filename=filename,
-                    doc_type=doc_type,
-                    party=party,
-                    date=date.strftime("%Y-%m-%d"),
-                    case_name=st.session_state['current_case']
-                )
-                
-                if doc_id:
-                    st.success(f"Document {filename} added successfully!")
-                else:
-                    st.error("Failed to add document.")
-    
-    elif page == "Search":
-        st.header("Document Search")
-        
-        if not st.session_state['current_case']:
-            st.warning("Please create or select a case from the sidebar first.")
-        elif not st.session_state['documents']:
-            st.warning("No documents found. Please upload documents first.")
+            if st.button("Compare Documents"):
+                with st.spinner("Comparing documents..."):
+                    comparison = compare_documents(documents[doc1_idx]['text'], documents[doc2_idx]['text'])
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader(f"Unique to {documents[doc1_idx]['label']}")
+                        for word, count in comparison['unique_to_doc1'].items():
+                            st.write(f"- {word} ({count} occurrences)")
+                    
+                    with col2:
+                        st.subheader(f"Unique to {documents[doc2_idx]['label']}")
+                        for word, count in comparison['unique_to_doc2'].items():
+                            st.write(f"- {word} ({count} occurrences)")
+                    
+                    st.subheader("Different Usage of Common Terms")
+                    diff_data = []
+                    for word, (count1, count2) in comparison['different_usage'].items():
+                        diff_data.append({
+                            "Term": word,
+                            f"{documents[doc1_idx]['label']}": count1,
+                            f"{documents[doc2_idx]['label']}": count2,
+                            "Difference": abs(count1 - count2)
+                        })
+                    
+                    diff_df = pd.DataFrame(diff_data)
+                    st.dataframe(diff_df)
         else:
-            st.subheader(f"Search in: {st.session_state['current_case']}")
-            
-            # Search query
-            query = st.text_input("Search Query", placeholder="Enter search terms...")
-            
-            # Advanced filters
-            with st.expander("Advanced Filters"):
-                # Get unique document types for this case
-                case_docs = [doc for doc in st.session_state['documents'].values() 
-                            if doc['case'] == st.session_state['current_case']]
+            st.info("Upload at least two documents to use the comparison feature")
+    
+    with tab4:
+        st.header("Argument Analysis")
+        
+        selected_doc = st.selectbox("Select document for argument analysis", 
+                                  options=range(len(documents)),
+                                  format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
+        
+        if st.button("Extract Key Arguments"):
+            with st.spinner("Analyzing arguments..."):
+                arguments = extract_key_arguments(documents[selected_doc]['text'])
                 
-                doc_types = ['All'] + list(set([doc['type'] for doc in case_docs]))
-                parties = ['All'] + list(set([doc['party'] for doc in case_docs]))
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    doc_type_filter = st.selectbox("Document Type", doc_types)
-                with col2:
-                    party_filter = st.selectbox("Party", parties)
-            
-            # Search button
-            if st.button("Search") and query:
-                # Apply filters
-                case_filter = st.session_state['current_case']
-                type_filter = None if doc_type_filter == 'All' else doc_type_filter
-                party_filter = None if party_filter == 'All' else party_filter
-                
-                # Execute search
-                with st.spinner("Searching..."):
-                    results = search_documents(
-                        query,
-                        case_filter=case_filter,
-                        doc_type_filter=type_filter,
-                        party_filter=party_filter
-                    )
-                
-                # Display results
-                st.subheader(f"Search Results: {len(results)} matches found")
-                
-                if results:
-                    # Group results by document
-                    docs_with_results = {}
-                    for result in results:
-                        doc_id = result['doc_id']
-                        if doc_id not in docs_with_results:
-                            docs_with_results[doc_id] = []
-                        docs_with_results[doc_id].append(result)
-                    
-                    # Display each document with its results
-                    for doc_id, doc_results in docs_with_results.items():
-                        doc = st.session_state['documents'][doc_id]
-                        
-                        with st.expander(f"{doc['filename']} ({len(doc_results)} matches)", expanded=True):
-                            st.markdown(f"**Type:** {doc['type']} | **Party:** {doc['party']}")
-                            
-                            # Display each match within the document
-                            for i, result in enumerate(doc_results):
-                                st.markdown(f"**Match {i+1}:**")
-                                st.markdown(result['highlighted_chunk'])
-                                st.markdown("---")
-                    
-                    # Export options
-                    st.subheader("Export Results")
-                    export_format = st.selectbox("Export Format", ["Markdown", "CSV"])
-                    
-                    if st.button("Export Results"):
-                        if export_format == "Markdown":
-                            export_data = export_results(results, "markdown")
-                            file_ext = "md"
-                        else:  # CSV
-                            export_data = export_results(results, "csv")
-                            file_ext = "csv"
-                        
-                        # Create download link
-                        b64 = base64.b64encode(export_data.encode()).decode()
-                        filename = f"search_results_{datetime.now().strftime('%Y%m%d_%H%M')}.{file_ext}"
-                        href = f'<a href="data:text/{file_ext};base64,{b64}" download="{filename}">Download {export_format} file</a>'
-                        st.markdown(href, unsafe_allow_html=True)
-                        
+                if arguments:
+                    st.subheader("Key Arguments Identified")
+                    for i, arg in enumerate(arguments, 1):
+                        st.markdown(f"{i}. {arg}")
+                        st.markdown("---")
                 else:
-                    st.info("No results found. Try modifying your search query or filters.")
-            
-            # Search tips
-            with st.expander("Search Tips"):
-                st.markdown("""
-                ### Effective Search Strategies
-                
-                - **Use specific terms** from legal or sports contexts
-                - **Search for key concepts** like "just cause", "contract termination", "compensation"
-                - **Filter by document type** to focus on submissions or exhibits
-                - **Filter by party** to compare appellant vs respondent arguments
-                
-                ### Example Searches
-                
-                - just cause termination contract
-                - sporting results performance
-                - compensation breach contract
-                - CAS precedent
-                """)
-
-if __name__ == "__main__":
-    main()
+                    st.warning("No clear arguments identified. Try a different document.")
