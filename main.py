@@ -1,13 +1,9 @@
 import streamlit as st
-import pandas as pd
-import os
 import re
 from pathlib import Path
 import difflib
-from io import BytesIO
 import base64
-import PyPDF2
-import docx
+from io import StringIO
 
 # Set up page configuration
 st.set_page_config(page_title="Sports Arbitration Smart Search", layout="wide")
@@ -25,57 +21,18 @@ if 'summary' not in st.session_state:
     st.session_state.summary = None
 
 # Document processing functions
-def extract_text_from_pdf(file_content):
-    """Extract text from PDF file"""
-    try:
-        reader = PyPDF2.PdfReader(BytesIO(file_content))
-        text = ""
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:  # Check if text extraction was successful
-                text += page_text + "\n"
-        return text
-    except Exception as e:
-        st.error(f"Error extracting text from PDF: {e}")
-        return ""
-
-def extract_text_from_docx(file_content):
-    """Extract text from DOCX file"""
-    try:
-        doc = docx.Document(BytesIO(file_content))
-        text = ""
-        for para in doc.paragraphs:
-            text += para.text + "\n"
-        return text
-    except Exception as e:
-        st.error(f"Error extracting text from DOCX: {e}")
-        return ""
-
-def extract_text_from_txt(file_content):
-    """Extract text from TXT file"""
-    try:
-        return file_content.decode('utf-8')
-    except Exception as e:
-        st.error(f"Error extracting text from TXT: {e}")
-        return ""
-
 def process_uploaded_file(uploaded_file):
-    """Process uploaded file based on file type"""
-    file_content = uploaded_file.read()
-    file_extension = Path(uploaded_file.name).suffix.lower()
-    
-    if file_extension == '.pdf':
-        return extract_text_from_pdf(file_content)
-    elif file_extension == '.docx':
-        return extract_text_from_docx(file_content)
-    elif file_extension == '.txt':
-        return extract_text_from_txt(file_content)
-    else:
-        st.warning(f"Unsupported file type: {file_extension}")
+    """Process uploaded text file"""
+    try:
+        # Only process text files for now
+        text_content = uploaded_file.read().decode('utf-8')
+        return text_content
+    except Exception as e:
+        st.error(f"Error processing file: {e}")
         return ""
 
 def preprocess_text(text):
-    """Simple text preprocessing without NLTK"""
+    """Simple text preprocessing"""
     if not text:
         return ""
     # Convert to lowercase
@@ -339,8 +296,8 @@ st.title("Sports Arbitration Smart Search")
 with st.sidebar:
     st.header("Document Management")
     
-    # File uploader
-    uploaded_files = st.file_uploader("Upload Documents", accept_multiple_files=True, type=["pdf", "docx", "txt"])
+    # File uploader (text files only)
+    uploaded_files = st.file_uploader("Upload Text Documents", accept_multiple_files=True, type=["txt"])
     
     if uploaded_files:
         for uploaded_file in uploaded_files:
@@ -375,6 +332,62 @@ with st.sidebar:
             paragraphs = re.split(r'\n\s*\n', content)
             paragraphs = [p for p in paragraphs if len(p.strip()) > 20]
             st.write(f"**{doc_id}**: {len(paragraphs)} paragraphs, {len(content)} characters")
+
+# Sample data option
+if not st.session_state.documents:
+    st.warning("No documents uploaded. You can use the sample data below to try out the application.")
+    
+    if st.button("Load Sample Data"):
+        # Sample legal text
+        sample1 = """
+        Arbitration Submission by Claimant
+
+        The Claimant submits that the Respondent has breached Article 3.2 of the contract dated January 15, 2023.
+        
+        Firstly, the Respondent failed to deliver the goods within the agreed timeframe of 30 days, as evidenced by Exhibit A-1.
+        
+        According to Article 3.2, "the Respondent shall deliver all goods specified in Annex 1 within 30 days of receipt of payment." The Claimant contends that payment was made on February 1, 2023, as shown in the bank statement (Exhibit A-2).
+        
+        Moreover, the Respondent acknowledged receipt of payment on February 2, 2023, as demonstrated by email correspondence in Exhibit A-3.
+        
+        The Respondent argues that force majeure conditions apply due to supply chain disruptions. However, the Claimant maintains that no force majeure notice was provided within the 5-day period required by Article 8.3 of the contract.
+        
+        Furthermore, the Claimant submits that damages are due according to the penalty clause in Article 7.1, which states that "failure to deliver within the agreed timeframe will result in liquidated damages of 0.5% of the contract value per day of delay."
+        
+        In conclusion, the Claimant requests that the Tribunal:
+        1. Declare that the Respondent has breached the contract;
+        2. Order the Respondent to pay liquidated damages in the amount of €25,000;
+        3. Order the Respondent to pay the costs of this arbitration.
+        """
+        
+        sample2 = """
+        Response to Arbitration Claim
+        
+        The Respondent contends that no breach of Article 3.2 has occurred under the circumstances.
+        
+        First, while the Respondent acknowledges receipt of payment on February 2, 2023, as referenced in Exhibit A-3, the Respondent submits that the delivery timeline was affected by documented supply chain disruptions.
+        
+        According to Article 8.2 of the contract, "delivery timelines may be extended in case of supply chain disruptions beyond the reasonable control of the Respondent." The Respondent argues that such disruptions occurred and were communicated to the Claimant on February 15, 2023, as evidenced by Exhibit R-1.
+        
+        Moreover, the Respondent maintains that the notice provided on February 15 satisfies the requirements of Article 8.3, as it was sent within 5 business days of the Respondent becoming aware of the disruption.
+        
+        The Claimant asserts that the penalty clause in Article 7.1 applies. However, the Respondent points out that Article 7.2 states that "no liquidated damages shall be due if delivery is delayed due to circumstances covered by Article 8.2."
+        
+        Furthermore, the Respondent notes that the goods were ultimately delivered on March 10, 2023, with only a 7-day delay beyond the force majeure period.
+        
+        In conclusion, the Respondent requests that the Tribunal:
+        1. Declare that no breach of contract has occurred;
+        2. Dismiss all claims for damages;
+        3. Order the Claimant to pay the costs of this arbitration.
+        """
+        
+        st.session_state.documents = {"Claimant_Submission.txt": None, "Respondent_Reply.txt": None}
+        st.session_state.document_content = {
+            "Claimant_Submission.txt": sample1,
+            "Respondent_Reply.txt": sample2
+        }
+        st.success("Sample data loaded successfully!")
+        st.rerun()
 
 # Main area tabs
 tab1, tab2, tab3, tab4 = st.tabs(["Smart Search", "Document Compare", "Argument Summary", "Document Viewer"])
@@ -453,12 +466,9 @@ with tab2:
         compare_button = st.button("Compare Documents", type="primary", key="compare_button")
         
         if compare_button:
-            if doc1_id == doc2_id:
-                st.warning("Please select different documents to compare.")
-            else:
-                with st.spinner("Comparing documents..."):
-                    compare_results = compare_documents(doc1_id, doc2_id)
-                    st.session_state.compare_results = compare_results
+            with st.spinner("Comparing documents..."):
+                compare_results = compare_documents(doc1_id, doc2_id)
+                st.session_state.compare_results = compare_results
         
         if st.session_state.compare_results:
             st.subheader(f"Comparison Results ({len(st.session_state.compare_results)} differences)")
