@@ -3,45 +3,13 @@ import pandas as pd
 import numpy as np
 import re
 import os
-from io import StringIO
-import base64
+from io import StringIO, BytesIO
 from datetime import datetime
-import docx2txt
-import PyPDF2
-from nltk.tokenize import sent_tokenize, word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-import nltk
-import json
-import zipfile
+import base64
 import io
 from collections import Counter
 import plotly.express as px
 import plotly.graph_objects as go
-
-# Download required NLTK packages
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
-
-# Initialize lemmatizer and stopwords
-lemmatizer = WordNetLemmatizer()
-stop_words = set(stopwords.words('english'))
-
-# Add domain-specific stopwords
-legal_stopwords = {'court', 'case', 'appeal', 'defendant', 'plaintiff', 'appellant', 'respondent', 
-                   'exhibit', 'document', 'evidence', 'witness', 'testimony', 'judge', 'tribunal', 
-                   'arbitration', 'arbitrator', 'law', 'legal', 'paragraph', 'submission'}
-stop_words.update(legal_stopwords)
 
 # Initialize session state for document storage
 if 'documents' not in st.session_state:
@@ -53,6 +21,30 @@ if 'cases' not in st.session_state:
 if 'search_history' not in st.session_state:
     st.session_state['search_history'] = []
 
+# Common English stopwords
+stop_words = {
+    'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
+    'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers',
+    'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves',
+    'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are',
+    'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does',
+    'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until',
+    'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into',
+    'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
+    'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here',
+    'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more',
+    'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+    'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now'
+}
+
+# Add domain-specific stopwords
+legal_stopwords = {
+    'court', 'case', 'appeal', 'defendant', 'plaintiff', 'appellant', 'respondent', 
+    'exhibit', 'document', 'evidence', 'witness', 'testimony', 'judge', 'tribunal', 
+    'arbitration', 'arbitrator', 'law', 'legal', 'paragraph', 'submission'
+}
+stop_words.update(legal_stopwords)
+
 # Document processing functions
 def preprocess_text(text):
     """Clean and preprocess text for better search"""
@@ -61,37 +53,15 @@ def preprocess_text(text):
     # Remove special characters and numbers
     text = re.sub(r'[^\w\s]', ' ', text)
     text = re.sub(r'\d+', ' ', text)
-    # Tokenize
-    tokens = word_tokenize(text)
-    # Remove stopwords and lemmatize
-    tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words and len(word) > 2]
+    # Tokenize by splitting on whitespace
+    tokens = text.split()
+    # Remove stopwords and short words
+    tokens = [word for word in tokens if word not in stop_words and len(word) > 2]
     return ' '.join(tokens)
 
-def extract_text_from_pdf(file):
-    """Extract text from PDF file"""
-    pdf_reader = PyPDF2.PdfReader(file)
-    text = ""
-    for page_num in range(len(pdf_reader.pages)):
-        text += pdf_reader.pages[page_num].extract_text()
-    return text
-
-def extract_text_from_docx(file):
-    """Extract text from DOCX file"""
-    return docx2txt.process(file)
-
-def extract_text(file):
-    """Extract text from various file formats"""
-    file_extension = file.name.split('.')[-1].lower()
-    
-    if file_extension == 'pdf':
-        return extract_text_from_pdf(file)
-    elif file_extension in ['docx', 'doc']:
-        return extract_text_from_docx(file)
-    elif file_extension in ['txt', 'text']:
-        return file.getvalue().decode('utf-8')
-    else:
-        st.error(f"Unsupported file format: {file_extension}")
-        return None
+def extract_text_from_txt(file):
+    """Extract text from TXT file"""
+    return file.getvalue().decode('utf-8')
 
 def get_document_type(filename):
     """Detect document type based on filename patterns"""
@@ -123,16 +93,17 @@ def get_party(filename):
 
 def create_document_chunks(text, chunk_size=500):
     """Split document into manageable chunks for better search"""
-    sentences = sent_tokenize(text)
+    # Simple sentence splitting based on periods followed by space
+    sentences = re.split(r'\.(?=\s)', text)
     chunks = []
     current_chunk = ""
     
     for sentence in sentences:
         if len(current_chunk) + len(sentence) <= chunk_size:
-            current_chunk += sentence + " "
+            current_chunk += sentence + ". "
         else:
             chunks.append(current_chunk.strip())
-            current_chunk = sentence + " "
+            current_chunk = sentence + ". "
     
     # Add the last chunk if it's not empty
     if current_chunk.strip():
@@ -142,35 +113,39 @@ def create_document_chunks(text, chunk_size=500):
 
 def add_document(file, doc_type=None, party=None, date=None, language=None, case_name=None):
     """Add document to the session state"""
-    text = extract_text(file)
-    if text:
-        # Auto-detect document type and party if not provided
-        detected_doc_type = doc_type or get_document_type(file.name)
-        detected_party = party or get_party(file.name)
-        
-        # Create document chunks for better search
-        chunks = create_document_chunks(text)
-        
-        # Create document entry
-        doc_id = f"doc_{len(st.session_state['documents']) + 1}"
-        doc_data = {
-            'id': doc_id,
-            'filename': file.name,
-            'type': detected_doc_type,
-            'party': detected_party,
-            'date': date or datetime.now().strftime("%Y-%m-%d"),
-            'language': language or 'English',
-            'case': case_name or st.session_state['current_case'],
-            'text': text,
-            'processed_text': preprocess_text(text),
-            'chunks': chunks,
-            'processed_chunks': [preprocess_text(chunk) for chunk in chunks]
-        }
-        
-        # Add to session state
-        st.session_state['documents'][doc_id] = doc_data
-        return doc_id
-    return None
+    try:
+        text = extract_text_from_txt(file)
+        if text:
+            # Auto-detect document type and party if not provided
+            detected_doc_type = doc_type or get_document_type(file.name)
+            detected_party = party or get_party(file.name)
+            
+            # Create document chunks for better search
+            chunks = create_document_chunks(text)
+            
+            # Create document entry
+            doc_id = f"doc_{len(st.session_state['documents']) + 1}"
+            doc_data = {
+                'id': doc_id,
+                'filename': file.name,
+                'type': detected_doc_type,
+                'party': detected_party,
+                'date': date or datetime.now().strftime("%Y-%m-%d"),
+                'language': language or 'English',
+                'case': case_name or st.session_state['current_case'],
+                'text': text,
+                'processed_text': preprocess_text(text),
+                'chunks': chunks,
+                'processed_chunks': [preprocess_text(chunk) for chunk in chunks]
+            }
+            
+            # Add to session state
+            st.session_state['documents'][doc_id] = doc_data
+            return doc_id
+        return None
+    except Exception as e:
+        st.error(f"Error processing document: {str(e)}")
+        return None
 
 def search_documents(query, case_filter=None, doc_type_filter=None, party_filter=None, date_range=None):
     """Search across all documents with filters"""
@@ -203,7 +178,7 @@ def search_documents(query, case_filter=None, doc_type_filter=None, party_filter
                     score += term_count
             
             if score > 0:
-                # Basic highlighting (can be improved)
+                # Basic highlighting by wrapping terms in markdown bold tags
                 highlighted_chunk = chunk
                 for term in query_terms:
                     pattern = re.compile(re.escape(term), re.IGNORECASE)
@@ -261,10 +236,10 @@ def export_results(results, format_type="markdown"):
 
 # UI Components
 def page_header():
-    """Display page header with logo and title"""
+    """Display page header with title"""
     col1, col2 = st.columns([1, 4])
     with col1:
-        st.image("https://img.icons8.com/color/96/000000/scales--v1.png", width=80)
+        st.markdown("⚖️", font="60px")
     with col2:
         st.title("Sports Arbitration Document Search")
         st.markdown("A specialized search system for sports arbitration cases")
@@ -330,13 +305,11 @@ def home_page():
     
     ### Getting Started:
     1. Create a case in the sidebar
-    2. Upload your documents
+    2. Upload your documents (text files)
     3. Use the search functionality to find relevant information
     4. Export your findings
     
     ### Supported File Formats:
-    - PDF (.pdf)
-    - Word Documents (.docx, .doc)
     - Text files (.txt)
     """)
     
@@ -346,19 +319,19 @@ def home_page():
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.markdown("#### 1. Create Case")
-        st.image("https://img.icons8.com/color/96/000000/add-folder.png", width=50)
+        st.markdown("📁")
         st.markdown("Set up a new case file")
     with col2:
         st.markdown("#### 2. Upload Documents")
-        st.image("https://img.icons8.com/color/96/000000/upload.png", width=50)
+        st.markdown("📤")
         st.markdown("Add submissions and exhibits")
     with col3:
         st.markdown("#### 3. Search")
-        st.image("https://img.icons8.com/color/96/000000/search.png", width=50)
+        st.markdown("🔍")
         st.markdown("Find relevant content")
     with col4:
         st.markdown("#### 4. Export")
-        st.image("https://img.icons8.com/color/96/000000/export.png", width=50)
+        st.markdown("📊")
         st.markdown("Create reports")
 
 def case_management_page():
@@ -469,7 +442,7 @@ def document_upload_page():
     st.subheader(f"Upload Documents for: {st.session_state['current_case']}")
     
     # Single file upload with metadata
-    uploaded_file = st.file_uploader("Upload Document", type=['pdf', 'docx', 'doc', 'txt'])
+    uploaded_file = st.file_uploader("Upload Document", type=['txt'])
     
     if uploaded_file:
         col1, col2 = st.columns(2)
@@ -526,7 +499,7 @@ def document_upload_page():
     st.subheader("Batch Upload")
     st.markdown("Upload multiple documents at once (metadata will be auto-detected)")
     
-    batch_files = st.file_uploader("Upload Multiple Documents", type=['pdf', 'docx', 'doc', 'txt'], accept_multiple_files=True)
+    batch_files = st.file_uploader("Upload Multiple Documents", type=['txt'], accept_multiple_files=True)
     
     if batch_files and st.button("Process All Documents"):
         progress_bar = st.progress(0)
@@ -541,261 +514,270 @@ def document_upload_page():
         
         st.success(f"Processed {len(batch_files)} documents")
 
-def search_page():
-    """Search page"""
-    st.header("Document Search")
+    # Sample document generator
+    st.subheader("Create Sample Document")
+    st.markdown("Generate a sample document for testing")
     
-    if not st.session_state['current_case']:
-        st.warning("Please create or select a case from the sidebar first.")
-        return
-    
-    if not st.session_state['documents']:
-        st.warning("No documents found. Please upload documents first.")
-        return
-    
-    st.subheader(f"Search in: {st.session_state['current_case']}")
-    
-    # Search input and filters
-    query = st.text_input("Search Query", placeholder="Enter search terms...")
-    
-    with st.expander("Advanced Filters", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            # Get unique document types for this case
-            case_docs = [doc for doc in st.session_state['documents'].values() 
-                        if doc['case'] == st.session_state['current_case']]
-            doc_types = ['All'] + list(set([doc['type'] for doc in case_docs]))
-            doc_type_filter = st.selectbox("Document Type", doc_types)
-            
-            # Date range filter
-            use_date_filter = st.checkbox("Filter by Date")
-            if use_date_filter:
-                date_range = st.date_input(
-                    "Date Range",
-                    value=[
-                        datetime.strptime(min([doc['date'] for doc in case_docs]), "%Y-%m-%d"),
-                        datetime.strptime(max([doc['date'] for doc in case_docs]), "%Y-%m-%d")
-                    ]
-                )
-            else:
-                date_range = None
+    with st.expander("Sample Document Generator"):
+        sample_type = st.selectbox("Sample Document Type", [
+            "Claimant Submission",
+            "Respondent Submission",
+            "Arbitral Award",
+            "Contract Exhibit"
+        ])
         
-        with col2:
-            # Get unique parties for this case
-            parties = ['All'] + list(set([doc['party'] for doc in case_docs]))
-            party_filter = st.selectbox("Party", parties)
+        if st.button("Generate Sample"):
+            sample_text = ""
+            filename = ""
             
-            # Exact phrase matching
-            exact_match = st.checkbox("Exact Phrase Match")
-    
-    # Apply filters
-    case_filter = st.session_state['current_case']
-    if doc_type_filter == 'All':
-        doc_type_filter = None
-    if party_filter == 'All':
-        party_filter = None
-    
-    # Search button
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        search_button = st.button("Search")
-    with col2:
-        st.markdown("#### Recent Searches:")
-        if st.session_state['search_history']:
-            recent_searches = st.session_state['search_history'][-3:]
-            for i, search in enumerate(reversed(recent_searches)):
-                if st.button(f"{search['query']} ({search['results_count']} results)", key=f"recent_{i}"):
-                    query = search['query']
-                    search_button = True
-    
-    # Execute search
-    if search_button and query:
-        # Modify the query if exact match is checked
-        search_query = f'"{query}"' if exact_match else query
-        
-        with st.spinner("Searching..."):
-            results = search_documents(
-                search_query,
-                case_filter=case_filter,
-                doc_type_filter=doc_type_filter,
-                party_filter=party_filter,
-                date_range=date_range
-            )
-        
-        # Display results
-        st.subheader(f"Search Results: {len(results)} matches found")
-        
-        if results:
-            # Results summary
-            doc_count = len(set([r['doc_id'] for r in results]))
-            st.markdown(f"Found matches in {doc_count} documents")
-            
-            # Group results by document
-            docs_with_results = {}
-            for result in results:
-                doc_id = result['doc_id']
-                if doc_id not in docs_with_results:
-                    docs_with_results[doc_id] = []
-                docs_with_results[doc_id].append(result)
-            
-            # Display each document with its results
-            for doc_id, doc_results in docs_with_results.items():
-                doc = st.session_state['documents'][doc_id]
+            if sample_type == "Claimant Submission":
+                filename = "claimant_submission_sample.txt"
+                sample_text = """CLAIMANT SUBMISSION
                 
-                with st.expander(f"{doc['filename']} ({len(doc_results)} matches)", expanded=True):
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.markdown(f"**Type:** {doc['type']}")
-                    with col2:
-                        st.markdown(f"**Party:** {doc['party']}")
-                    with col3:
-                        st.markdown(f"**Date:** {doc['date']}")
-                    
-                    # Display each match within the document
-                    for i, result in enumerate(doc_results):
-                        st.markdown(f"#### Match {i+1}:")
-                        st.markdown(result['highlighted_chunk'], unsafe_allow_html=True)
-                        st.markdown("---")
-            
-            # Export options
-            st.subheader("Export Results")
-            col1, col2 = st.columns(2)
-            with col1:
-                export_format = st.selectbox("Export Format", ["Markdown", "CSV"])
-            with col2:
-                if st.button("Export"):
-                    if export_format == "Markdown":
-                        export_data = export_results(results, "markdown")
-                        mime_type = "text/markdown"
-                        filename = f"search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
-                    else:  # CSV
-                        export_data = export_results(results, "csv")
-                        mime_type = "text/csv"
-                        filename = f"search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-                    
-                    b64 = base64.b64encode(export_data.encode()).decode()
-                    href = f'<a href="data:{mime_type};base64,{b64}" download="{filename}">Download {export_format} file</a>'
-                    st.markdown(href, unsafe_allow_html=True)
-        else:
-            st.info("No results found. Try modifying your search query or filters.")
-    
-    # Search tips
-    with st.expander("Search Tips", expanded=False):
-        st.markdown("""
-        ### Effective Search Strategies
-        
-        - **Use specific terms** from legal or sports contexts
-        - **Combine terms** to narrow results (e.g., "contract termination sporting results")
-        - **Use quotes** for exact phrase matching (e.g., "without just cause")
-        - **Filter by document type** to focus on submissions or exhibits
-        - **Search for case references** to find precedents (e.g., "CAS 2011/A/2596")
-        
-        ### Example Searches
-        
-        - Contract termination without just cause
-        - Sporting results poor performance
-        - Compensation calculation
-        - FIFA regulations coaches
-        - Swiss law employment contract
-        """)
+Court of Arbitration for Sport
+Case Reference: CAS 2023/A/0001
 
-def analytics_page():
-    """Analytics and insights page"""
-    st.header("Analytics & Insights")
-    
-    if not st.session_state['current_case']:
-        st.warning("Please create or select a case from the sidebar first.")
-        return
-    
-    if not st.session_state['documents']:
-        st.warning("No documents found. Please upload documents first.")
-        return
-    
-    # Get documents for current case
-    case_docs = [doc for doc in st.session_state['documents'].values() 
-                if doc['case'] == st.session_state['current_case']]
-    
-    st.subheader(f"Case Analysis: {st.session_state['current_case']}")
-    
-    # Document composition
-    st.markdown("### Document Composition")
-    
-    # Document types pie chart
-    doc_types = Counter([doc['type'] for doc in case_docs])
-    fig1 = px.pie(
-        names=list(doc_types.keys()),
-        values=list(doc_types.values()),
-        title="Documents by Type"
-    )
-    st.plotly_chart(fig1)
-    
-    # Document timeline
-    st.markdown("### Document Timeline")
-    
-    # Prepare timeline data
-    timeline_data = []
-    for doc in case_docs:
-        timeline_data.append({
-            'date': doc['date'],
-            'type': doc['type'],
-            'party': doc['party'],
-            'filename': doc['filename']
-        })
-    
-    timeline_df = pd.DataFrame(timeline_data)
-    timeline_df['date'] = pd.to_datetime(timeline_df['date'])
-    timeline_df = timeline_df.sort_values('date')
-    
-    # Plot timeline
-    fig2 = px.scatter(
-        timeline_df,
-        x='date',
-        y='type',
-        color='party',
-        hover_name='filename',
-        title="Document Timeline"
-    )
-    st.plotly_chart(fig2)
-    
-    # Term frequency analysis
-    st.markdown("### Key Terms Analysis")
-    
-    # Extract and count terms
-    all_terms = []
-    for doc in case_docs:
-        terms = doc['processed_text'].split()
-        all_terms.extend(terms)
-    
-    term_counts = Counter(all_terms).most_common(20)
-    term_df = pd.DataFrame(term_counts, columns=['term', 'count'])
-    
-    # Plot term frequency
-    fig3 = px.bar(
-        term_df,
-        x='count',
-        y='term',
-        orientation='h',
-        title="Most Frequent Terms",
-        color='count',
-        color_continuous_scale='Viridis'
-    )
-    st.plotly_chart(fig3)
-    
-    # Key term search
-    st.markdown("### Key Term Explorer")
-    selected_term = st.selectbox("Select a term to explore", term_df['term'].tolist())
-    
-    if selected_term and st.button("Find Occurrences"):
-        # Auto-execute a search for this term
-        with st.spinner(f"Finding occurrences of '{selected_term}'..."):
-            results = search_documents(selected_term, case_filter=st.session_state['current_case'])
-            
-            if results:
-                st.subheader(f"Found {len(results)} occurrences of '{selected_term}'")
+APPELLANT'S SUBMISSION
+
+I. INTRODUCTION
+
+1. The Appellant, FC United, submits this brief in support of its appeal against the decision rendered by the FIFA Players' Status Committee on 15 January 2023 (the "Decision").
+
+2. This case concerns the unilateral termination of the employment contract between the Appellant and Coach John Smith without just cause.
+
+II. FACTS OF THE CASE
+
+3. On 1 June 2022, the Appellant and Coach Smith entered into an employment contract valid until 31 May 2023 (the "Contract").
+
+4. According to the Contract, Coach Smith was entitled to receive a monthly salary of EUR 10,000.
+
+5. On 15 October 2022, following a series of poor results, the Appellant terminated the Contract with immediate effect.
+
+6. The Appellant submits that Coach Smith failed to fulfill his contractual obligations by demonstrating unprofessional behavior and failing to maintain team discipline.
+
+III. LEGAL ARGUMENTS
+
+7. The Appellant respectfully submits that the termination of the Contract was with just cause due to the following reasons:
+
+   a) Coach Smith repeatedly arrived late to training sessions;
+   b) Coach Smith failed to implement the agreed-upon tactical approach;
+   c) The team's performance significantly deteriorated under Coach Smith's leadership.
+
+8. According to Article 14 of the Contract, the Appellant had the right to terminate the Contract in case of serious breach by Coach Smith.
+
+9. The FIFA Players' Status Committee erred in its assessment of what constitutes just cause under Swiss law.
+
+IV. CONCLUSION
+
+10. For the foregoing reasons, the Appellant respectfully requests the Court of Arbitration for Sport to:
+
+    a) Set aside the Decision;
+    b) Establish that the Contract was terminated with just cause;
+    c) Reject Coach Smith's claim for compensation.
+
+Respectfully submitted,
+FC United
+Date: 15 February 2023"""
                 
-                # Display each occurrence with context
-                for i, result in enumerate(results[:10]):  # Limit to first 10 for performance
-                    with st.expander(f"Occurrence {i+1} in {result['filename']}", expanded=i==0):
-                        st.markdown(result['highlighted_chunk'], unsafe_allow_html=True)
-            else:
-                st.info(f"No occurrences of '{selected_term}' found.")
+            elif sample_type == "Respondent Submission":
+                filename = "respondent_submission_sample.txt"
+                sample_text = """RESPONDENT SUBMISSION
+                
+Court of Arbitration for Sport
+Case Reference: CAS 2023/A/0001
+
+RESPONDENT'S ANSWER
+
+I. INTRODUCTION
+
+1. The Respondent, Coach John Smith, submits this answer in response to the appeal filed by FC United against the decision rendered by the FIFA Players' Status Committee on 15 January 2023 (the "Decision").
+
+2. The Respondent maintains that FC United terminated his employment contract without just cause and therefore must pay compensation.
+
+II. FACTS OF THE CASE
+
+3. On 1 June 2022, the Respondent and FC United entered into an employment contract valid until 31 May 2023 (the "Contract").
+
+4. According to the Contract, the Respondent was entitled to receive a monthly salary of EUR 10,000.
+
+5. On 15 October 2022, FC United terminated the Contract with immediate effect, citing poor sports results as the reason.
+
+6. The Respondent contests the allegations of unprofessional behavior and submits that he fully complied with his contractual obligations.
+
+III. LEGAL ARGUMENTS
+
+7. The Respondent respectfully submits that the termination of the Contract was without just cause for the following reasons:
+
+   a) Poor sporting results do not constitute just cause under well-established CAS jurisprudence;
+   b) No warning was given to the Respondent prior to termination;
+   c) The allegations of unprofessional behavior are unsubstantiated.
+
+8. According to CAS jurisprudence, specifically CAS 2011/A/2596, the absence of sporting results cannot constitute just cause for termination of a coaching contract.
+
+9. The FIFA Players' Status Committee correctly applied Swiss law in determining that the termination was without just cause.
+
+IV. CONCLUSION
+
+10. For the foregoing reasons, the Respondent respectfully requests the Court of Arbitration for Sport to:
+
+    a) Dismiss the appeal;
+    b) Confirm that the Contract was terminated without just cause;
+    c) Order FC United to pay the remaining value of the Contract (EUR 70,000) with interest.
+
+Respectfully submitted,
+Coach John Smith
+Date: 1 March 2023"""
+                
+            elif sample_type == "Arbitral Award":
+                filename = "arbitral_award_sample.txt"
+                sample_text = """ARBITRAL AWARD
+                
+Court of Arbitration for Sport
+Case Reference: CAS 2023/A/0001
+
+ARBITRAL AWARD
+
+delivered by the
+COURT OF ARBITRATION FOR SPORT
+
+sitting in the following composition:
+
+President: Ms. Jane Doe
+Arbitrators: Mr. John Richards, Prof. Maria Rodriguez
+
+in the arbitration between
+
+FC United, Appellant
+
+and
+
+Coach John Smith, Respondent
+
+I. PARTIES
+
+1. FC United (the "Appellant") is a professional football club based in Switzerland.
+
+2. Coach John Smith (the "Respondent") is a professional football coach of German nationality.
+
+II. FACTUAL BACKGROUND
+
+3. On 1 June 2022, the Parties signed an employment contract valid until 31 May 2023 (the "Contract").
+
+4. On 15 October 2022, following several defeats, the Appellant terminated the Contract with immediate effect.
+
+5. On 20 October 2022, the Respondent filed a claim with FIFA claiming compensation for breach of contract.
+
+III. PROCEEDINGS BEFORE FIFA
+
+6. On 15 January 2023, the FIFA Players' Status Committee (the "PSC") ruled that the Appellant had terminated the Contract without just cause and ordered payment of EUR 70,000 as compensation.
+
+7. On 15 February 2023, the Appellant filed an appeal with the Court of Arbitration for Sport.
+
+IV. LEGAL ANALYSIS
+
+8. The Panel has carefully considered the submissions and evidence presented by both Parties.
+
+9. The central issue in this case is whether the Appellant had just cause to terminate the Contract.
+
+10. According to established CAS jurisprudence, poor sporting results do not constitute just cause for termination of a coaching contract (CAS 2011/A/2596).
+
+11. The Panel finds that the Appellant has not proven that the Respondent breached his contractual obligations in a manner that would justify immediate termination.
+
+V. DECISION
+
+12. The Panel dismisses the appeal and confirms the decision of the FIFA Players' Status Committee.
+
+13. FC United shall pay Coach John Smith EUR 70,000 as compensation for breach of contract, plus 5% interest from 15 January 2023.
+
+14. The arbitration costs shall be borne by the Appellant.
+
+Seat of arbitration: Lausanne, Switzerland
+Date: 15 May 2023
+
+The President of the Panel
+Jane Doe"""
+                
+            elif sample_type == "Contract Exhibit":
+                filename = "contract_exhibit_sample.txt"
+                sample_text = """CONTRACT EXHIBIT
+                
+EMPLOYMENT CONTRACT
+
+between
+
+FC United
+Sportweg 1, 8001 Zurich, Switzerland
+(hereinafter referred to as the "Club")
+
+and
+
+Coach John Smith
+Hauptstrasse 123, 10115 Berlin, Germany
+(hereinafter referred to as the "Coach")
+
+1. DURATION
+
+1.1 This contract is valid from 1 June 2022 until 31 May 2023.
+
+2. REMUNERATION
+
+2.1 The Coach shall receive a monthly salary of EUR 10,000 (ten thousand euros), payable on the last day of each month.
+
+2.2 The Coach shall be entitled to the following bonuses:
+   - EUR 50,000 for winning the national championship
+   - EUR 25,000 for winning the national cup
+   - EUR 100,000 for qualification to the UEFA Champions League
+
+3. DUTIES
+
+3.1 The Coach shall be responsible for:
+   a) Training and managing the first team
+   b) Match preparation and tactical decisions
+   c) Player development
+   d) Attending official Club events
+
+4. TERMINATION
+
+4.1 This contract may be terminated by mutual agreement of the Parties.
+
+4.2 Either Party may terminate this contract with just cause according to Swiss law.
+
+4.3 "Just cause" shall include any serious breach of the terms and conditions of this contract, the disciplinary rules of the Club, or constant wrongful behavior by either Party.
+
+5. APPLICABLE LAW AND JURISDICTION
+
+5.1 This contract is governed by Swiss law.
+
+5.2 Any dispute arising from or related to this contract shall be submitted to the FIFA Players' Status Committee.
+
+Signed on 1 June 2022 in Zurich, Switzerland.
+
+For FC United:                        Coach:
+[Signature]                           [Signature]
+Peter Johnson                         John Smith
+President                             Head Coach"""
+            
+            # Create temporary file
+            if sample_text and filename:
+                # Convert string to bytes
+                sample_bytes = sample_text.encode('utf-8')
+                
+                # Create a BytesIO object
+                bytes_io = BytesIO(sample_bytes)
+                
+                # Create a fake file-like object
+                class FakeFile:
+                    def __init__(self, name, content):
+                        self.name = name
+                        self.content = content
+                    
+                    def getvalue(self):
+                        return self.content
+                
+                fake_file = FakeFile(filename, bytes_io)
+                
+                # Process the sample document
+                doc_id = add_document(
+                    fake_file, 
+                    doc_type=sample_type.split()[0],
+                    party="Appellant/Claimant" if "
