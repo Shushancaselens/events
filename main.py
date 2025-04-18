@@ -1,88 +1,11 @@
 import streamlit as st
 import pandas as pd
 import re
-from io import StringIO
-import tempfile
-import os
 from collections import Counter
 
-st.set_page_config(page_title="Sports Arbitration Document Assistant", layout="wide")
+st.set_page_config(page_title="Sports Arbitration Document Assistant (Simple)", layout="wide")
 st.title("Sports Arbitration Document Assistant")
-
-# Check for dependencies and provide installation instructions
-missing_dependencies = []
-try:
-    import PyPDF2
-except ImportError:
-    missing_dependencies.append("PyPDF2")
-
-try:
-    import docx
-except ImportError:
-    missing_dependencies.append("python-docx")
-
-if missing_dependencies:
-    st.error(f"Missing dependencies: {', '.join(missing_dependencies)}")
-    st.info("""
-    To install the required dependencies, run:
-    ```
-    pip install PyPDF2 python-docx
-    ```
-    Or create a requirements.txt file with:
-    ```
-    streamlit
-    pandas
-    PyPDF2
-    python-docx
-    ```
-    """)
-    st.stop()
-
-# Function to read PDF files
-def read_pdf(file):
-    pdf_reader = PyPDF2.PdfReader(file)
-    text = ""
-    for page_num in range(len(pdf_reader.pages)):
-        page = pdf_reader.pages[page_num]
-        text += page.extract_text() + "\n--- Page Break ---\n"
-    return text
-
-# Function to read DOCX files
-def read_docx(file):
-    doc = docx.Document(file)
-    text = ""
-    for para in doc.paragraphs:
-        text += para.text + "\n"
-    return text
-
-# Function to read TXT files
-def read_txt(file):
-    return file.getvalue().decode("utf-8")
-
-# Function to extract text from uploaded files
-def extract_text(uploaded_file):
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        tmp_file_path = tmp_file.name
-    
-    try:
-        file_extension = uploaded_file.name.split(".")[-1].lower()
-        
-        if file_extension == "pdf":
-            with open(tmp_file_path, "rb") as f:
-                text = read_pdf(f)
-        elif file_extension in ["docx", "doc"]:
-            text = read_docx(tmp_file_path)
-        elif file_extension == "txt":
-            text = uploaded_file.getvalue().decode("utf-8")
-        else:
-            text = "Unsupported file type."
-            
-        return text
-    finally:
-        # Delete the temporary file
-        os.unlink(tmp_file_path)
+st.markdown("### Simplified Version (Text Files Only)")
 
 # Function to analyze document structure
 def analyze_document(text):
@@ -122,13 +45,12 @@ def find_context(text, search_term, context_size=100):
         match_end_in_context = match.end() - start
         highlighted = context[:match_start_in_context] + f"**{context[match_start_in_context:match_end_in_context]}**" + context[match_end_in_context:]
         
-        # Find the page if available
-        page_match = re.findall(r'--- Page Break ---', text[:match.start()])
-        page_number = len(page_match) + 1 if page_match else "N/A"
+        # Find paragraph number
+        paragraph_number = len(text[:match.start()].split('\n'))
         
         results.append({
             "context": highlighted,
-            "page": page_number
+            "paragraph": paragraph_number
         })
     
     return results
@@ -185,13 +107,46 @@ def compare_documents(doc1, doc2):
         "different_usage": dict(sorted_common[:20])
     }
 
-# Sidebar for document upload and management
-with st.sidebar:
-    st.header("Document Management")
+# Installation information
+st.sidebar.header("Full Version Installation")
+st.sidebar.markdown("""
+To install the full version with PDF and DOCX support:
+
+```
+pip install PyPDF2 python-docx
+```
+
+Or download the requirements file:
+""")
+
+requirements_content = """
+streamlit==1.24.0
+pandas==2.0.3
+PyPDF2==3.0.1
+python-docx==0.8.11
+"""
+
+st.sidebar.download_button(
+    label="Download requirements.txt",
+    data=requirements_content,
+    file_name="requirements.txt",
+    mime="text/plain",
+)
+
+# Option to use text files or direct text input
+input_option = st.sidebar.radio(
+    "Input Method",
+    ["Upload Text Files", "Direct Text Input"]
+)
+
+if input_option == "Upload Text Files":
+    # Sidebar for document upload and management
+    st.sidebar.header("Document Management")
     
-    uploaded_files = st.file_uploader("Upload documents", accept_multiple_files=True, type=["pdf", "docx", "doc", "txt"])
+    uploaded_files = st.sidebar.file_uploader("Upload text documents", accept_multiple_files=True, type=["txt"])
     
-    st.subheader("Document Labels")
+    # Document labels
+    st.sidebar.subheader("Document Labels")
     doc_labels = {}
     
     if uploaded_files:
@@ -204,211 +159,359 @@ with st.sidebar:
             elif "exhibit" in file.name.lower() or "evidence" in file.name.lower():
                 default_label = "Exhibit"
             
-            doc_labels[i] = st.text_input(f"Label for {file.name}", value=default_label, key=f"label_{i}")
+            doc_labels[i] = st.sidebar.text_input(f"Label for {file.name}", value=default_label, key=f"label_{i}")
     
-    st.subheader("Search Options")
-    search_term = st.text_input("Search term")
+    # Search options
+    st.sidebar.subheader("Search Options")
+    search_term = st.sidebar.text_input("Search term")
+    exact_match = st.sidebar.checkbox("Exact match")
     
-    advanced_search = st.checkbox("Advanced Search Options")
-    
-    if advanced_search:
-        search_doc_type = st.multiselect("Search in document types", 
-                                      options=["Claimant", "Respondent", "Exhibits", "All"],
-                                      default=["All"])
-        exact_match = st.checkbox("Exact match")
+    # Main content
+    if not uploaded_files:
+        st.info("Please upload text documents to begin analysis")
     else:
-        search_doc_type = ["All"]
-        exact_match = False
-
-# Create a requirements.txt file download button
-requirements_content = """
-streamlit==1.24.0
-pandas==2.0.3
-PyPDF2==3.0.1
-python-docx==0.8.11
-"""
-
-st.download_button(
-    label="Download requirements.txt",
-    data=requirements_content,
-    file_name="requirements.txt",
-    mime="text/plain",
-)
-
-st.markdown("""
-### Installation Instructions
-1. Download the requirements.txt file above
-2. Install dependencies with: `pip install -r requirements.txt`
-3. Run the app with: `streamlit run app.py`
-""")
-
-# Main content
-if not uploaded_files:
-    st.info("Please upload documents to begin analysis")
+        # Process uploaded files
+        documents = []
+        for i, file in enumerate(uploaded_files):
+            with st.spinner(f"Processing {file.name}..."):
+                text = file.getvalue().decode("utf-8")
+                doc_analysis = analyze_document(text)
+                documents.append({
+                    "id": i,
+                    "name": file.name,
+                    "label": doc_labels[i],
+                    "text": text,
+                    "analysis": doc_analysis
+                })
+        
+        # Display tabs for different functionalities
+        tab1, tab2, tab3, tab4 = st.tabs(["Document Overview", "Search Results", "Document Comparison", "Argument Analysis"])
+        
+        with tab1:
+            st.header("Document Overview")
+            
+            for doc in documents:
+                with st.expander(f"{doc['label']} ({doc['name']})"):
+                    st.write(f"**Word count:** {doc['analysis']['word_count']}")
+                    st.write(f"**Paragraphs:** {doc['analysis']['total_paragraphs']}")
+                    st.write(f"**Potential sections:** {doc['analysis']['potential_sections']}")
+                    
+                    if doc['analysis']['sample_sections']:
+                        st.write("**Sample sections:**")
+                        for idx, section in doc['analysis']['sample_sections']:
+                            st.write(f"- {section}")
+                    
+                    # Preview first 500 characters
+                    st.subheader("Document Preview")
+                    st.write(doc['text'][:500] + "...")
+        
+        with tab2:
+            st.header("Search Results")
+            
+            if search_term:
+                all_results = []
+                
+                for doc in documents:
+                    # Perform search
+                    if exact_match:
+                        results = find_context(doc['text'], search_term)
+                    else:
+                        # Split search term into words for non-exact matching
+                        search_words = search_term.split()
+                        if len(search_words) == 1:
+                            results = find_context(doc['text'], search_term)
+                        else:
+                            # Search for each word and then find common contexts
+                            all_word_results = []
+                            for word in search_words:
+                                if len(word) > 3:  # Skip short words
+                                    all_word_results.extend(find_context(doc['text'], word))
+                            
+                            # Deduplicate results
+                            seen_contexts = set()
+                            results = []
+                            for res in all_word_results:
+                                context_key = res['context'][:50]  # Use first 50 chars as key
+                                if context_key not in seen_contexts:
+                                    seen_contexts.add(context_key)
+                                    results.append(res)
+                    
+                    for result in results:
+                        all_results.append({
+                            "document": doc['label'],
+                            "filename": doc['name'],
+                            "paragraph": result['paragraph'],
+                            "context": result['context']
+                        })
+                
+                if all_results:
+                    st.write(f"Found {len(all_results)} results for '{search_term}'")
+                    
+                    results_df = pd.DataFrame(all_results)
+                    
+                    # Group by document
+                    for doc_name in results_df['document'].unique():
+                        doc_results = results_df[results_df['document'] == doc_name]
+                        with st.expander(f"{doc_name} ({len(doc_results)} results)"):
+                            for i, row in doc_results.iterrows():
+                                st.markdown(f"**Paragraph {row['paragraph']}:** {row['context']}")
+                                st.markdown("---")
+                else:
+                    st.warning(f"No results found for '{search_term}'")
+            else:
+                st.info("Enter a search term to find relevant content across documents")
+        
+        with tab3:
+            st.header("Document Comparison")
+            
+            if len(documents) >= 2:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    doc1_idx = st.selectbox("Select first document", 
+                                         options=range(len(documents)),
+                                         format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
+                
+                with col2:
+                    doc2_idx = st.selectbox("Select second document", 
+                                         options=range(len(documents)),
+                                         format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
+                
+                if st.button("Compare Documents"):
+                    with st.spinner("Comparing documents..."):
+                        comparison = compare_documents(documents[doc1_idx]['text'], documents[doc2_idx]['text'])
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader(f"Unique to {documents[doc1_idx]['label']}")
+                            for word, count in comparison['unique_to_doc1'].items():
+                                st.write(f"- {word} ({count} occurrences)")
+                        
+                        with col2:
+                            st.subheader(f"Unique to {documents[doc2_idx]['label']}")
+                            for word, count in comparison['unique_to_doc2'].items():
+                                st.write(f"- {word} ({count} occurrences)")
+                        
+                        st.subheader("Different Usage of Common Terms")
+                        diff_data = []
+                        for word, (count1, count2) in comparison['different_usage'].items():
+                            diff_data.append({
+                                "Term": word,
+                                f"{documents[doc1_idx]['label']}": count1,
+                                f"{documents[doc2_idx]['label']}": count2,
+                                "Difference": abs(count1 - count2)
+                            })
+                        
+                        diff_df = pd.DataFrame(diff_data)
+                        st.dataframe(diff_df)
+            else:
+                st.info("Upload at least two documents to use the comparison feature")
+        
+        with tab4:
+            st.header("Argument Analysis")
+            
+            selected_doc = st.selectbox("Select document for argument analysis", 
+                                      options=range(len(documents)),
+                                      format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
+            
+            if st.button("Extract Key Arguments"):
+                with st.spinner("Analyzing arguments..."):
+                    arguments = extract_key_arguments(documents[selected_doc]['text'])
+                    
+                    if arguments:
+                        st.subheader("Key Arguments Identified")
+                        for i, arg in enumerate(arguments, 1):
+                            st.markdown(f"{i}. {arg}")
+                            st.markdown("---")
+                    else:
+                        st.warning("No clear arguments identified. Try a different document.")
 else:
-    # Process uploaded files
+    # Direct text input
+    st.sidebar.header("Document Management")
+    
+    # Setup for direct text input
+    document_count = st.sidebar.number_input("Number of documents", min_value=1, max_value=5, value=2)
+    
+    # Search options
+    st.sidebar.subheader("Search Options")
+    search_term = st.sidebar.text_input("Search term")
+    exact_match = st.sidebar.checkbox("Exact match")
+    
+    # Create document inputs
     documents = []
-    for i, file in enumerate(uploaded_files):
-        with st.spinner(f"Processing {file.name}..."):
-            text = extract_text(file)
-            doc_analysis = analyze_document(text)
+    for i in range(document_count):
+        st.subheader(f"Document {i+1}")
+        doc_label = st.text_input(f"Document {i+1} Label", value=f"Document {i+1}", key=f"label_{i}")
+        doc_text = st.text_area(f"Enter text for Document {i+1}", height=200, key=f"text_{i}")
+        
+        if doc_text:
+            doc_analysis = analyze_document(doc_text)
             documents.append({
                 "id": i,
-                "name": file.name,
-                "label": doc_labels[i],
-                "text": text,
+                "name": f"Document {i+1}",
+                "label": doc_label,
+                "text": doc_text,
                 "analysis": doc_analysis
             })
     
-    # Display tabs for different functionalities
-    tab1, tab2, tab3, tab4 = st.tabs(["Document Overview", "Search Results", "Document Comparison", "Argument Analysis"])
-    
-    with tab1:
-        st.header("Document Overview")
+    # Only show analysis if documents contain text
+    if all(doc.get('text', '') for doc in documents):
+        # Display tabs for different functionalities
+        tab1, tab2, tab3, tab4 = st.tabs(["Document Overview", "Search Results", "Document Comparison", "Argument Analysis"])
         
-        for doc in documents:
-            with st.expander(f"{doc['label']} ({doc['name']})"):
-                st.write(f"**Word count:** {doc['analysis']['word_count']}")
-                st.write(f"**Paragraphs:** {doc['analysis']['total_paragraphs']}")
-                st.write(f"**Potential sections:** {doc['analysis']['potential_sections']}")
-                
-                if doc['analysis']['sample_sections']:
-                    st.write("**Sample sections:**")
-                    for idx, section in doc['analysis']['sample_sections']:
-                        st.write(f"- {section}")
-                
-                # Preview first 500 characters
-                st.subheader("Document Preview")
-                st.write(doc['text'][:500] + "...")
-    
-    with tab2:
-        st.header("Search Results")
-        
-        if search_term:
-            all_results = []
+        with tab1:
+            st.header("Document Overview")
             
             for doc in documents:
-                # Filter by document type if needed
-                if "All" not in search_doc_type:
-                    doc_type_matches = False
-                    for search_type in search_doc_type:
-                        if search_type.lower() in doc['label'].lower():
-                            doc_type_matches = True
-                            break
-                    if not doc_type_matches:
-                        continue
+                with st.expander(f"{doc['label']}"):
+                    st.write(f"**Word count:** {doc['analysis']['word_count']}")
+                    st.write(f"**Paragraphs:** {doc['analysis']['total_paragraphs']}")
+                    st.write(f"**Potential sections:** {doc['analysis']['potential_sections']}")
+                    
+                    if doc['analysis']['sample_sections']:
+                        st.write("**Sample sections:**")
+                        for idx, section in doc['analysis']['sample_sections']:
+                            st.write(f"- {section}")
+        
+        with tab2:
+            st.header("Search Results")
+            
+            if search_term:
+                all_results = []
                 
-                # Perform search
-                if exact_match:
-                    results = find_context(doc['text'], search_term)
-                else:
-                    # Split search term into words for non-exact matching
-                    search_words = search_term.split()
-                    if len(search_words) == 1:
+                for doc in documents:
+                    # Perform search
+                    if exact_match:
                         results = find_context(doc['text'], search_term)
                     else:
-                        # Search for each word and then find common contexts
-                        all_word_results = []
-                        for word in search_words:
-                            if len(word) > 3:  # Skip short words
-                                all_word_results.extend(find_context(doc['text'], word))
-                        
-                        # Deduplicate results
-                        seen_contexts = set()
-                        results = []
-                        for res in all_word_results:
-                            context_key = res['context'][:50]  # Use first 50 chars as key
-                            if context_key not in seen_contexts:
-                                seen_contexts.add(context_key)
-                                results.append(res)
-                
-                for result in results:
-                    all_results.append({
-                        "document": doc['label'],
-                        "filename": doc['name'],
-                        "page": result['page'],
-                        "context": result['context']
-                    })
-            
-            if all_results:
-                st.write(f"Found {len(all_results)} results for '{search_term}'")
-                
-                results_df = pd.DataFrame(all_results)
-                
-                # Group by document
-                for doc_name in results_df['document'].unique():
-                    doc_results = results_df[results_df['document'] == doc_name]
-                    with st.expander(f"{doc_name} ({len(doc_results)} results)"):
-                        for i, row in doc_results.iterrows():
-                            st.markdown(f"**Page {row['page']}:** {row['context']}")
-                            st.markdown("---")
-            else:
-                st.warning(f"No results found for '{search_term}'")
-        else:
-            st.info("Enter a search term to find relevant content across documents")
-    
-    with tab3:
-        st.header("Document Comparison")
-        
-        if len(documents) >= 2:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                doc1_idx = st.selectbox("Select first document", 
-                                     options=range(len(documents)),
-                                     format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
-            
-            with col2:
-                doc2_idx = st.selectbox("Select second document", 
-                                     options=range(len(documents)),
-                                     format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
-            
-            if st.button("Compare Documents"):
-                with st.spinner("Comparing documents..."):
-                    comparison = compare_documents(documents[doc1_idx]['text'], documents[doc2_idx]['text'])
+                        # Split search term into words for non-exact matching
+                        search_words = search_term.split()
+                        if len(search_words) == 1:
+                            results = find_context(doc['text'], search_term)
+                        else:
+                            # Search for each word and then find common contexts
+                            all_word_results = []
+                            for word in search_words:
+                                if len(word) > 3:  # Skip short words
+                                    all_word_results.extend(find_context(doc['text'], word))
+                            
+                            # Deduplicate results
+                            seen_contexts = set()
+                            results = []
+                            for res in all_word_results:
+                                context_key = res['context'][:50]  # Use first 50 chars as key
+                                if context_key not in seen_contexts:
+                                    seen_contexts.add(context_key)
+                                    results.append(res)
                     
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.subheader(f"Unique to {documents[doc1_idx]['label']}")
-                        for word, count in comparison['unique_to_doc1'].items():
-                            st.write(f"- {word} ({count} occurrences)")
-                    
-                    with col2:
-                        st.subheader(f"Unique to {documents[doc2_idx]['label']}")
-                        for word, count in comparison['unique_to_doc2'].items():
-                            st.write(f"- {word} ({count} occurrences)")
-                    
-                    st.subheader("Different Usage of Common Terms")
-                    diff_data = []
-                    for word, (count1, count2) in comparison['different_usage'].items():
-                        diff_data.append({
-                            "Term": word,
-                            f"{documents[doc1_idx]['label']}": count1,
-                            f"{documents[doc2_idx]['label']}": count2,
-                            "Difference": abs(count1 - count2)
+                    for result in results:
+                        all_results.append({
+                            "document": doc['label'],
+                            "paragraph": result['paragraph'],
+                            "context": result['context']
                         })
-                    
-                    diff_df = pd.DataFrame(diff_data)
-                    st.dataframe(diff_df)
-        else:
-            st.info("Upload at least two documents to use the comparison feature")
-    
-    with tab4:
-        st.header("Argument Analysis")
-        
-        selected_doc = st.selectbox("Select document for argument analysis", 
-                                  options=range(len(documents)),
-                                  format_func=lambda x: f"{documents[x]['label']} ({documents[x]['name']})")
-        
-        if st.button("Extract Key Arguments"):
-            with st.spinner("Analyzing arguments..."):
-                arguments = extract_key_arguments(documents[selected_doc]['text'])
                 
-                if arguments:
-                    st.subheader("Key Arguments Identified")
-                    for i, arg in enumerate(arguments, 1):
-                        st.markdown(f"{i}. {arg}")
-                        st.markdown("---")
+                if all_results:
+                    st.write(f"Found {len(all_results)} results for '{search_term}'")
+                    
+                    results_df = pd.DataFrame(all_results)
+                    
+                    # Group by document
+                    for doc_name in results_df['document'].unique():
+                        doc_results = results_df[results_df['document'] == doc_name]
+                        with st.expander(f"{doc_name} ({len(doc_results)} results)"):
+                            for i, row in doc_results.iterrows():
+                                st.markdown(f"**Paragraph {row['paragraph']}:** {row['context']}")
+                                st.markdown("---")
                 else:
-                    st.warning("No clear arguments identified. Try a different document.")
+                    st.warning(f"No results found for '{search_term}'")
+            else:
+                st.info("Enter a search term to find relevant content across documents")
+        
+        with tab3:
+            st.header("Document Comparison")
+            
+            if len(documents) >= 2:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    doc1_idx = st.selectbox("Select first document", 
+                                         options=range(len(documents)),
+                                         format_func=lambda x: f"{documents[x]['label']}")
+                
+                with col2:
+                    doc2_idx = st.selectbox("Select second document", 
+                                         options=range(len(documents)),
+                                         format_func=lambda x: f"{documents[x]['label']}")
+                
+                if st.button("Compare Documents"):
+                    with st.spinner("Comparing documents..."):
+                        comparison = compare_documents(documents[doc1_idx]['text'], documents[doc2_idx]['text'])
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.subheader(f"Unique to {documents[doc1_idx]['label']}")
+                            for word, count in comparison['unique_to_doc1'].items():
+                                st.write(f"- {word} ({count} occurrences)")
+                        
+                        with col2:
+                            st.subheader(f"Unique to {documents[doc2_idx]['label']}")
+                            for word, count in comparison['unique_to_doc2'].items():
+                                st.write(f"- {word} ({count} occurrences)")
+                        
+                        st.subheader("Different Usage of Common Terms")
+                        diff_data = []
+                        for word, (count1, count2) in comparison['different_usage'].items():
+                            diff_data.append({
+                                "Term": word,
+                                f"{documents[doc1_idx]['label']}": count1,
+                                f"{documents[doc2_idx]['label']}": count2,
+                                "Difference": abs(count1 - count2)
+                            })
+                        
+                        diff_df = pd.DataFrame(diff_data)
+                        st.dataframe(diff_df)
+            else:
+                st.info("Enter text for at least two documents to use the comparison feature")
+        
+        with tab4:
+            st.header("Argument Analysis")
+            
+            selected_doc = st.selectbox("Select document for argument analysis", 
+                                      options=range(len(documents)),
+                                      format_func=lambda x: f"{documents[x]['label']}")
+            
+            if st.button("Extract Key Arguments"):
+                with st.spinner("Analyzing arguments..."):
+                    arguments = extract_key_arguments(documents[selected_doc]['text'])
+                    
+                    if arguments:
+                        st.subheader("Key Arguments Identified")
+                        for i, arg in enumerate(arguments, 1):
+                            st.markdown(f"{i}. {arg}")
+                            st.markdown("---")
+                    else:
+                        st.warning("No clear arguments identified. Try a different document.")
+    else:
+        st.info("Please enter text for all documents to start analysis")
+
+# Sample document text for easy testing
+st.sidebar.markdown("---")
+st.sidebar.header("Sample Document")
+if st.sidebar.button("Use Sample Text"):
+    sample_text = """ARBITRATION CAS 2011/A/2596 Anorthosis Famagusta FC v. Ernst Middendorp, award of 29 February 2012
+
+The absence of sporting results cannot, as a general rule, constitute per se a reason to terminate a contractual relationship with just cause.
+
+Notwithstanding that the FIFA Regulations on the Status and Transfer of Players (RSTP) is not directly applicable to coaches, the specific provisions of Articles 22 and 23 RSTP are directly applicable to coaches, thanks to the direct and explicit extension of the provisions to include matters relating to coaches. Prima facie, the FIFA Players Status Committee (PSC) is thus competent to deal with employment-related disputes between a club or an association and a coach of an international dimension, unless the exception clause mentioned in Article 22 RSTP is applicable. This exception clause will be applicable only on condition that reference has specifically been made in the contract to a national independent arbitration tribunal.
+
+Article 17 RSTP is not applicable in a dispute concerning a coach (as opposed to a player). Article 1 RSTP ("Scope") provides that the Regulations concern "players", not coaches. Moreover, the FIFA Statutes no longer contain the provision which appeared in Article 33.4 of their 2001 version, which equated coaches with players.
+
+Article 337c of the Swiss Code of Obligations (CO) provides that in case of termination without just cause of an employment contract of set duration, the employer must, in principle, pay to the employee everything which the employee would have been entitled to receive until the agreed conclusion of the agreement. The burden of proof lies on the party requesting compensation. Any amount which the employee saved, earned or intentionally failed to earn further to termination can be deducted in mitigation of the amount of the compensation. This reflects the general principle of damage mitigation."""
+    
+    if input_option == "Upload Text Files":
+        st.experimental_rerun()
+    else:
+        st.text_area("Document 1", value=sample_text, height=200, key="text_0")
