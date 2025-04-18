@@ -46,27 +46,35 @@ st.markdown("""
         margin-bottom: 0.75rem;
     }
     
-    /* Highlight chunk */
-    .highlight-chunk {
-        background-color: #dcfce7;
+    /* Explanation box - blue background */
+    .explanation {
+        font-size: 0.95rem;
+        color: #1e3a8a;
+        background-color: #eff6ff;
         padding: 1rem;
-        border-left: 4px solid #10b981;
-        margin-bottom: 0.75rem;
         border-radius: 4px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+        font-weight: 500;
     }
     
-    /* Relevance explanation - emphasized with blue background */
-    .relevance {
-        font-size: 0.95rem;
-        color: #1f2937;
-        background-color: #e6f0f9;
-        border: 1px solid #3b82f6;
-        border-left: 4px solid #3b82f6;
-        padding: 0.75rem;
+    /* Highlighted relevant paragraph - green background */
+    .relevant-paragraph {
+        background-color: #d1fae5;  /* Light green background */
+        padding: 1rem;
+        margin: 0;
+    }
+    
+    /* Context paragraphs - normal styling */
+    .context-paragraph {
+        padding: 1rem;
+        margin: 0;
+    }
+    
+    /* Document section containing context and relevant paragraph */
+    .document-section {
+        border: 1px solid #e5e7eb;
         border-radius: 4px;
         margin-bottom: 1.5rem;
-        font-weight: 500;
     }
     
     /* Simple button */
@@ -92,29 +100,10 @@ st.markdown("""
         background-color: #f9fafb;
         padding: 1.5rem 1rem;
     }
-    
-    /* Context text */
-    .context-before {
-        color: #6B7280; 
-        font-size: 0.9em; 
-        font-style: italic; 
-        margin-bottom: 0.75em;
-        border-left: 2px solid #d1d5db;
-        padding-left: 10px;
-    }
-    
-    .context-after {
-        color: #6B7280; 
-        font-size: 0.9em; 
-        font-style: italic; 
-        margin-top: 0.75em;
-        border-left: 2px solid #d1d5db;
-        padding-left: 10px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Sample CAS decision content - keeping the first few cases for brevity
+# Sample CAS decision content
 cas_decisions = [
     {
         "id": "CAS 2020/A/6978",
@@ -236,6 +225,85 @@ The Court of Arbitration for Sport rules that:
         "panel": "Mr Lars Hilliger (Denmark), President; Mr Pantelis Dedes (Greece); Mr Goetz Eilers (Germany)",
         "decision": "Appeal dismissed, FIFA PSC decision upheld.",
         "keywords": ["employment contract", "coach", "termination", "sporting results", "just cause", "compensation", "FIFA RSTP", "Swiss law"]
+    },
+    {
+        "id": "CAS 2023/A/9872",
+        "title": "Astra Satellite Communications v. Celestrian National Frequency Authority",
+        "date": "2023-05-18",
+        "type": "Appeal",
+        "sport": "Space Technology",
+        "full_text": """
+1. The Appellant, Astra Satellite Communications (hereinafter "Astracommex Regional" or the "Appellant"), is a multinational corporation specialized in satellite communications with its principal place of business in Celestria. The Appellant operates a constellation of satellites providing communications services across multiple regions.
+
+2. The Respondent, the Celestrian National Frequency Authority (hereinafter the "NFA" or the "Respondent"), is the regulatory body responsible for managing radio frequency spectrum and satellite orbital positions within Celestria.
+
+3. On 4 March 2020, Astracommex Regional submitted an application to the NFA for authorization to operate a new satellite network in the Ku-band frequency range. The application included technical specifications, orbital parameters, and frequency usage plans.
+
+4. On 17 April 2020, the NFA acknowledged receipt of the application and initiated its review process in accordance with national and international regulations governing radio frequency spectrum allocation.
+
+5. On 8 June 2020, the NFA requested additional technical information from Astracommex Regional regarding potential signal interference with existing satellite networks operating in adjacent frequency bands.
+
+6. On 22 June 2020, Astracommex Regional provided the requested technical information, including detailed interference analyses demonstrating that the proposed network would comply with all applicable technical standards and would not cause harmful interference to existing systems.
+
+7. On 14 August 2020, the NFA expressed concerns about the potential impact of the proposed satellite network on atmospheric data collection systems operating in nearby frequency bands, particularly weather monitoring satellites utilizing microwave sounders.
+
+8. On 28 August 2020, Astracommex Regional submitted additional analyses addressing the NFA's concerns, providing evidence that the proposed network would maintain sufficient spectral separation from sensitive weather monitoring frequencies.
+
+9. On 17 September 2020, the International Telecommunication Union (ITU) published a technical paper highlighting emerging concerns about the potential impact of certain Ku-band satellite operations on weather forecasting capabilities.
+
+10. On 29 September 2020, the World Meteorological Organization (WMO) issued an advisory note recommending that national regulatory authorities exercise heightened scrutiny when authorizing new satellite systems operating near frequencies used for atmospheric sensing.
+
+11. On 2 October 2020, the NFA requested additional documentation from Astracommex Regional to specifically address these atmospheric concerns. On 15 October 2020, Astracommex Regional responded to the NFA, declining to provide the requested supplementary information. On 15 December 2020, the NFA rejected Astracommex Regional's application to Ku-band frequencies on the basis of the NEPA.
+
+12. On 20 December 2020, Astracommex Regional filed an appeal with the Celestrian Communications Appeal Tribunal challenging the NFA's decision. The Tribunal upheld the NFA's decision on 3 March 2021, finding that the regulatory authority had acted within its mandate to protect critical scientific infrastructure.
+
+13. On 1 April 2021, Astracommex Regional filed a Statement of Appeal with the Court of Arbitration for Sport (CAS) against the decision rendered by the Celestrian Communications Appeal Tribunal.
+
+II. PROCEEDINGS BEFORE THE COURT OF ARBITRATION FOR SPORT
+
+14. The main issue for determination by the Panel is whether the NFA's rejection of Astracommex Regional's application for Ku-band frequency authorization was legitimate and proportionate.
+
+15. Astracommex Regional argues that the NFA's decision was arbitrary and discriminatory, as other satellite operators had previously been granted similar authorizations without being required to provide the same level of documentation.
+
+16. The NFA contends that its decision was based on legitimate concerns about the protection of atmospheric sensing capabilities essential for weather forecasting and climate monitoring, and that it applied the precautionary principle appropriately in this case.
+
+17. The Panel finds that regulatory authorities have substantial discretion in managing radiofrequency spectrum, which is a limited natural resource requiring careful coordination to maximize its utility while preventing harmful interference.
+
+18. The Panel notes that the emergence of new scientific evidence regarding potential interference with weather monitoring systems constitutes a legitimate basis for regulatory reassessment, even if this results in more stringent requirements than were applied in the past.
+
+19. The Panel considers that Astracommex Regional's refusal to provide the additional documentation requested by the NFA on 2 October 2020 significantly undermined its position, as regulatory cooperation is an essential aspect of effective spectrum management.
+
+20. The Panel acknowledges that while Astracommex Regional may face commercial disadvantages as a result of the NFA's decision, the protection of atmospheric sensing capabilities represents a compelling public interest that justifies certain restrictions on commercial satellite operations.
+
+21. On 1 January 2021, one of Astracommex Regional's satellites, AS100, collided with a cube satellite (cubesat) that wandered around the adjacent orbit on a crossed orbital plate. The cube satellite was run by Valinor, a private company, in partnership with Celestria's Department of Defense ("DoD"). The cubesat was not equipped with any collision avoidance system and was smashed into small debris upon collision. AS100 was partially damaged – but both its Telemetry, Tracking, and Command (TT&C) system and its communication system ceased to function. The data up until the impact moment indicated an interference to onboard computing system by extreme radiation. This record was transmitted and stored in the Astra System, and subsequently used by Astracommex's engineers to assess the event and prepare software updates for existing and future Astra satellites.
+
+22. On 5 January 2021, the DoD initiated an investigation and ordered Astracommex Regional to suspend all satellite communications within the territory of Celestria.
+
+23. On 10 January 2021, Astracommex Regional submitted a request to the NFA for temporary emergency frequency allocation to restore essential services while the investigation was ongoing. The NFA denied this request on 12 January 2021, citing the ongoing DoD investigation.
+
+24. The Panel finds that the collision incident, while concerning, is not directly relevant to the legitimacy of the NFA's earlier decision regarding Ku-band frequency authorization, as it occurred after the decision was made and involved different technical issues.
+
+25. However, the Panel notes that the collision incident does highlight the importance of careful regulatory oversight of orbital activities and the potential consequences of inadequate coordination among satellite operators.
+
+III. DECISION
+
+The Court of Arbitration for Sport rules that:
+
+1. The appeal filed by Astra Satellite Communications on 1 April 2021 against the decision rendered by the Celestrian Communications Appeal Tribunal on 3 March 2021 is dismissed.
+
+2. The decision rendered by the Celestrian Communications Appeal Tribunal on 3 March 2021 is confirmed.
+
+3. The costs of the arbitration, to be determined and communicated separately by the CAS Court Office, shall be borne by Astra Satellite Communications.
+
+4. Astra Satellite Communications shall pay to the Celestrian National Frequency Authority the amount of EUR 12,000 (twelve thousand Euros) as a contribution towards its legal and other costs incurred in connection with the present arbitration.
+
+5. All other motions or prayers for relief are dismissed.
+        """,
+        "claimant": "Astra Satellite Communications",
+        "respondent": "Celestrian National Frequency Authority",
+        "panel": "Prof. Maria Stellanova (President), Dr. Henry Orbital, Ms. Jenna Frequency",
+        "decision": "Appeal dismissed, NFA decision upheld.",
+        "keywords": ["frequency allocation", "satellite communications", "regulatory authority", "precautionary principle", "satellite collision"]
     }
 ]
 
@@ -245,9 +313,9 @@ df_decisions = pd.DataFrame(cas_decisions)
 # Initialize session state
 if 'search_history' not in st.session_state:
     st.session_state.search_history = [
-        {"query": "buy-out clause football", "timestamp": "2024-04-18 15:32:42"},
-        {"query": "doping violations", "timestamp": "2024-04-18 14:20:23"},
-        {"query": "coach contract", "timestamp": "2024-04-18 11:45:18"}
+        {"query": "buy-out clause", "timestamp": "2024-04-18 15:32:42"},
+        {"query": "sporting results", "timestamp": "2024-04-18 14:20:23"},
+        {"query": "satellite collision", "timestamp": "2024-04-18 11:45:18"}
     ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
@@ -262,7 +330,7 @@ if 'search_complete' not in st.session_state:
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
 
-# Enhanced semantic search function that includes context around matching chunks
+# Enhanced semantic search function that finds paragraphs and their surrounding context
 def semantic_search(query):
     if not query or query.strip() == "":
         return [], []
@@ -277,13 +345,17 @@ def semantic_search(query):
     for idx, case in df_decisions.iterrows():
         # First, split the full text into paragraphs
         paragraphs = case["full_text"].split("\n\n")
+        cleaned_paragraphs = []
+        
+        # Clean the paragraphs and remove empty ones
+        for p in paragraphs:
+            p = p.strip()
+            if p:
+                cleaned_paragraphs.append(p)
         
         # Find relevant paragraphs
-        relevant_chunks = []
-        for para_idx, para in enumerate(paragraphs):
-            if not para.strip():
-                continue
-                
+        case_chunks = []
+        for para_idx, para in enumerate(cleaned_paragraphs):
             score = 0
             for term in query_terms:
                 if term in para.lower():
@@ -291,143 +363,48 @@ def semantic_search(query):
             
             # Only include if it has some relevance
             if score > 0:
-                # Get context from surrounding paragraphs
-                context_before = ""
-                context_after = ""
+                # Get explanation based on content
+                explanation = generate_relevance_explanation(para, query_terms)
                 
-                # Get the paragraph number from the current paragraph if it exists
-                para_number = None
-                para_number_match = re.match(r'^(\d+)\.\s', para.strip())
-                if para_number_match:
-                    para_number = int(para_number_match.group(1))
+                # Find the surrounding paragraphs for context
+                context_paragraphs = []
                 
-                # Get paragraph before (if exists)
+                # Get paragraph before (if available)
                 if para_idx > 0:
-                    prev_para = paragraphs[para_idx - 1].strip()
-                    # Check if it's not empty
-                    if prev_para:
-                        # Get first sentence or short snippet
-                        if len(prev_para) > 100:
-                            # Try to find the end of the first sentence
-                            first_period = prev_para.find('.')
-                            if first_period > 0 and first_period < 100:
-                                context_before = prev_para[:first_period+1]
-                            else:
-                                context_before = prev_para[:100] + "..."
-                        else:
-                            context_before = prev_para
+                    context_paragraphs.append({"text": cleaned_paragraphs[para_idx-1], "position": "before"})
                 
-                # Always ensure we have context_before text
-                if not context_before:
-                    # If we have a paragraph number, generate context with previous number
-                    if para_number and para_number > 1:
-                        prev_number = para_number - 1
-                        
-                        if "buy-out" in query.lower() or "clause" in query.lower():
-                            context_before = f"{prev_number}. The Panel examined whether the buy-out clause was properly formulated and agreed upon by both parties."
-                        elif "doping" in query.lower():
-                            context_before = f"{prev_number}. The Panel considered the applicable anti-doping regulations and previous CAS jurisprudence on similar cases."
-                        elif "financial" in query.lower() or "ffp" in query.lower():
-                            context_before = f"{prev_number}. The CFCB's assessment of the club's financial documentation revealed several areas of concern."
-                        elif "contract" in query.lower() or "transfer" in query.lower():
-                            context_before = f"{prev_number}. The terms of the contract were scrutinized to determine whether they complied with applicable regulations."
-                        elif "appeal" in query.lower():
-                            context_before = f"{prev_number}. The appellant raised several grounds challenging the decision of the lower instance."
-                        elif "coach" in query.lower() or "sporting results" in query.lower():
-                            context_before = f"{prev_number}. The Panel assessed whether poor sporting results could constitute just cause for terminating a coach's contract."
-                        else:
-                            context_before = f"{prev_number}. The Panel established the legal framework applicable to the present dispute."
-                    else:
-                        if "doping" in query.lower():
-                            context_before = "The Panel examined the applicable anti-doping regulations and precedents..."
-                        elif "financial" in query.lower() or "ffp" in query.lower():
-                            context_before = "The CFCB analyzed the financial documentation submitted by the club..."
-                        elif "contract" in query.lower() or "transfer" in query.lower():
-                            context_before = "The tribunal considered the contractual relationship between the parties..."
-                        elif "appeal" in query.lower():
-                            context_before = "The appellant submitted several grounds for appeal to the CAS..."
-                        elif "coach" in query.lower() or "sporting results" in query.lower():
-                            context_before = "The Panel considered the circumstances surrounding the coach's dismissal..."
-                        else:
-                            context_before = "The Court considered the precedents and applicable regulations..."
+                # The matched paragraph itself
+                context_paragraphs.append({"text": para, "position": "match", "score": score})
                 
-                # Get paragraph after (if exists)
-                if para_idx < len(paragraphs) - 1:
-                    next_para = paragraphs[para_idx + 1].strip()
-                    # Check if it's not empty
-                    if next_para:
-                        # Get first sentence or short snippet
-                        if len(next_para) > 100:
-                            # Try to find the end of the first sentence
-                            first_period = next_para.find('.')
-                            if first_period > 0 and first_period < 100:
-                                context_after = next_para[:first_period+1]
-                            else:
-                                context_after = next_para[:100] + "..."
-                        else:
-                            context_after = next_para
+                # Get paragraph after (if available)
+                if para_idx < len(cleaned_paragraphs) - 1:
+                    context_paragraphs.append({"text": cleaned_paragraphs[para_idx+1], "position": "after"})
                 
-                # Always ensure we have context_after text
-                if not context_after:
-                    # If we have a paragraph number, generate context with next number
-                    if para_number:
-                        next_number = para_number + 1
-                        
-                        if "buy-out" in query.lower() or "clause" in query.lower():
-                            context_after = f"{next_number}. The Panel further considered whether the amount set in the buy-out clause was proportionate and reasonable."
-                        elif "doping" in query.lower():
-                            context_after = f"{next_number}. The burden of proof for establishing the alleged anti-doping rule violation rests with the anti-doping organization."
-                        elif "financial" in query.lower() or "ffp" in query.lower():
-                            context_after = f"{next_number}. The Panel assessed whether these financial arrangements complied with the FFP regulations."
-                        elif "contract" in query.lower() or "transfer" in query.lower():
-                            context_after = f"{next_number}. The legal effect of this contractual provision must be evaluated under the applicable law."
-                        elif "appeal" in query.lower():
-                            context_after = f"{next_number}. The standard of review applied by the Panel is one of de novo review."
-                        elif "coach" in query.lower() or "sporting results" in query.lower():
-                            context_after = f"{next_number}. The Panel examined the compensation owed to the coach following termination without just cause."
-                        else:
-                            context_after = f"{next_number}. Based on these principles, the Panel proceeded to analyze the specific circumstances of the case."
-                    else:
-                        if "doping" in query.lower():
-                            context_after = "This interpretation is consistent with previous CAS jurisprudence on anti-doping matters..."
-                        elif "financial" in query.lower() or "ffp" in query.lower():
-                            context_after = "The Panel assessed whether these financial arrangements complied with the FFP regulations..."
-                        elif "contract" in query.lower() or "transfer" in query.lower():
-                            context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
-                        elif "appeal" in query.lower():
-                            context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
-                        elif "coach" in query.lower() or "sporting results" in query.lower():
-                            context_after = "The Panel proceeded to calculate the appropriate compensation for the terminated contract..."
-                        else:
-                            context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
-                
-                # Create a chunk with paragraph, context, and metadata
+                # Create a chunk with the set of context paragraphs
                 chunk = {
                     "case_id": case["id"],
                     "case_title": case["title"],
-                    "text": para.strip(),
-                    "context_before": context_before,
-                    "context_after": context_after,
-                    "raw_text": para.strip(),  # Keep the raw text for relevance calculation
+                    "paragraphs": context_paragraphs,
                     "relevance_score": score,
-                    "relevance_explanation": generate_relevance_explanation(para, query_terms)
+                    "explanation": explanation
                 }
-                relevant_chunks.append(chunk)
+                
+                case_chunks.append(chunk)
         
         # If we found relevant chunks, add this case to results
-        if relevant_chunks:
+        if case_chunks:
             # Sort chunks by relevance
-            relevant_chunks = sorted(relevant_chunks, key=lambda x: x["relevance_score"], reverse=True)
+            case_chunks = sorted(case_chunks, key=lambda x: x["relevance_score"], reverse=True)
             
             # Only keep top 3 chunks per case
-            relevant_chunks = relevant_chunks[:3]
+            case_chunks = case_chunks[:3]
             
             # Add all chunks to overall list
-            all_chunks.extend(relevant_chunks)
+            all_chunks.extend(case_chunks)
             
             # Add case to results
             result = case.copy()
-            result["relevant_chunks"] = relevant_chunks
+            result["relevant_chunks"] = case_chunks
             all_results.append(result)
     
     # Sort results by the maximum relevance score of any chunk
@@ -441,62 +418,27 @@ def semantic_search(query):
     
     return all_results, all_chunks
 
-# Generate a detailed explanation of why a chunk is relevant
+# Generate a detailed explanation for the blue box at the top
 def generate_relevance_explanation(text, query_terms):
-    # Count term frequency
-    term_counts = {}
-    for term in query_terms:
-        count = text.lower().count(term)
-        if count > 0:
-            term_counts[term] = count
+    # Default explanations based on common legal topics
+    explanations = {
+        "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
+        "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
+        "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
+        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
+        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
+        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
+        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests."
+    }
     
-    # Get key legal concepts
-    legal_concepts = []
-    if "contract" in text.lower():
-        legal_concepts.append("contractual obligations")
-    if "compensation" in text.lower():
-        legal_concepts.append("compensation assessment")
-    if "buy-out" in text.lower() or "clause" in text.lower():
-        legal_concepts.append("buy-out clause interpretation")
-    if "doping" in text.lower() or "wada" in text.lower():
-        legal_concepts.append("anti-doping regulations")
-    if "sanction" in text.lower() or "penalty" in text.lower():
-        legal_concepts.append("sanctioning principles")
-    if "financial" in text.lower() or "ffp" in text.lower():
-        legal_concepts.append("financial regulations")
-    if "evidence" in text.lower() or "proof" in text.lower():
-        legal_concepts.append("evidentiary standards")
-    if "jurisdiction" in text.lower() or "competence" in text.lower():
-        legal_concepts.append("jurisdictional scope")
-    if "appeal" in text.lower() or "upheld" in text.lower() or "dismissed" in text.lower():
-        legal_concepts.append("appellate review standards")
-    if "decision" in text.lower() or "ruling" in text.lower():
-        legal_concepts.append("decision-making authority")
-    if "panel" in text.lower() or "arbitrator" in text.lower():
-        legal_concepts.append("arbitral tribunal composition")
-    if "coach" in text.lower() or "sporting results" in text.lower():
-        legal_concepts.append("coach employment")
-    if "termination" in text.lower() or "just cause" in text.lower():
-        legal_concepts.append("contract termination")
+    # Check if any of our pre-defined topics match the query
+    for topic, explanation in explanations.items():
+        if topic in " ".join(query_terms).lower():
+            return explanation
     
-    if not legal_concepts:
-        legal_concepts.append("procedural aspects")
-    
-    # Generate explanation
-    explanation = "This section contains "
-    
-    if term_counts:
-        terms_list = ", ".join([f"'{term}' ({count} mentions)" for term, count in term_counts.items()])
-        explanation += f"key search terms: {terms_list}"
-    
-    if legal_concepts:
-        if term_counts:
-            explanation += " and addresses "
-        concepts_list = ", ".join(legal_concepts[:3])  # Include up to 3 concepts
-        explanation += f"legal concepts related to {concepts_list}"
-    
-    explanation += "."
-    return explanation
+    # If no pre-defined explanation matches, generate a generic one
+    terms_text = ", ".join([f"'{term}'" for term in query_terms])
+    return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
 # Add to search history
 def add_to_history(query):
@@ -544,7 +486,6 @@ with col1:
             st.session_state.current_query = item["query"]
             st.session_state.is_searching = True
             st.session_state.search_complete = False
-            st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
                 
         st.caption(item["timestamp"])
 
@@ -570,7 +511,7 @@ with col2:
     if st.session_state.is_searching:
         with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
             # Simulate search processing time
-            time.sleep(3)  # 3 second delay
+            time.sleep(2)  # 2 second delay
             
             # Perform the actual search
             results, chunks = semantic_search(st.session_state.current_query)
@@ -599,17 +540,30 @@ with col2:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Relevant chunks - now with improved context display
+                    # Display each relevant chunk with its context
                     for chunk in case['relevant_chunks']:
+                        # First, show the explanation box
                         st.markdown(f"""
-                        <div class="relevance">
-                        <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                        <div class="explanation">
+                        <strong>Explanation:</strong> {chunk['explanation']}
                         </div>
+                        """, unsafe_allow_html=True)
                         
-                        <div class="highlight-chunk">
-                            <div class="context-before">{chunk['context_before']}</div>
-                            <div>{chunk['text']}</div>
-                            <div class="context-after">{chunk['context_after']}</div>
+                        # Now display the paragraphs in their natural order
+                        paragraphs_html = ""
+                        
+                        for para in chunk['paragraphs']:
+                            if para['position'] == 'match':
+                                # This is the matching paragraph - highlight it with green background
+                                paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                            else:
+                                # This is a context paragraph - normal styling
+                                paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
+                        
+                        # Output the entire document section
+                        st.markdown(f"""
+                        <div class="document-section">
+                        {paragraphs_html}
                         </div>
                         """, unsafe_allow_html=True)
         else:
@@ -624,10 +578,10 @@ with col2:
         Court of Arbitration for Sport decisions.
         
         **Example searches:**
-        - buy-out clause football
-        - coach contract
+        - buy-out clause
         - sporting results
-        - contract termination
-        - employment disputes
+        - satellite collision
+        - coach contract
         - just cause
+        - compensation
         """)
