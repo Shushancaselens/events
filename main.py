@@ -784,21 +784,6 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
-# Function to perform search with a delay
-def perform_search_with_delay():
-    # Set searching state
-    st.session_state.is_searching = True
-    st.session_state.search_complete = False
-    
-    # Get current time to display when search started
-    st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
-    
-    # Add to history
-    add_to_history(st.session_state.current_query)
-    
-    # Rerun to show the loading state
-    st.experimental_rerun()
-
 # App layout - cleaner with more focus on results
 col1, col2 = st.columns([1, 3])
 
@@ -821,7 +806,6 @@ with col1:
             st.session_state.is_searching = True
             st.session_state.search_complete = False
             st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
-            st.experimental_rerun()
                 
         st.caption(item["timestamp"])
 
@@ -839,7 +823,9 @@ with col2:
     # If search button clicked, start the search process
     if search_button and search_query:
         st.session_state.current_query = search_query
-        perform_search_with_delay()
+        st.session_state.is_searching = True
+        st.session_state.search_complete = False
+        add_to_history(search_query)
     
     # Display loading state
     if st.session_state.is_searching:
@@ -855,9 +841,6 @@ with col2:
             # Update state
             st.session_state.is_searching = False
             st.session_state.search_complete = True
-            
-            # Rerun to display results
-            st.experimental_rerun()
     
     # Show results when search is complete
     if st.session_state.search_complete and 'search_results' in st.session_state:
