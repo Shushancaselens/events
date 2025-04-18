@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
+import time
 
 # Set page configuration
 st.set_page_config(page_title="CAS Decision Search", layout="wide")
@@ -55,7 +56,7 @@ st.markdown("""
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
     
-        /* Relevance explanation - emphasized with blue background */
+    /* Relevance explanation - emphasized with blue background */
     .relevance {
         font-size: 0.95rem;
         color: #1f2937;
@@ -507,6 +508,12 @@ if 'search_results' not in st.session_state:
     st.session_state.search_results = []
 if 'chunks' not in st.session_state:
     st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 
 # Enhanced semantic search function that includes context around matching chunks
 def semantic_search(query):
@@ -579,6 +586,8 @@ def semantic_search(query):
                             context_before = f"{prev_number}. The terms of the contract were scrutinized to determine whether they complied with applicable regulations."
                         elif "appeal" in query.lower():
                             context_before = f"{prev_number}. The appellant raised several grounds challenging the decision of the lower instance."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
+                            context_before = f"{prev_number}. The Panel assessed whether poor sporting results could constitute just cause for terminating a coach's contract."
                         else:
                             context_before = f"{prev_number}. The Panel established the legal framework applicable to the present dispute."
                     else:
@@ -590,6 +599,8 @@ def semantic_search(query):
                             context_before = "The tribunal considered the contractual relationship between the parties..."
                         elif "appeal" in query.lower():
                             context_before = "The appellant submitted several grounds for appeal to the CAS..."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
+                            context_before = "The Panel considered the circumstances surrounding the coach's dismissal..."
                         else:
                             context_before = "The Court considered the precedents and applicable regulations..."
                 
@@ -625,6 +636,8 @@ def semantic_search(query):
                             context_after = f"{next_number}. The legal effect of this contractual provision must be evaluated under the applicable law."
                         elif "appeal" in query.lower():
                             context_after = f"{next_number}. The standard of review applied by the Panel is one of de novo review."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
+                            context_after = f"{next_number}. The Panel examined the compensation owed to the coach following termination without just cause."
                         else:
                             context_after = f"{next_number}. Based on these principles, the Panel proceeded to analyze the specific circumstances of the case."
                     else:
@@ -636,6 +649,8 @@ def semantic_search(query):
                             context_after = "The legal effect of this contractual provision must be evaluated under the applicable law..."
                         elif "appeal" in query.lower():
                             context_after = "Based on these facts, the Panel proceeded to evaluate the merits of the appeal..."
+                        elif "coach" in query.lower() or "sporting results" in query.lower():
+                            context_after = "The Panel proceeded to calculate the appropriate compensation for the terminated contract..."
                         else:
                             context_after = "The Panel then considered how these principles apply to the specific circumstances of the case..."
                 
@@ -769,6 +784,21 @@ def add_to_history(query):
             if len(st.session_state.search_history) > 10:
                 st.session_state.search_history = st.session_state.search_history[:10]
 
+# Function to perform search with a delay
+def perform_search_with_delay():
+    # Set searching state
+    st.session_state.is_searching = True
+    st.session_state.search_complete = False
+    
+    # Get current time to display when search started
+    st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
+    
+    # Add to history
+    add_to_history(st.session_state.current_query)
+    
+    # Rerun to show the loading state
+    st.experimental_rerun()
+
 # App layout - cleaner with more focus on results
 col1, col2 = st.columns([1, 3])
 
@@ -787,9 +817,11 @@ with col1:
             label_visibility="collapsed",
             index=0 if i == 0 else None
         ):
-            results, chunks = semantic_search(item["query"])
-            st.session_state.search_results = results
-            st.session_state.chunks = chunks
+            st.session_state.current_query = item["query"]
+            st.session_state.is_searching = True
+            st.session_state.search_complete = False
+            st.session_state.search_start_time = datetime.now().strftime("%H:%M:%S")
+            st.experimental_rerun()
                 
         st.caption(item["timestamp"])
 
@@ -804,45 +836,62 @@ with col2:
     with col_button:
         search_button = st.button("Search", key="search_btn")
     
-    # Execute search when button clicked
+    # If search button clicked, start the search process
     if search_button and search_query:
-        add_to_history(search_query)
-        results, chunks = semantic_search(search_query)
-        st.session_state.search_results = results
-        st.session_state.chunks = chunks
+        st.session_state.current_query = search_query
+        perform_search_with_delay()
     
-    # Show results
-    if 'search_results' in st.session_state and st.session_state.search_results:
-        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
-        
-        # Display results grouped by case
-        for case in st.session_state.search_results:
-            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Case metadata
-                st.markdown(f"""
-                <div class="case-meta">
-                    <strong>Date:</strong> {case['date']} | 
-                    <strong>Type:</strong> {case['type']} | 
-                    <strong>Sport:</strong> {case['sport']} | 
-                    <strong>Panel:</strong> {case['panel']}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Relevant chunks
-                for chunk in case['relevant_chunks']:
+    # Display loading state
+    if st.session_state.is_searching:
+        with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
+            # Simulate search processing time
+            time.sleep(3)  # 3 second delay
+            
+            # Perform the actual search
+            results, chunks = semantic_search(st.session_state.current_query)
+            st.session_state.search_results = results
+            st.session_state.chunks = chunks
+            
+            # Update state
+            st.session_state.is_searching = False
+            st.session_state.search_complete = True
+            
+            # Rerun to display results
+            st.experimental_rerun()
+    
+    # Show results when search is complete
+    if st.session_state.search_complete and 'search_results' in st.session_state:
+        if st.session_state.search_results:
+            st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+            
+            # Display results grouped by case
+            for case in st.session_state.search_results:
+                with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                    # Case metadata
                     st.markdown(f"""
-                    <div class="relevance">
-                    <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
-                    </div>
-                    <div class="highlight-chunk">
-                    {chunk['text']}
+                    <div class="case-meta">
+                        <strong>Date:</strong> {case['date']} | 
+                        <strong>Type:</strong> {case['type']} | 
+                        <strong>Sport:</strong> {case['sport']} | 
+                        <strong>Panel:</strong> {case['panel']}
                     </div>
                     """, unsafe_allow_html=True)
+                    
+                    # Relevant chunks
+                    for chunk in case['relevant_chunks']:
+                        st.markdown(f"""
+                        <div class="relevance">
+                        <strong>RELEVANCE:</strong> {chunk['relevance_explanation']}
+                        </div>
+                        <div class="highlight-chunk">
+                        {chunk['text']}
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.info("No results found. Try different search terms.")
     
-    # Show empty state
-    elif search_button:
-        st.info("No results found. Try different search terms.")
-    else:
+    # Show welcome screen if no search has been done
+    if not st.session_state.is_searching and not st.session_state.search_complete:
         st.markdown("""
         ### Welcome to CAS Decision Search
         
