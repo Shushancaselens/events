@@ -394,6 +394,31 @@ if 'search_complete' not in st.session_state:
     st.session_state.search_complete = False
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
+# Initialize filter states
+if 'selected_langs' not in st.session_state:
+    st.session_state.selected_langs = []
+if 'selected_years' not in st.session_state:
+    st.session_state.selected_years = []
+if 'selected_proc' not in st.session_state:
+    st.session_state.selected_proc = []
+if 'selected_sports' not in st.session_state:
+    st.session_state.selected_sports = []
+if 'selected_matters' not in st.session_state:
+    st.session_state.selected_matters = []
+if 'selected_categories' not in st.session_state:
+    st.session_state.selected_categories = []
+if 'selected_outcomes' not in st.session_state:
+    st.session_state.selected_outcomes = []
+if 'start_date' not in st.session_state:
+    st.session_state.start_date = None
+if 'end_date' not in st.session_state:
+    st.session_state.end_date = None
+if 'president_filter' not in st.session_state:
+    st.session_state.president_filter = ""
+if 'arbitrator1_filter' not in st.session_state:
+    st.session_state.arbitrator1_filter = ""
+if 'arbitrator2_filter' not in st.session_state:
+    st.session_state.arbitrator2_filter = ""
 
 # Enhanced semantic search function that finds paragraphs and their surrounding context
 def semantic_search(query):
@@ -408,6 +433,10 @@ def semantic_search(query):
     
     # For each decision, identify relevant chunks
     for idx, case in df_decisions.iterrows():
+        # Apply filters
+        if not passes_filters(case):
+            continue
+            
         # First, split the full text into paragraphs
         paragraphs = case["full_text"].split("\n\n")
         cleaned_paragraphs = []
@@ -483,6 +512,90 @@ def semantic_search(query):
     
     return all_results, all_chunks
 
+# Helper function to check if a case passes all the applied filters
+def passes_filters(case):
+    # Sport filter
+    if st.session_state.selected_sports and case['sport'] not in st.session_state.selected_sports:
+        return False
+        
+    # Year filter (extract year from date)
+    if st.session_state.selected_years:
+        case_year = int(case['date'].split('-')[0])
+        if case_year not in st.session_state.selected_years:
+            return False
+    
+    # Date range filter
+    if st.session_state.start_date or st.session_state.end_date:
+        case_date = datetime.strptime(case['date'], '%Y-%m-%d').date()
+        if st.session_state.start_date and case_date < st.session_state.start_date:
+            return False
+        if st.session_state.end_date and case_date > st.session_state.end_date:
+            return False
+    
+    # Type filter (match with procedural type)
+    if st.session_state.selected_proc and case['type'] not in st.session_state.selected_proc:
+        return False
+    
+    # Outcome filter
+    if st.session_state.selected_outcomes:
+        # This is a simplified check - in a real app you'd have a more structured outcome field
+        case_outcome = case['decision'].lower()
+        match_found = False
+        for outcome in st.session_state.selected_outcomes:
+            if outcome.lower() in case_outcome:
+                match_found = True
+                break
+        if not match_found:
+            return False
+    
+    # Panel/Arbitrator filters
+    if st.session_state.president_filter and st.session_state.president_filter.lower() not in case['panel'].lower():
+        return False
+        
+    # Note: We're simplifying here since our data structure doesn't separate arbitrators
+    # In a real app, you'd have separate fields for each arbitrator
+    if st.session_state.arbitrator1_filter and st.session_state.arbitrator1_filter.lower() not in case['panel'].lower():
+        return False
+        
+    if st.session_state.arbitrator2_filter and st.session_state.arbitrator2_filter.lower() not in case['panel'].lower():
+        return False
+    
+    # Category filter - this would require a dedicated category field
+    # For this example, we'll use the case ID format to guess the category
+    if st.session_state.selected_categories:
+        case_id_parts = case['id'].split('/')
+        if len(case_id_parts) >= 3:
+            case_category = case_id_parts[1]  # e.g., "A" from "CAS 2020/A/6978"
+            matching_categories = [cat for cat in st.session_state.selected_categories 
+                                  if cat.startswith(case_category + " -")]
+            if not matching_categories:
+                return False
+    
+    # For "Matter" filter, we'll use keywords as a proxy
+    if st.session_state.selected_matters:
+        keywords_matched = False
+        for matter in st.session_state.selected_matters:
+            matter_keywords = {
+                "Doping": ["doping", "anti-doping", "prohibited substance"],
+                "Transfer": ["transfer", "buy-out", "player registration"],
+                "Contract": ["contract", "employment", "agreement"],
+                "Eligibility": ["eligibility", "qualification"],
+                "Regulatory": ["regulation", "regulatory", "rule"],
+                "Disciplinary": ["disciplinary", "sanction", "suspension"]
+            }
+            
+            if matter in matter_keywords:
+                for keyword in matter_keywords[matter]:
+                    if any(keyword in kw.lower() for kw in case['keywords']):
+                        keywords_matched = True
+                        break
+        
+        if st.session_state.selected_matters and not keywords_matched:
+            return False
+    
+    # If all filters passed
+    return True
+
 # Generate a detailed explanation for the blue box at the top
 def generate_relevance_explanation(text, query_terms):
     # Default explanations based on common legal topics
@@ -540,6 +653,84 @@ with st.sidebar:
         <div class="logo-text">caselens</div>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Filters section
+    st.markdown("<h3>Filters</h3>", unsafe_allow_html=True)
+    
+    with st.expander("Language", expanded=False):
+        lang_options = ["English", "French", "German", "Spanish"]
+        st.session_state.selected_langs = st.multiselect("Select language(s)", lang_options, st.session_state.selected_langs)
+    
+    with st.expander("Year", expanded=False):
+        year_options = list(range(2010, 2025))
+        st.session_state.selected_years = st.multiselect("Select year(s)", year_options, st.session_state.selected_years)
+    
+    with st.expander("Procedural Types", expanded=False):
+        proc_options = ["Appeal", "First instance", "Advisory opinion"]
+        st.session_state.selected_proc = st.multiselect("Select procedural type(s)", proc_options, st.session_state.selected_proc)
+    
+    with st.expander("Sport", expanded=False):
+        sport_options = ["Football", "Cycling", "Athletics", "Swimming", "Space Technology", "Other"]
+        st.session_state.selected_sports = st.multiselect("Select sport(s)", sport_options, st.session_state.selected_sports)
+    
+    with st.expander("Matter", expanded=False):
+        matter_options = ["Doping", "Transfer", "Contract", "Eligibility", "Regulatory", "Disciplinary", "Other"]
+        st.session_state.selected_matters = st.multiselect("Select matter(s)", matter_options, st.session_state.selected_matters)
+    
+    with st.expander("Arbitrators", expanded=False):
+        st.session_state.president_filter = st.text_input("President/Sole Arbitrator", 
+                                                        value=st.session_state.president_filter, 
+                                                        placeholder="Search by name...")
+        st.session_state.arbitrator1_filter = st.text_input("Arbitrator 1", 
+                                                          value=st.session_state.arbitrator1_filter, 
+                                                          placeholder="Search by name...")
+        st.session_state.arbitrator2_filter = st.text_input("Arbitrator 2", 
+                                                          value=st.session_state.arbitrator2_filter, 
+                                                          placeholder="Search by name...")
+    
+    with st.expander("Category", expanded=False):
+        category_options = [
+            "A - Appeal",
+            "D - Disciplinary",
+            "O - Ordinary procedure",
+            "T - Transfer-related dispute",
+            "PA - Other appeals",
+            "IA - Internal appeals"
+        ]
+        st.session_state.selected_categories = st.multiselect("Select category(ies)", 
+                                                            category_options, 
+                                                            st.session_state.selected_categories)
+    
+    with st.expander("Decision Date", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.session_state.start_date = st.date_input("From", value=st.session_state.start_date)
+        with col2:
+            st.session_state.end_date = st.date_input("To", value=st.session_state.end_date)
+    
+    with st.expander("Outcome", expanded=False):
+        outcome_options = ["Appeal upheld", "Appeal partially upheld", "Appeal dismissed", "Settlement"]
+        st.session_state.selected_outcomes = st.multiselect("Select outcome(s)", 
+                                                          outcome_options, 
+                                                          st.session_state.selected_outcomes)
+        
+    # Add a reset filters button
+    if st.button("Reset Filters"):
+        st.session_state.selected_langs = []
+        st.session_state.selected_years = []
+        st.session_state.selected_proc = []
+        st.session_state.selected_sports = []
+        st.session_state.selected_matters = []
+        st.session_state.selected_categories = []
+        st.session_state.selected_outcomes = []
+        st.session_state.start_date = None
+        st.session_state.end_date = None
+        st.session_state.president_filter = ""
+        st.session_state.arbitrator1_filter = ""
+        st.session_state.arbitrator2_filter = ""
+        st.rerun()
+    
+    st.markdown('<hr style="margin: 15px 0;">', unsafe_allow_html=True)
     
     # History section
     st.markdown('<div class="history-section">', unsafe_allow_html=True)
