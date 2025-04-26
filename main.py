@@ -1,121 +1,4 @@
-# Add JavaScript for text selection copy popup
-st.markdown("""
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Create selection popup element
-    const selectionPopup = document.createElement('div');
-    selectionPopup.className = 'selection-popup';
-    selectionPopup.innerHTML = `
-        <button class="selection-copy-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            Copy
-        </button>
-    `;
-    document.body.appendChild(selectionPopup);
-    
-    // Add event listeners
-    document.addEventListener('mouseup', function(e) {
-        const selection = window.getSelection();
-        if (selection.toString().length > 0 && 
-            (e.target.closest('.relevant-paragraph') || e.target.closest('.context-paragraph'))) {
-            
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            // Position the popup
-            selectionPopup.style.left = (rect.left + rect.width/2 - selectionPopup.offsetWidth/2) + 'px';
-            selectionPopup.style.top = (window.scrollY + rect.top - selectionPopup.offsetHeight - 10) + 'px';
-            selectionPopup.style.display = 'block';
-            
-            // Add click handler
-            selectionPopup.querySelector('.selection-copy-btn').onclick = function() {
-                navigator.clipboard.writeText(selection.toString());
-                selectionPopup.style.display = 'none';
-                
-                // Show temporary success message
-                const successToast = document.createElement('div');
-                successToast.className = 'success-toast';
-                successToast.innerText = 'Text copied!';
-                document.body.appendChild(successToast);
-                
-                setTimeout(() => {
-                    successToast.classList.add('show');
-                }, 10);
-                
-                setTimeout(() => {
-                    successToast.classList.remove('show');
-                    setTimeout(() => document.body.removeChild(successToast), 300);
-                }, 2000);
-            };
-        } else {
-            selectionPopup.style.display = 'none';
-        }
-    });
-    
-    // Hide popup when clicking elsewhere
-    document.addEventListener('mousedown', function(e) {
-        if (!e.target.closest('.selection-popup')) {
-            selectionPopup.style.display = 'none';
-        }
-    });
-});
-</script>
-""", unsafe_allow_html=True)
-
-# Add styles for selection popup and toast notification
-st.markdown("""
-<style>
-.selection-popup {
-    position: absolute;
-    z-index: 1000;
-    background: white;
-    border-radius: 4px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    padding: 5px 10px;
-    transform: translateY(-5px);
-}
-
-.selection-copy-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: none;
-    border: none;
-    color: #4b5563;
-    font-size: 12px;
-    cursor: pointer;
-    padding: 3px 5px;
-}
-
-.selection-copy-btn:hover {
-    background: #f3f4f6;
-    border-radius: 3px;
-}
-
-.success-toast {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: #333;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-size: 14px;
-    opacity: 0;
-    transition: opacity 0.3s, transform 0.3s;
-    z-index: 1001;
-}
-
-.success-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-}
-</style>
-""", unsafe_allow_html=True)import streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
@@ -161,8 +44,6 @@ st.markdown("""
         font-size: 30px;
         font-weight: bold;
     }
-    
-
     
     /* User profile section */
     .profile-section {
@@ -364,6 +245,54 @@ st.markdown("""
     
     .citation-copy:hover {
         background-color: #e5e5e5;
+    }
+    
+    /* Selection popup and toast notification styles */
+    .selection-popup {
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        padding: 5px 10px;
+        transform: translateY(-5px);
+    }
+    
+    .selection-copy-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: none;
+        border: none;
+        color: #4b5563;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 3px 5px;
+    }
+    
+    .selection-copy-btn:hover {
+        background: #f3f4f6;
+        border-radius: 3px;
+    }
+    
+    .success-toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        background: #333;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s, transform 0.3s;
+        z-index: 1001;
+    }
+    
+    .success-toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -576,18 +505,6 @@ The Court of Arbitration for Sport rules that:
 df_decisions = pd.DataFrame(cas_decisions)
 
 # Initialize session state
-if 'selected_case' not in st.session_state:
-    st.session_state.selected_case = None
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = []
-if 'chunks' not in st.session_state:
-    st.session_state.chunks = []
-if 'is_searching' not in st.session_state:
-    st.session_state.is_searching = False
-if 'search_complete' not in st.session_state:
-    st.session_state.search_complete = False
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
 if 'search_results' not in st.session_state:
@@ -887,6 +804,73 @@ def generate_case_summary(case):
     else:
         # Generate a generic summary based on available information
         return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
+
+# Add JavaScript for text selection copy popup
+st.markdown("""
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Create selection popup element
+    const selectionPopup = document.createElement('div');
+    selectionPopup.className = 'selection-popup';
+    selectionPopup.innerHTML = `
+        <button class="selection-copy-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+        </button>
+    `;
+    document.body.appendChild(selectionPopup);
+    
+    // Add event listeners
+    document.addEventListener('mouseup', function(e) {
+        const selection = window.getSelection();
+        if (selection.toString().length > 0 && 
+            (e.target.closest('.relevant-paragraph') || e.target.closest('.context-paragraph'))) {
+            
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            // Position the popup
+            selectionPopup.style.left = (rect.left + rect.width/2 - selectionPopup.offsetWidth/2) + 'px';
+            selectionPopup.style.top = (window.scrollY + rect.top - selectionPopup.offsetHeight - 10) + 'px';
+            selectionPopup.style.display = 'block';
+            
+            // Add click handler
+            selectionPopup.querySelector('.selection-copy-btn').onclick = function() {
+                navigator.clipboard.writeText(selection.toString());
+                selectionPopup.style.display = 'none';
+                
+                // Show temporary success message
+                const successToast = document.createElement('div');
+                successToast.className = 'success-toast';
+                successToast.innerText = 'Text copied!';
+                document.body.appendChild(successToast);
+                
+                setTimeout(() => {
+                    successToast.classList.add('show');
+                }, 10);
+                
+                setTimeout(() => {
+                    successToast.classList.remove('show');
+                    setTimeout(() => document.body.removeChild(successToast), 300);
+                }, 2000);
+            };
+        } else {
+            selectionPopup.style.display = 'none';
+        }
+    });
+    
+    // Hide popup when clicking elsewhere
+    document.addEventListener('mousedown', function(e) {
+        if (!e.target.closest('.selection-popup')) {
+            selectionPopup.style.display = 'none';
+        }
+    });
+});
+</script>
+""", unsafe_allow_html=True)
 
 # ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
