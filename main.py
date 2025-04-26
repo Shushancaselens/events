@@ -1,9 +1,4 @@
-# Add case summary once per case
-                st.markdown(f"""
-                <div class="explanation">
-                <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
-                </div>
-                """, unsafe_allow_html=True)import streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
@@ -49,8 +44,6 @@ st.markdown("""
         font-size: 30px;
         font-weight: bold;
     }
-    
-
     
     /* User profile section */
     .profile-section {
@@ -134,6 +127,87 @@ st.markdown("""
         font-size: 0.9rem;
         color: #6b7280;
         margin-bottom: 0.75rem;
+    }
+    
+    /* Floating action buttons styling */
+    .floating-actions {
+        position: absolute;
+        right: 50px;
+        top: 15px;
+        display: flex;
+        z-index: 100;
+    }
+    
+    .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        margin-left: 8px;
+        background-color: #f8f9fa;
+        border: 1px solid #e2e8f0;
+        border-radius: 50%;
+        color: #333;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+    
+    .icon-button:hover {
+        background-color: #edf2f7;
+        border-color: #cbd5e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .icon-button svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Tooltip styles */
+    .icon-button::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 105%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 5px 10px;
+        background: #333;
+        color: white;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .icon-button::before {
+        content: "";
+        position: absolute;
+        bottom: 95%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #333;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .icon-button:hover::after, .icon-button:hover::before {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Position the floating actions correctly in the expander */
+    .streamlit-expanderHeader {
+        position: relative;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -345,56 +419,175 @@ The Court of Arbitration for Sport rules that:
 # Convert to DataFrame for easier manipulation
 df_decisions = pd.DataFrame(cas_decisions)
 
-# Initialize session state
-if 'selected_case' not in st.session_state:
-    st.session_state.selected_case = None
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = []
-if 'chunks' not in st.session_state:
-    st.session_state.chunks = []
-if 'is_searching' not in st.session_state:
-    st.session_state.is_searching = False
-if 'search_complete' not in st.session_state:
-    st.session_state.search_complete = False
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
-if 'selected_case' not in st.session_state:
-    st.session_state.selected_case = None
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = []
-if 'chunks' not in st.session_state:
-    st.session_state.chunks = []
-if 'is_searching' not in st.session_state:
-    st.session_state.is_searching = False
-if 'search_complete' not in st.session_state:
-    st.session_state.search_complete = False
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
-# Initialize filter states
-if 'selected_langs' not in st.session_state:
-    st.session_state.selected_langs = []
-if 'selected_years' not in st.session_state:
-    st.session_state.selected_years = []
-if 'selected_proc' not in st.session_state:
-    st.session_state.selected_proc = []
-if 'selected_sports' not in st.session_state:
-    st.session_state.selected_sports = []
-if 'selected_matters' not in st.session_state:
-    st.session_state.selected_matters = []
-if 'selected_categories' not in st.session_state:
-    st.session_state.selected_categories = []
-if 'selected_outcomes' not in st.session_state:
-    st.session_state.selected_outcomes = []
-if 'start_date' not in st.session_state:
-    st.session_state.start_date = None
-if 'end_date' not in st.session_state:
-    st.session_state.end_date = None
-if 'president_filter' not in st.session_state:
-    st.session_state.president_filter = ""
-if 'arbitrator1_filter' not in st.session_state:
-    st.session_state.arbitrator1_filter = ""
-if 'arbitrator2_filter' not in st.session_state:
-    st.session_state.arbitrator2_filter = ""
+# Function to generate properly formatted citation for a case
+def generate_citation(case):
+    """Generate a properly formatted citation for academic or legal reference."""
+    # Format: "Case ID, Case Title, Court of Arbitration for Sport (Decision Date)"
+    citation = f"{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})"
+    return citation
+
+# Generate a concise summary of a case for search results - shorter versions
+def generate_case_summary(case):
+    case_id = case['id']
+    
+    # Pre-defined summaries for each case in our dataset - more concise versions
+    summaries = {
+        "CAS 2020/A/6978": "Dispute over a €30M buy-out clause in player Diego Costa's contract. Atlético Madrid sought higher compensation after Chelsea signed the player.",
+        
+        "CAS 2011/A/2596": "Club terminated coach's contract after poor sporting results. Coach contested termination was without just cause and sought compensation.",
+        
+        "CAS 2023/A/9872": "Challenge to regulatory decision denying satellite frequency authorization, with additional satellite collision incident raising security concerns."
+    }
+    
+    # Return the appropriate summary or a generic one if not found
+    if case_id in summaries:
+        return summaries[case_id]
+    else:
+        # Generate a generic summary based on available information
+        return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
+
+# Generate a detailed explanation for the blue box at the top
+def generate_relevance_explanation(text, query_terms):
+    # Default explanations based on common legal topics - expanded with more terms
+    explanations = {
+        "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
+        "buy out": "Buy-out provisions in contracts represent a pre-agreed amount for compensation in case of early termination.",
+        "buyout": "Buyout clauses set a predetermined financial value for contract termination without requiring further negotiation.",
+        "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
+        "terminate contract": "Termination of contracts in sports requires analysis of the justification and appropriate compensation.",
+        "termination": "Contract termination in sports law examines whether proper procedures were followed and appropriate compensation was provided.",
+        "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
+        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
+        "coach": "Coaching contracts in sports have unique characteristics that distinguish them from player contracts.",
+        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
+        "compensation": "Compensation analysis in sports contracts involves examining contract terms, applicable regulations, and mitigating factors.",
+        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
+        "satellite": "Satellite-related disputes involve complex technical and regulatory considerations specific to space technology.",
+        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
+        "frequency": "Radio frequency matters involve balancing technical requirements, regulatory oversight, and international coordination.",
+        "spectrum": "Spectrum management disputes involve balancing commercial interests against public good considerations.",
+        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes.",
+        "security": "Security considerations can influence regulatory decisions and may justify certain limitations on commercial activities.",
+        "regulatory": "Regulatory decisions are subject to review based on proper procedure, proportionality, and legitimate aims.",
+        "football": "Football-related disputes often involve contract interpretation, transfer regulations, and applicable FIFA rules.",
+        "fifa": "FIFA regulations establish a specialized legal framework for football-related disputes.",
+        "transfer": "Player transfers in football are subject to specific regulations regarding contract stability and compensation.",
+        "employment": "Employment relationships in sports are governed by both standard employment law and specific sports regulations."
+    }
+    
+    # First check for exact matches with the whole query
+    full_query = " ".join(query_terms).lower()
+    for topic, explanation in explanations.items():
+        if topic == full_query:
+            return explanation
+    
+    # Then check for partial matches
+    for topic, explanation in explanations.items():
+        if topic in full_query:
+            return explanation
+    
+    # Check individual terms
+    for term in query_terms:
+        term = term.lower()
+        for topic, explanation in explanations.items():
+            if term == topic or term in topic.split():
+                return explanation
+    
+    # If no pre-defined explanation matches, generate a generic one based on the text content
+    if "contract" in text.lower() or "agreement" in text.lower():
+        return f"This passage discusses contractual obligations and their enforcement in the sporting context."
+    elif "compens" in text.lower() or "payment" in text.lower() or "amount" in text.lower():
+        return f"This passage addresses financial considerations and compensation issues in sports law."
+    elif "arbitrat" in text.lower() or "panel" in text.lower() or "tribunal" in text.lower():
+        return f"This passage explains procedural aspects and the reasoning of the arbitration panel."
+    
+    # Final fallback - create a generic explanation from the search terms
+    terms_text = ", ".join([f"'{term}'" for term in query_terms])
+    return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
+
+# Helper function to check if a case passes all the applied filters
+def passes_filters(case):
+    # Sport filter
+    if st.session_state.selected_sports and case['sport'] not in st.session_state.selected_sports:
+        return False
+        
+    # Year filter (extract year from date)
+    if st.session_state.selected_years:
+        case_year = int(case['date'].split('-')[0])
+        if case_year not in st.session_state.selected_years:
+            return False
+    
+    # Date range filter
+    if st.session_state.start_date or st.session_state.end_date:
+        case_date = datetime.strptime(case['date'], '%Y-%m-%d').date()
+        if st.session_state.start_date and case_date < st.session_state.start_date:
+            return False
+        if st.session_state.end_date and case_date > st.session_state.end_date:
+            return False
+    
+    # Type filter (match with procedural type)
+    if st.session_state.selected_proc and case['type'] not in st.session_state.selected_proc:
+        return False
+    
+    # Outcome filter
+    if st.session_state.selected_outcomes:
+        # This is a simplified check - in a real app you'd have a more structured outcome field
+        case_outcome = case['decision'].lower()
+        match_found = False
+        for outcome in st.session_state.selected_outcomes:
+            if outcome.lower() in case_outcome:
+                match_found = True
+                break
+        if not match_found:
+            return False
+    
+    # Panel/Arbitrator filters
+    if st.session_state.president_filter and st.session_state.president_filter.lower() not in case['panel'].lower():
+        return False
+        
+    # Note: We're simplifying here since our data structure doesn't separate arbitrators
+    # In a real app, you'd have separate fields for each arbitrator
+    if st.session_state.arbitrator1_filter and st.session_state.arbitrator1_filter.lower() not in case['panel'].lower():
+        return False
+        
+    if st.session_state.arbitrator2_filter and st.session_state.arbitrator2_filter.lower() not in case['panel'].lower():
+        return False
+    
+    # Category filter - this would require a dedicated category field
+    # For this example, we'll use the case ID format to guess the category
+    if st.session_state.selected_categories:
+        case_id_parts = case['id'].split('/')
+        if len(case_id_parts) >= 3:
+            case_category = case_id_parts[1]  # e.g., "A" from "CAS 2020/A/6978"
+            matching_categories = [cat for cat in st.session_state.selected_categories 
+                                  if cat.startswith(case_category + " -")]
+            if not matching_categories:
+                return False
+    
+    # For "Matter" filter, we'll use keywords as a proxy
+    if st.session_state.selected_matters:
+        keywords_matched = False
+        for matter in st.session_state.selected_matters:
+            matter_keywords = {
+                "Doping": ["doping", "anti-doping", "prohibited substance"],
+                "Transfer": ["transfer", "buy-out", "player registration"],
+                "Contract": ["contract", "employment", "agreement"],
+                "Eligibility": ["eligibility", "qualification"],
+                "Regulatory": ["regulation", "regulatory", "rule"],
+                "Disciplinary": ["disciplinary", "sanction", "suspension"]
+            }
+            
+            if matter in matter_keywords:
+                for keyword in matter_keywords[matter]:
+                    if any(keyword in kw.lower() for kw in case['keywords']):
+                        keywords_matched = True
+                        break
+        
+        if st.session_state.selected_matters and not keywords_matched:
+            return False
+    
+    # If all filters passed
+    return True
 
 # Enhanced semantic search function that finds paragraphs and their surrounding context
 def semantic_search(query):
@@ -488,175 +681,45 @@ def semantic_search(query):
     
     return all_results, all_chunks
 
-# Helper function to check if a case passes all the applied filters
-def passes_filters(case):
-    # Sport filter
-    if st.session_state.selected_sports and case['sport'] not in st.session_state.selected_sports:
-        return False
-        
-    # Year filter (extract year from date)
-    if st.session_state.selected_years:
-        case_year = int(case['date'].split('-')[0])
-        if case_year not in st.session_state.selected_years:
-            return False
-    
-    # Date range filter
-    if st.session_state.start_date or st.session_state.end_date:
-        case_date = datetime.strptime(case['date'], '%Y-%m-%d').date()
-        if st.session_state.start_date and case_date < st.session_state.start_date:
-            return False
-        if st.session_state.end_date and case_date > st.session_state.end_date:
-            return False
-    
-    # Type filter (match with procedural type)
-    if st.session_state.selected_proc and case['type'] not in st.session_state.selected_proc:
-        return False
-    
-    # Outcome filter
-    if st.session_state.selected_outcomes:
-        # This is a simplified check - in a real app you'd have a more structured outcome field
-        case_outcome = case['decision'].lower()
-        match_found = False
-        for outcome in st.session_state.selected_outcomes:
-            if outcome.lower() in case_outcome:
-                match_found = True
-                break
-        if not match_found:
-            return False
-    
-    # Panel/Arbitrator filters
-    if st.session_state.president_filter and st.session_state.president_filter.lower() not in case['panel'].lower():
-        return False
-        
-    # Note: We're simplifying here since our data structure doesn't separate arbitrators
-    # In a real app, you'd have separate fields for each arbitrator
-    if st.session_state.arbitrator1_filter and st.session_state.arbitrator1_filter.lower() not in case['panel'].lower():
-        return False
-        
-    if st.session_state.arbitrator2_filter and st.session_state.arbitrator2_filter.lower() not in case['panel'].lower():
-        return False
-    
-    # Category filter - this would require a dedicated category field
-    # For this example, we'll use the case ID format to guess the category
-    if st.session_state.selected_categories:
-        case_id_parts = case['id'].split('/')
-        if len(case_id_parts) >= 3:
-            case_category = case_id_parts[1]  # e.g., "A" from "CAS 2020/A/6978"
-            matching_categories = [cat for cat in st.session_state.selected_categories 
-                                  if cat.startswith(case_category + " -")]
-            if not matching_categories:
-                return False
-    
-    # For "Matter" filter, we'll use keywords as a proxy
-    if st.session_state.selected_matters:
-        keywords_matched = False
-        for matter in st.session_state.selected_matters:
-            matter_keywords = {
-                "Doping": ["doping", "anti-doping", "prohibited substance"],
-                "Transfer": ["transfer", "buy-out", "player registration"],
-                "Contract": ["contract", "employment", "agreement"],
-                "Eligibility": ["eligibility", "qualification"],
-                "Regulatory": ["regulation", "regulatory", "rule"],
-                "Disciplinary": ["disciplinary", "sanction", "suspension"]
-            }
-            
-            if matter in matter_keywords:
-                for keyword in matter_keywords[matter]:
-                    if any(keyword in kw.lower() for kw in case['keywords']):
-                        keywords_matched = True
-                        break
-        
-        if st.session_state.selected_matters and not keywords_matched:
-            return False
-    
-    # If all filters passed
-    return True
+# Initialize session state
+if 'selected_case' not in st.session_state:
+    st.session_state.selected_case = None
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'chunks' not in st.session_state:
+    st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 
-# Generate a detailed explanation for the blue box at the top
-def generate_relevance_explanation(text, query_terms):
-    # Default explanations based on common legal topics - expanded with more terms
-    explanations = {
-        "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
-        "buy out": "Buy-out provisions in contracts represent a pre-agreed amount for compensation in case of early termination.",
-        "buyout": "Buyout clauses set a predetermined financial value for contract termination without requiring further negotiation.",
-        "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
-        "terminate contract": "Termination of contracts in sports requires analysis of the justification and appropriate compensation.",
-        "termination": "Contract termination in sports law examines whether proper procedures were followed and appropriate compensation was provided.",
-        "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
-        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
-        "coach": "Coaching contracts in sports have unique characteristics that distinguish them from player contracts.",
-        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
-        "compensation": "Compensation analysis in sports contracts involves examining contract terms, applicable regulations, and mitigating factors.",
-        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
-        "satellite": "Satellite-related disputes involve complex technical and regulatory considerations specific to space technology.",
-        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
-        "frequency": "Radio frequency matters involve balancing technical requirements, regulatory oversight, and international coordination.",
-        "spectrum": "Spectrum management disputes involve balancing commercial interests against public good considerations.",
-        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes.",
-        "security": "Security considerations can influence regulatory decisions and may justify certain limitations on commercial activities.",
-        "regulatory": "Regulatory decisions are subject to review based on proper procedure, proportionality, and legitimate aims.",
-        "football": "Football-related disputes often involve contract interpretation, transfer regulations, and applicable FIFA rules.",
-        "fifa": "FIFA regulations establish a specialized legal framework for football-related disputes.",
-        "transfer": "Player transfers in football are subject to specific regulations regarding contract stability and compensation.",
-        "employment": "Employment relationships in sports are governed by both standard employment law and specific sports regulations."
-    }
-    
-    # First check for exact matches with the whole query
-    full_query = " ".join(query_terms).lower()
-    for topic, explanation in explanations.items():
-        if topic == full_query:
-            return explanation
-    
-    # Then check for partial matches
-    for topic, explanation in explanations.items():
-        if topic in full_query:
-            return explanation
-    
-    # Check individual terms
-    for term in query_terms:
-        term = term.lower()
-        for topic, explanation in explanations.items():
-            if term == topic or term in topic.split():
-                return explanation
-    
-    # If no pre-defined explanation matches, generate a generic one based on the text content
-    if "contract" in text.lower() or "agreement" in text.lower():
-        return f"This passage discusses contractual obligations and their enforcement in the sporting context."
-    elif "compens" in text.lower() or "payment" in text.lower() or "amount" in text.lower():
-        return f"This passage addresses financial considerations and compensation issues in sports law."
-    elif "arbitrat" in text.lower() or "panel" in text.lower() or "tribunal" in text.lower():
-        return f"This passage explains procedural aspects and the reasoning of the arbitration panel."
-    
-    # Final fallback - create a generic explanation from the search terms
-    terms_text = ", ".join([f"'{term}'" for term in query_terms])
-    return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
-
-# Function to generate properly formatted citation for a case
-def generate_citation(case):
-    """Generate a properly formatted citation for academic or legal reference."""
-    # Format: "Case ID, Case Title, Court of Arbitration for Sport (Decision Date)"
-    citation = f"{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})"
-    return citation
-
-# Generate a concise summary of a case for search results - shorter versions
-def generate_case_summary(case):
-    case_id = case['id']
-    
-    # Pre-defined summaries for each case in our dataset - more concise versions
-    summaries = {
-        "CAS 2020/A/6978": "Dispute over a €30M buy-out clause in player Diego Costa's contract. Atlético Madrid sought higher compensation after Chelsea signed the player.",
-        
-        "CAS 2011/A/2596": "Club terminated coach's contract after poor sporting results. Coach contested termination was without just cause and sought compensation.",
-        
-        "CAS 2023/A/9872": "Challenge to regulatory decision denying satellite frequency authorization, with additional satellite collision incident raising security concerns."
-    }
-    
-    # Return the appropriate summary or a generic one if not found
-    if case_id in summaries:
-        return summaries[case_id]
-    else:
-        # Generate a generic summary based on available information
-        return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
+# Initialize filter states
+if 'selected_langs' not in st.session_state:
+    st.session_state.selected_langs = []
+if 'selected_years' not in st.session_state:
+    st.session_state.selected_years = []
+if 'selected_proc' not in st.session_state:
+    st.session_state.selected_proc = []
+if 'selected_sports' not in st.session_state:
+    st.session_state.selected_sports = []
+if 'selected_matters' not in st.session_state:
+    st.session_state.selected_matters = []
+if 'selected_categories' not in st.session_state:
+    st.session_state.selected_categories = []
+if 'selected_outcomes' not in st.session_state:
+    st.session_state.selected_outcomes = []
+if 'start_date' not in st.session_state:
+    st.session_state.start_date = None
+if 'end_date' not in st.session_state:
+    st.session_state.end_date = None
+if 'president_filter' not in st.session_state:
+    st.session_state.president_filter = ""
+if 'arbitrator1_filter' not in st.session_state:
+    st.session_state.arbitrator1_filter = ""
+if 'arbitrator2_filter' not in st.session_state:
+    st.session_state.arbitrator2_filter = ""
 
 # ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
@@ -889,84 +952,6 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 citation = generate_citation(case)
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
                 
-                # Add styles for floating action buttons
-                st.markdown("""
-                <style>
-                .floating-actions {
-                    position: absolute;
-                    right: 50px;
-                    top: 15px;
-                    display: flex;
-                    z-index: 100;
-                }
-                .icon-button {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 36px;
-                    height: 36px;
-                    margin-left: 8px;
-                    background-color: #f8f9fa;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 50%;
-                    color: #333;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    position: relative;
-                }
-                .icon-button:hover {
-                    background-color: #edf2f7;
-                    border-color: #cbd5e0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                .icon-button svg {
-                    width: 16px;
-                    height: 16px;
-                }
-                /* Tooltip styles */
-                .icon-button::after {
-                    content: attr(data-tooltip);
-                    position: absolute;
-                    bottom: 105%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 5px 10px;
-                    background: #333;
-                    color: white;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s ease;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                .icon-button::before {
-                    content: "";
-                    position: absolute;
-                    bottom: 95%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    border: 6px solid transparent;
-                    border-top-color: #333;
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s ease;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                .icon-button:hover::after, .icon-button:hover::before {
-                    opacity: 1;
-                    visibility: visible;
-                }
-                /* Position the floating actions correctly in the expander */
-                .streamlit-expanderHeader {
-                    position: relative;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                
                 # Add floating action buttons to the header
                 st.markdown(f"""
                 <div class="floating-actions">
@@ -1014,24 +999,6 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     st.markdown(f"""
                     <div class="explanation">
                     <strong>Relevance:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Now display the paragraphs in their natural order
-                    paragraphs_html = ""
-                    
-                    for para in chunk['paragraphs']:
-                        if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background
-                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
-                        else:
-                            # This is a context paragraph - normal styling
-                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
-                    
-                    # Output the entire document section
-                    st.markdown(f"""
-                    <div class="document-section">
-                    {paragraphs_html}
                     </div>
                     """, unsafe_allow_html=True)
                     
