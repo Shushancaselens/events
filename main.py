@@ -45,6 +45,8 @@ st.markdown("""
         font-weight: bold;
     }
     
+
+    
     /* User profile section */
     .profile-section {
         padding: 2rem 0;
@@ -131,168 +133,21 @@ st.markdown("""
         margin-bottom: 0.75rem;
     }
     
-    /* Floating copy button that appears on hover */
-    .floating-copy-btn {
+    /* Floating copy indicator */
+    .copy-indicator {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background-color: white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.2s, transform 0.2s;
-        z-index: 10;
-    }
-    
-    .relevant-paragraph:hover .floating-copy-btn {
-        opacity: 1;
-    }
-    
-    .floating-copy-btn:hover {
-        transform: scale(1.1);
-        box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-    }
-    
-    .floating-copy-btn.copied .default-state {
-        display: none;
-    }
-    
-    .floating-copy-btn .success-state {
-        display: none;
-    }
-    
-    .floating-copy-btn.copied .success-state {
-        display: flex;
-    }
-    
-    /* Selection copy popup */
-    .selection-popup {
-        position: absolute;
-        display: none;
-        background-color: white;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(255, 255, 255, 0.9);
         border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        padding: 5px 10px;
-        z-index: 100;
-    }
-    
-    /* Context menu styles */
-    .context-menu {
-        position: absolute;
-        display: none;
-        background-color: white;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        padding: 5px 0;
-        z-index: 100;
-        min-width: 150px;
-    }
-    
-    .context-menu-item {
-        padding: 8px 15px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .context-menu-item:hover {
-        background-color: #f5f5f5;
-    }
-    
-    /* Citation display with icon on the right */
-    .citation-container {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 15px;
-        background-color: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 4px;
-        margin-bottom: 16px;
-        position: relative;
-    }
-    
-    .citation-text {
-        font-size: 13px;
-        color: #374151;
-        font-family: monospace;
-        flex-grow: 1;
-        margin-right: 10px;
-    }
-    
-    .citation-copy {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background-color: #f1f1f1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .citation-copy:hover {
-        background-color: #e5e5e5;
-    }
-    
-    /* Selection popup and toast notification styles */
-    .selection-popup {
-        position: absolute;
-        z-index: 1000;
-        background: white;
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        padding: 5px 10px;
-        transform: translateY(-5px);
-    }
-    
-    .selection-copy-btn {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        background: none;
-        border: none;
-        color: #4b5563;
+        padding: 2px 5px;
         font-size: 12px;
-        cursor: pointer;
-        padding: 3px 5px;
-    }
-    
-    .selection-copy-btn:hover {
-        background: #f3f4f6;
-        border-radius: 3px;
-    }
-    
-    .success-toast {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%) translateY(20px);
-        background: #333;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 4px;
-        font-size: 14px;
         opacity: 0;
-        transition: opacity 0.3s, transform 0.3s;
-        z-index: 1001;
+        transition: opacity 0.2s;
     }
     
-    .success-toast.show {
+    .relevant-paragraph:hover .copy-indicator {
         opacity: 1;
-        transform: translateX(-50%) translateY(0);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -505,6 +360,18 @@ The Court of Arbitration for Sport rules that:
 df_decisions = pd.DataFrame(cas_decisions)
 
 # Initialize session state
+if 'selected_case' not in st.session_state:
+    st.session_state.selected_case = None
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'chunks' not in st.session_state:
+    st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
 if 'search_results' not in st.session_state:
@@ -804,73 +671,6 @@ def generate_case_summary(case):
     else:
         # Generate a generic summary based on available information
         return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
-
-# Add JavaScript for text selection copy popup
-st.markdown("""
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Create selection popup element
-    const selectionPopup = document.createElement('div');
-    selectionPopup.className = 'selection-popup';
-    selectionPopup.innerHTML = `
-        <button class="selection-copy-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            Copy
-        </button>
-    `;
-    document.body.appendChild(selectionPopup);
-    
-    // Add event listeners
-    document.addEventListener('mouseup', function(e) {
-        const selection = window.getSelection();
-        if (selection.toString().length > 0 && 
-            (e.target.closest('.relevant-paragraph') || e.target.closest('.context-paragraph'))) {
-            
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            // Position the popup
-            selectionPopup.style.left = (rect.left + rect.width/2 - selectionPopup.offsetWidth/2) + 'px';
-            selectionPopup.style.top = (window.scrollY + rect.top - selectionPopup.offsetHeight - 10) + 'px';
-            selectionPopup.style.display = 'block';
-            
-            // Add click handler
-            selectionPopup.querySelector('.selection-copy-btn').onclick = function() {
-                navigator.clipboard.writeText(selection.toString());
-                selectionPopup.style.display = 'none';
-                
-                // Show temporary success message
-                const successToast = document.createElement('div');
-                successToast.className = 'success-toast';
-                successToast.innerText = 'Text copied!';
-                document.body.appendChild(successToast);
-                
-                setTimeout(() => {
-                    successToast.classList.add('show');
-                }, 10);
-                
-                setTimeout(() => {
-                    successToast.classList.remove('show');
-                    setTimeout(() => document.body.removeChild(successToast), 300);
-                }, 2000);
-            };
-        } else {
-            selectionPopup.style.display = 'none';
-        }
-    });
-    
-    // Hide popup when clicking elsewhere
-    document.addEventListener('mousedown', function(e) {
-        if (!e.target.closest('.selection-popup')) {
-            selectionPopup.style.display = 'none';
-        }
-    });
-});
-</script>
-""", unsafe_allow_html=True)
 
 # ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
@@ -1261,16 +1061,17 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display citation with a clean, minimal design and icon-only copy button
+                # Display citation with an inline copy button
                 st.markdown(f"""
                 <div class="citation-container">
                     <div class="citation-text">{citation}</div>
-                    <div class="citation-copy" onclick="navigator.clipboard.writeText('{citation}'); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)" data-tooltip="Copy Citation">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button onclick="navigator.clipboard.writeText('{citation}'); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)" class="inline-copy-button" data-tooltip="Copy Citation">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
-                    </div>
+                        Copy Citation
+                    </button>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1290,7 +1091,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order with hover/popup copy functionality
+                    # Now display the paragraphs in their natural order with copy buttons for relevant paragraphs
                     paragraphs_html = ""
                     
                     # Add an ID to each passage for targeting with copy buttons
@@ -1298,27 +1099,21 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     
                     for para in chunk['paragraphs']:
                         if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background and add floating copy button
+                            # This is the matching paragraph - highlight it with green background and add copy button
                             paragraphs_html += f"""
-                            <div class="relevant-paragraph">
-                                <div class="floating-copy-btn" onclick="
-                                    navigator.clipboard.writeText(this.parentElement.innerText.replace('Copy', '')); 
-                                    this.classList.add('copied');
-                                    setTimeout(() => this.classList.remove('copied'), 2000)">
-                                    <span class="default-state">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                        </svg>
-                                    </span>
-                                    <span class="success-state">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                        </svg>
-                                    </span>
-                                </div>
-                                {para["text"]}
+                            <div class="passage-actions">
+                                <button onclick="navigator.clipboard.writeText(document.getElementById('{passage_id}').innerText); 
+                                    this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg> Copied!'; 
+                                    setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg> Copy Passage', 2000)" 
+                                    class="inline-copy-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Copy Passage
+                                </button>
                             </div>
+                            <div id="{passage_id}" class="relevant-paragraph">{para["text"]}</div>
                             """
                         else:
                             # This is a context paragraph - normal styling
