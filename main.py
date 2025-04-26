@@ -112,6 +112,7 @@ st.markdown("""
         background-color: #d1fae5;  /* Light green background */
         padding: 1rem;
         margin: 0;
+        position: relative;
     }
     
     .context-paragraph {
@@ -123,12 +124,30 @@ st.markdown("""
         border: 1px solid #e5e7eb;
         border-radius: 4px;
         margin-bottom: 1.5rem;
+        overflow: hidden;
     }
     
     .case-meta {
         font-size: 0.9rem;
         color: #6b7280;
         margin-bottom: 0.75rem;
+    }
+    
+    /* Floating copy indicator */
+    .copy-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 4px;
+        padding: 2px 5px;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    
+    .relevant-paragraph:hover .copy-indicator {
+        opacity: 1;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -890,16 +909,17 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Add action buttons for the case with icons-only design
+                # Add styles for all buttons and copy actions
                 st.markdown("""
                 <style>
+                /* Base icon button styles */
                 .icon-button {
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    width: 40px;
-                    height: 40px;
-                    margin: 0 12px 16px 0;
+                    width: 36px;
+                    height: 36px;
+                    margin: 0 8px 8px 0;
                     background-color: #f8f9fa;
                     border: 1px solid #e2e8f0;
                     border-radius: 50%;
@@ -914,15 +934,70 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
                 .icon-button svg {
-                    width: 18px;
-                    height: 18px;
+                    width: 16px;
+                    height: 16px;
                 }
+                
+                /* Main action buttons container */
                 .icon-buttons-container {
                     display: flex;
                     margin-bottom: 16px;
                 }
+                
+                /* Passage copy button styles */
+                .passage-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    padding: 4px 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                /* Inline copy button with text */
+                .inline-copy-button {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 4px 10px;
+                    background-color: #f3f4f6;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    color: #4b5563;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .inline-copy-button:hover {
+                    background-color: #e5e7eb;
+                }
+                .inline-copy-button svg {
+                    width: 14px;
+                    height: 14px;
+                }
+                
+                /* Citation display */
+                .citation-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 8px 12px;
+                    background-color: #f9fafb;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 4px;
+                    margin-bottom: 16px;
+                }
+                .citation-text {
+                    font-size: 13px;
+                    color: #374151;
+                    font-family: monospace;
+                    flex-grow: 1;
+                    margin-right: 10px;
+                }
+                
                 /* Tooltip styles */
-                .icon-button::after {
+                [data-tooltip] {
+                    position: relative;
+                }
+                [data-tooltip]::after {
                     content: attr(data-tooltip);
                     position: absolute;
                     bottom: 105%;
@@ -940,7 +1015,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     pointer-events: none;
                     z-index: 10;
                 }
-                .icon-button::before {
+                [data-tooltip]::before {
                     content: "";
                     position: absolute;
                     bottom: 95%;
@@ -954,7 +1029,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     pointer-events: none;
                     z-index: 10;
                 }
-                .icon-button:hover::after, .icon-button:hover::before {
+                [data-tooltip]:hover::after, [data-tooltip]:hover::before {
                     opacity: 1;
                     visibility: visible;
                 }
@@ -965,6 +1040,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 citation = generate_citation(case)
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
                 
+                # Display document actions at the top
                 st.markdown(f"""
                 <div class="icon-buttons-container">
                     <a href="{pdf_url}" target="_blank" class="icon-button" data-tooltip="View Full Case PDF">
@@ -976,17 +1052,25 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                             <polyline points="10 9 9 9 8 9"></polyline>
                         </svg>
                     </a>
-                    <button onclick="navigator.clipboard.writeText('{citation}'); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)" class="icon-button" data-tooltip="Copy Citation">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                    </button>
-                    <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\\'></path><rect x=\\'8\\' y=\\'2\\' width=\\'8\\' height=\\'4\\' rx=\\'1\\' ry=\\'1\\'></rect></svg>', 2000)" class="icon-button" data-tooltip="Copy Relevant Passages">
+                    <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\\'></path><rect x=\\'8\\' y=\\'2\\' width=\\'8\\' height=\\'4\\' rx=\\'1\\' ry=\\'1\\'></rect></svg>', 2000)" class="icon-button" data-tooltip="Copy All Highlighted Passages">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                             <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                         </svg>
+                    </button>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display citation with an inline copy button
+                st.markdown(f"""
+                <div class="citation-container">
+                    <div class="citation-text">{citation}</div>
+                    <button onclick="navigator.clipboard.writeText('{citation}'); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)" class="inline-copy-button" data-tooltip="Copy Citation">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy Citation
                     </button>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1007,13 +1091,30 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order
+                    # Now display the paragraphs in their natural order with copy buttons for relevant paragraphs
                     paragraphs_html = ""
+                    
+                    # Add an ID to each passage for targeting with copy buttons
+                    passage_id = f"passage-{case['id'].replace('/', '-')}-{chunk.get('relevance_score', 0)}"
                     
                     for para in chunk['paragraphs']:
                         if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background
-                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                            # This is the matching paragraph - highlight it with green background and add copy button
+                            paragraphs_html += f"""
+                            <div class="passage-actions">
+                                <button onclick="navigator.clipboard.writeText(document.getElementById('{passage_id}').innerText); 
+                                    this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg> Copied!'; 
+                                    setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg> Copy Passage', 2000)" 
+                                    class="inline-copy-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Copy Passage
+                                </button>
+                            </div>
+                            <div id="{passage_id}" class="relevant-paragraph">{para["text"]}</div>
+                            """
                         else:
                             # This is a context paragraph - normal styling
                             paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
@@ -1025,23 +1126,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order
-                    paragraphs_html = ""
-                    
-                    for para in chunk['paragraphs']:
-                        if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background
-                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
-                        else:
-                            # This is a context paragraph - normal styling
-                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
-                    
-                    # Output the entire document section
-                    st.markdown(f"""
-                    <div class="document-section">
-                    {paragraphs_html}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Remove the duplicate code block - we only need one implementation of paragraph display
     else:
         st.info("No results found. Try different search terms.")
 
