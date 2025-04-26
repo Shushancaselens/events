@@ -590,46 +590,25 @@ def generate_relevance_explanation(text, query_terms):
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
-# Generate a case-level relevance explanation
-def generate_case_relevance(case, query_terms):
-    # Generate explanation based on keywords that match query terms
-    matching_keywords = []
-    for keyword in case["keywords"]:
-        if any(term in keyword.lower() for term in query_terms):
-            matching_keywords.append(keyword)
-    
-    if matching_keywords:
-        keywords_str = ", ".join(matching_keywords)
-        return f"This case directly addresses {keywords_str}, which are central to your query."
-    
-    # If no direct keyword match, generate based on case type
-    if "football" in case["sport"].lower() and any(term in ["contract", "player", "transfer", "compensation"] for term in query_terms):
-        return f"This {case['sport']} case establishes important principles regarding {' '.join(query_terms)} in sports contracts."
-    
-    if "space" in case["sport"].lower() and any(term in ["satellite", "frequency", "regulation"] for term in query_terms):
-        return f"This case examines regulatory issues in {case['sport']} that relate to your query about {' '.join(query_terms)}."
-    
-    # Default explanation
-    return f"This case contains relevant legal analysis and precedent related to your search for '{' '.join(query_terms)}'."
-
-# Generate a concise case summary
+# Generate a concise summary of a case for search results
 def generate_case_summary(case):
-    # Extract key information from the case
-    year = case["date"].split("-")[0]
+    case_id = case['id']
     
-    # Create different summaries based on the case type
-    if "Football" in case["sport"]:
-        if "buy-out clause" in case["keywords"]:
-            return f"({year}) The dispute concerned the enforceability of a €30M buy-out clause in a player's contract. The panel ruled that the buy-out clause was valid and enforceable, dismissing Atlético Madrid's appeal seeking higher compensation."
+    # Pre-defined summaries for each case in our dataset
+    summaries = {
+        "CAS 2020/A/6978": "Football Club Atlético Madrid challenged FIFA's decision regarding a player's buy-out clause. The club argued that the €30 million buy-out clause in Diego Costa's contract was below his actual market value and sought €80 million in compensation after Chelsea FC signed the player.",
         
-        if "coach" in case["keywords"] or "sporting results" in case["keywords"]:
-            return f"({year}) This case established that poor sporting results alone do not constitute just cause for terminating a coach's contract. The club's appeal was dismissed and they were ordered to pay the remaining value of the coach's contract minus earnings from his new position."
+        "CAS 2011/A/2596": "Anorthosis Famagusta FC appealed the FIFA PSC's decision that ordered them to pay compensation to coach Ernst Middendorp after terminating his contract without just cause following a loss in a Euro League qualification match.",
+        
+        "CAS 2023/A/9872": "Astra Satellite Communications contested the Celestrian National Frequency Authority's rejection of their application for Ku-band frequency authorization, claiming the decision was arbitrary and discriminatory. The case also involved a satellite collision incident that raised national security concerns."
+    }
     
-    if "Space Technology" in case["sport"]:
-        return f"({year}) This case examined whether a national regulatory authority's rejection of a satellite frequency application was legitimate. The panel upheld the regulator's decision, finding that protection of weather monitoring capabilities constituted a compelling public interest."
-    
-    # Default summary using the decision field
-    return f"({year}) {case['decision']}"
+    # Return the appropriate summary or a generic one if not found
+    if case_id in summaries:
+        return summaries[case_id]
+    else:
+        # Generate a generic summary based on available information
+        return f"This case involved a dispute between {case['claimant']} and {case['respondent']} regarding matters of {', '.join(case['keywords'][:3])}."
 
 # Function removed as history feature is no longer used
 
@@ -860,40 +839,23 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Case relevance explanation and summary
-                query_terms = st.session_state.current_query.lower().split()
-                
-                # Create a container for the case summary and relevance
+                # Add case summary with relevance explanation
                 st.markdown("""
-                <style>
-                .case-summary-box {
-                    background-color: #f8f9fa;
-                    border-left: 4px solid #4a66f0;
-                    padding: 1rem;
-                    margin-bottom: 1rem;
-                    border-radius: 0 4px 4px 0;
-                }
-                .case-relevance {
-                    color: #1e3a8a;
-                    font-weight: 500;
-                    margin-bottom: 0.5rem;
-                }
-                .case-summary {
-                    margin-bottom: 0;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                
-                # Case relevance and summary
-                relevance = generate_case_relevance(case, query_terms)
-                summary = generate_case_summary(case)
-                
-                st.markdown(f"""
-                <div class="case-summary-box">
-                    <div class="case-relevance"><strong>Case Relevance:</strong> {relevance}</div>
-                    <div class="case-summary"><strong>Summary:</strong> {summary}</div>
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #4a66f0;">
+                    <h4 style="margin-top: 0; color: #1e3a8a;">Case Summary</h4>
+                    <p><strong>Why this is relevant:</strong> This case addresses key issues related to your search, including {}.
+                    </p>
+                    <p><strong>Summary:</strong> {} </p>
+                    <p><strong>Outcome:</strong> <span style="color: #1e3a8a; font-weight: 500;">{}</span></p>
                 </div>
-                """, unsafe_allow_html=True)
+                """.format(
+                    # Display relevant keywords that match the search
+                    ", ".join([f"<span style='background-color:#e5e7eb; padding:2px 6px; border-radius:4px;'>{kw}</span>" for kw in case['keywords'] if kw.lower() in st.session_state.current_query.lower() or any(term in kw.lower() for term in st.session_state.current_query.lower().split())]),
+                    # Generate a summary based on the case
+                    generate_case_summary(case),
+                    # Add the outcome
+                    case['decision']
+                ), unsafe_allow_html=True)
                 
                 # Case metadata
                 st.markdown(f"""
