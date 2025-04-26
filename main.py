@@ -837,7 +837,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Add case summary with metadata on top
+                # Case metadata
                 st.markdown(f"""
                 <div class="case-meta">
                     <strong>Date:</strong> {case['date']} | 
@@ -845,9 +845,12 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     <strong>Sport:</strong> {case['sport']} | 
                     <strong>Panel:</strong> {case['panel']}
                 </div>
+                """, unsafe_allow_html=True)
                 
+                # Add case summary with relevance explanation - styled similar to explanation box
+                st.markdown(f"""
                 <div class="explanation">
-                {generate_case_summary(case)} {case['decision']}
+                <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
                 </div>
                 """, unsafe_allow_html=True)
                 
