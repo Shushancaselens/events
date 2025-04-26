@@ -420,10 +420,6 @@ def semantic_search(query):
         
         # Find relevant paragraphs
         case_chunks = []
-        
-        # Get a single explanation for the entire case based on the query
-        case_explanation = generate_relevance_explanation("", query_terms)
-        
         for para_idx, para in enumerate(cleaned_paragraphs):
             score = 0
             for term in query_terms:
@@ -432,6 +428,9 @@ def semantic_search(query):
             
             # Only include if it has some relevance
             if score > 0:
+                # Get explanation based on content
+                explanation = generate_relevance_explanation(para, query_terms)
+                
                 # Find the surrounding paragraphs for context
                 context_paragraphs = []
                 
@@ -451,7 +450,8 @@ def semantic_search(query):
                     "case_id": case["id"],
                     "case_title": case["title"],
                     "paragraphs": context_paragraphs,
-                    "relevance_score": score
+                    "relevance_score": score,
+                    "explanation": explanation
                 }
                 
                 case_chunks.append(chunk)
@@ -467,10 +467,9 @@ def semantic_search(query):
             # Add all chunks to overall list
             all_chunks.extend(case_chunks)
             
-            # Add case to results with a single explanation for the whole case
+            # Add case to results
             result = case.copy()
             result["relevant_chunks"] = case_chunks
-            result["explanation"] = case_explanation  # Single explanation for the case
             all_results.append(result)
     
     # Sort results by the maximum relevance score of any chunk
@@ -838,7 +837,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Case metadata
+                # Add case summary with metadata on top
                 st.markdown(f"""
                 <div class="case-meta">
                     <strong>Date:</strong> {case['date']} | 
@@ -846,36 +845,22 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     <strong>Sport:</strong> {case['sport']} | 
                     <strong>Panel:</strong> {case['panel']}
                 </div>
-                """, unsafe_allow_html=True)
                 
-                # Display explanation first for the top chunk
-                if case['relevant_chunks']:
-                    top_chunk = case['relevant_chunks'][0]
-                    st.markdown(f"""
-                    <div class="explanation">
-                    <strong>Explanation:</strong> {top_chunk['explanation']}
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                # Add case summary with relevance explanation - styled similar to explanation box
-                st.markdown(f"""
                 <div class="explanation">
-                <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
+                {generate_case_summary(case)} {case['decision']}
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display explanation first for the top chunk
-                if case['relevant_chunks']:
-                    top_chunk = case['relevant_chunks'][0]
+                # Display each relevant chunk with its context
+                for chunk in case['relevant_chunks']:
+                    # First, show the explanation box
                     st.markdown(f"""
                     <div class="explanation">
-                    <strong>Explanation:</strong> {top_chunk['explanation']}
+                    <strong>Explanation:</strong> {chunk['explanation']}
                     </div>
                     """, unsafe_allow_html=True)
                     
-                # Display each relevant chunk with its context
-                for chunk in case['relevant_chunks']:
-                    # Display the paragraphs in their natural order
+                    # Now display the paragraphs in their natural order
                     paragraphs_html = ""
                     
                     for para in chunk['paragraphs']:
