@@ -1,4 +1,386 @@
-import streamlit as st
+# Alternative 4: Highlight and click approach - clean minimal UI
+                st.markdown("""
+                <style>
+                /* Passage highlight and click copy approach */
+                .clickable-paragraph {
+                    position: relative;
+                    background-color: #d1fae5;
+                    padding: 1rem;
+                    margin: 0;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                
+                .clickable-paragraph:hover {
+                    background-color: #a7f3d0;
+                }
+                
+                .clickable-paragraph:hover::before {
+                    content: "Click to copy";
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    background-color: #10b981;
+                    color: white;
+                    font-size: 11px;
+                    padding: 2px 6px;
+                    border-radius: 0 0 0 4px;
+                }
+                
+                .clickable-paragraph.copied-state {
+                    background-color: #a7f3d0;
+                    box-shadow: inset 0 0 0 2px #10b981;
+                }
+                
+                .clickable-paragraph.copied-state::before {
+                    content: "Copied!";
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    background-color: #10b981;
+                    color: white;
+                    font-size: 11px;
+                    padding: 2px 6px;
+                    border-radius: 0 0 0 4px;
+                }
+                
+                /* Keyboard shortcut indicator */
+                .shortcut-hint {
+                    position: absolute;
+                    bottom: 5px;
+                    right: 5px;
+                    background-color: rgba(255,255,255,0.7);
+                    border-radius: 3px;
+                    padding: 1px 4px;
+                    font-size: 10px;
+                    color: #666;
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                }
+                
+                .clickable-paragraph:hover .shortcut-hint {
+                    opacity: 1;
+                }
+                </style>
+                
+                <script>
+                // Add click-to-copy functionality to all highlighted paragraphs
+                document.addEventListener('DOMContentLoaded', function() {
+                    const clickableParagraphs = document.querySelectorAll('.clickable-paragraph');
+                    
+                    clickableParagraphs.forEach(paragraph => {
+                        paragraph.addEventListener('click', function() {
+                            navigator.clipboard.writeText(this.innerText)
+                                .then(() => {
+                                    // Add visual feedback
+                                    this.classList.add('copied-state');
+                                    
+                                    // Remove the state after 2 seconds
+                                    setTimeout(() => {
+                                        this.classList.remove('copied-state');
+                                    }, 2000);
+                                })
+                                .catch(err => {
+                                    console.error('Failed to copy: ', err);
+                                });
+                        });
+                    });
+                });
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Alternative 5: Simple icon-based keyboard shortcut indicators in corner
+                st.markdown("""
+                <style>
+                /* Keyboard shortcut indicators for copy actions */
+                .keyboard-shortcut-help {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background-color: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 10px 16px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    font-size: 13px;
+                    z-index: 100;
+                }
+                
+                .shortcut-item {
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 6px;
+                }
+                
+                .shortcut-item:last-child {
+                    margin-bottom: 0;
+                }
+                
+                .key {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    background-color: #f3f4f6;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 3px;
+                    padding: 2px 6px;
+                    margin-right: 8px;
+                    font-family: monospace;
+                    font-size: 12px;
+                    color: #374151;
+                    min-width: 20px;
+                }
+                
+                .shortcut-description {
+                    color: #6b7280;
+                }
+                </style>
+                
+                <div class="keyboard-shortcut-help">
+                    <div class="shortcut-title" style="font-weight:600; margin-bottom:8px;">Keyboard Shortcuts</div>
+                    <div class="shortcut-item">
+                        <span class="key">C</span>
+                        <span class="shortcut-description">Copy citation</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="key">P</span>
+                        <span class="shortcut-description">Copy current passage</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="key">A</span>
+                        <span class="shortcut-description">Copy all passages</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="key">D</span>
+                        <span class="shortcut-description">Download as PDF</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)                # Alternative 2: Text selection-based copy with floating action menu
+                st.markdown("""
+                <style>
+                /* Selection-based action menu */
+                .selection-menu {
+                    position: absolute;
+                    background: #333;
+                    border-radius: 4px;
+                    padding: 6px 12px;
+                    color: white;
+                    font-size: 12px;
+                    z-index: 100;
+                    display: none;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                    transform: translateX(-50%);
+                }
+                
+                .selection-menu-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                }
+                
+                .selection-menu-btn:hover {
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 3px;
+                }
+                
+                /* Add tooltip when copied */
+                .copied-toast {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background-color: #10b981;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    display: none;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    z-index: 1000;
+                }
+                </style>
+                
+                <!-- Selection-based copy menu (hidden by default) -->
+                <div id="selection-menu" class="selection-menu">
+                    <button class="selection-menu-btn" id="copy-selection-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy Selection
+                    </button>
+                </div>
+                
+                <!-- Toast notification for copied text -->
+                <div id="copied-toast" class="copied-toast">
+                    <span>Text copied to clipboard!</span>
+                </div>
+                
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const selectionMenu = document.getElementById('selection-menu');
+                    const copyBtn = document.getElementById('copy-selection-btn');
+                    const copyToast = document.getElementById('copied-toast');
+                    
+                    // Handle showing the selection menu
+                    document.addEventListener('mouseup', function(e) {
+                        const selection = window.getSelection();
+                        
+                        if (selection.toString().length > 0) {
+                            const range = selection.getRangeAt(0);
+                            const rect = range.getBoundingClientRect();
+                            
+                            // Position the menu above the selection
+                            selectionMenu.style.left = rect.left + (rect.width / 2) + 'px';
+                            selectionMenu.style.top = (rect.top - 40) + 'px';
+                            selectionMenu.style.display = 'block';
+                        } else {
+                            selectionMenu.style.display = 'none';
+                        }
+                    });
+                    
+                    // Handle copying the selected text
+                    copyBtn.addEventListener('click', function() {
+                        const selection = window.getSelection();
+                        
+                        if (selection.toString().length > 0) {
+                            navigator.clipboard.writeText(selection.toString())
+                                .then(() => {
+                                    // Hide the menu
+                                    selectionMenu.style.display = 'none';
+                                    
+                                    // Show the toast
+                                    copyToast.style.display = 'block';
+                                    setTimeout(() => {
+                                        copyToast.style.display = 'none';
+                                    }, 2000);
+                                })
+                                .catch(err => {
+                                    console.error('Failed to copy: ', err);
+                                });
+                        }
+                    });
+                    
+                    // Hide menu when clicking elsewhere
+                    document.addEventListener('mousedown', function(e) {
+                        if (!selectionMenu.contains(e.target)) {
+                            selectionMenu.style.display = 'none';
+                        }
+                    });
+                });
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Alternative 3: Add a "Share" dropdown button for case actions
+                st.markdown("""
+                <style>
+                /* Share dropdown menu styling */
+                .share-dropdown {
+                    position: relative;
+                    display: inline-block;
+                    margin-bottom: 16px;
+                }
+                
+                .share-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    background-color: #f3f4f6;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 4px;
+                    padding: 8px 12px;
+                    font-size: 14px;
+                    cursor: pointer;
+                }
+                
+                .share-dropdown-content {
+                    display: none;
+                    position: absolute;
+                    background-color: white;
+                    min-width: 200px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-radius: 4px;
+                    z-index: 1;
+                    overflow: hidden;
+                }
+                
+                .share-action {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 10px 16px;
+                    font-size: 14px;
+                    color: #374151;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+                
+                .share-action:hover {
+                    background-color: #f9fafb;
+                }
+                
+                .share-dropdown:hover .share-dropdown-content {
+                    display: block;
+                }
+                </style>
+                
+                <div class="share-dropdown">
+                    <button class="share-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                        Share & Export
+                    </button>
+                    <div class="share-dropdown-content">
+                        <div class="share-action" onclick="navigator.clipboard.writeText('{citation}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy Citation
+                        </div>
+                        <div class="share-action" onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph .paragraph-content'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                            Copy All Passages
+                        </div>
+                        <div class="share-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download PDF
+                        </div>
+                        <div class="share-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                <polyline points="16 6 12 2 8 6"></polyline>
+                                <line x1="12" y1="2" x2="12" y2="15"></line>
+                            </svg>
+                            Export to Word
+                        </div>
+                        <div class="share-action">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            Email Case Link
+                        </div>
+                    </div>
+                </div>
+                """)import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
@@ -1091,29 +1473,27 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order with copy buttons for relevant paragraphs
+                    # Alternative 1: Hover-based copy functionality with floating action
                     paragraphs_html = ""
                     
-                    # Add an ID to each passage for targeting with copy buttons
+                    # Add an ID to each passage for targeting with copy functionality
                     passage_id = f"passage-{case['id'].replace('/', '-')}-{chunk.get('relevance_score', 0)}"
                     
                     for para in chunk['paragraphs']:
                         if para['position'] == 'match':
-                            # This is the matching paragraph - highlight it with green background and add copy button
+                            # This is the matching paragraph - highlight it with green background and add hover copy functionality
                             paragraphs_html += f"""
-                            <div class="passage-actions">
-                                <button onclick="navigator.clipboard.writeText(document.getElementById('{passage_id}').innerText); 
-                                    this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg> Copied!'; 
-                                    setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'14\\' height=\\'14\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg> Copy Passage', 2000)" 
-                                    class="inline-copy-button">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <div class="relevant-paragraph">
+                                <div id="{passage_id}" class="paragraph-content">{para["text"]}</div>
+                                <div class="hover-copy" onclick="navigator.clipboard.writeText(document.getElementById('{passage_id}').innerText); 
+                                    this.innerHTML = '<span class=\\'copy-success\\'><svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg> Copied</span>';
+                                    setTimeout(() => this.innerHTML = '<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                     </svg>
-                                    Copy Passage
-                                </button>
+                                </div>
                             </div>
-                            <div id="{passage_id}" class="relevant-paragraph">{para["text"]}</div>
                             """
                         else:
                             # This is a context paragraph - normal styling
@@ -1124,6 +1504,46 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     <div class="document-section">
                     {paragraphs_html}
                     </div>
+                    
+                    <style>
+                    /* Hover-based copy styling */
+                    .relevant-paragraph {
+                        position: relative;
+                        background-color: #d1fae5;
+                        padding: 1rem;
+                        margin: 0;
+                    }
+                    
+                    .hover-copy {
+                        position: absolute;
+                        top: 10px;
+                        right: 10px;
+                        background-color: white;
+                        border-radius: 4px;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                        opacity: 0;
+                        transition: opacity 0.2s ease;
+                        cursor: pointer;
+                    }
+                    
+                    .relevant-paragraph:hover .hover-copy {
+                        opacity: 1;
+                    }
+                    
+                    .copy-success {
+                        display: flex;
+                        align-items: center;
+                        color: #10b981;
+                        font-size: 12px;
+                        white-space: nowrap;
+                        padding: 0 6px;
+                    }
+                    </style>
                     """, unsafe_allow_html=True)
                     
                     # Remove the duplicate code block - we only need one implementation of paragraph display
