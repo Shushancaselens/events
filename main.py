@@ -420,6 +420,10 @@ def semantic_search(query):
         
         # Find relevant paragraphs
         case_chunks = []
+        
+        # Get a single explanation for the entire case based on the query
+        case_explanation = generate_relevance_explanation("", query_terms)
+        
         for para_idx, para in enumerate(cleaned_paragraphs):
             score = 0
             for term in query_terms:
@@ -428,9 +432,6 @@ def semantic_search(query):
             
             # Only include if it has some relevance
             if score > 0:
-                # Get explanation based on content
-                explanation = generate_relevance_explanation(para, query_terms)
-                
                 # Find the surrounding paragraphs for context
                 context_paragraphs = []
                 
@@ -450,8 +451,7 @@ def semantic_search(query):
                     "case_id": case["id"],
                     "case_title": case["title"],
                     "paragraphs": context_paragraphs,
-                    "relevance_score": score,
-                    "explanation": explanation
+                    "relevance_score": score
                 }
                 
                 case_chunks.append(chunk)
@@ -467,9 +467,10 @@ def semantic_search(query):
             # Add all chunks to overall list
             all_chunks.extend(case_chunks)
             
-            # Add case to results
+            # Add case to results with a single explanation for the whole case
             result = case.copy()
             result["relevant_chunks"] = case_chunks
+            result["explanation"] = case_explanation  # Single explanation for the case
             all_results.append(result)
     
     # Sort results by the maximum relevance score of any chunk
