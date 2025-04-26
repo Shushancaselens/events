@@ -875,23 +875,8 @@ if st.session_state.is_searching:
 # Show results when search is complete
 if st.session_state.search_complete and 'search_results' in st.session_state:
     if st.session_state.search_results:
-        # Add a top-level copy button for all search results
-        col1, col2 = st.columns([7, 3])
-        
-        with col1:
-            st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
-        
-        with col2:
-            # Create a button to copy all search results
-            st.markdown("""
-            <button onclick="let allText = ''; document.querySelectorAll('.relevant-paragraph').forEach(p => allText += p.innerText.replace(/Copy paragraph$/g, '') + '\\n\\n'); navigator.clipboard.writeText(allText); showCopyNotification('All search results copied!');" class="copy-button" style="float:right; padding: 8px 16px; background-color: #4a66f0; color: white; border: none;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; vertical-align:middle;">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy All Results
-            </button>
-            """, unsafe_allow_html=True)
+        # Simply show the result count - the floating copy button handles global copy functionality
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
         
         # Display results grouped by case
         for case in st.session_state.search_results:
@@ -909,145 +894,223 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 # Add action buttons for the case with improved UX for copy functionality
                 st.markdown("""
                 <style>
-                /* Base icon button styles */
-                .icon-button {
-                    display: inline-flex;
+                /* Case header styling to make room for action buttons */
+                .streamlit-expanderHeader {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    width: 100%;
+                }
+                
+                /* Action toolbar - positioned at top right of each case */
+                .case-actions-toolbar {
+                    position: absolute;
+                    top: 12px;
+                    right: 50px;
+                    display: flex;
+                    align-items: center;
+                    z-index: 100;
+                }
+                
+                /* Fixed copy menu that follows you as you scroll */
+                .floating-copy-menu {
+                    position: fixed;
+                    right: 20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    display: flex;
+                    flex-direction: column;
+                    background-color: white;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-radius: 8px;
+                    padding: 8px 0;
+                    z-index: 1000;
+                }
+                
+                /* Core button styles */
+                .action-button {
+                    display: flex;
                     align-items: center;
                     justify-content: center;
                     width: 40px;
                     height: 40px;
-                    margin: 0 12px 16px 0;
-                    background-color: #f8f9fa;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 50%;
-                    color: #333;
+                    border-radius: 8px;
+                    background-color: white;
+                    border: 1px solid #e5e7eb;
+                    margin: 0 4px;
                     cursor: pointer;
                     transition: all 0.2s;
                     position: relative;
                 }
-                .icon-button:hover {
-                    background-color: #edf2f7;
-                    border-color: #cbd5e0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                
+                .action-button:hover {
+                    background-color: #f3f4f6;
+                    transform: translateY(-2px);
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 }
-                .icon-button svg {
+                
+                .action-button svg {
+                    width: 20px;
+                    height: 20px;
+                    color: #4a66f0;
+                }
+                
+                /* Floating menu buttons - vertical */
+                .float-action-button {
+                    display: flex;
+                    align-items: center;
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    white-space: nowrap;
+                }
+                
+                .float-action-button:hover {
+                    background-color: #f3f4f6;
+                }
+                
+                .float-action-button svg {
                     width: 18px;
                     height: 18px;
-                }
-                .icon-buttons-container {
-                    display: flex;
-                    margin-bottom: 16px;
-                }
-                
-                /* Copy button with text label for better UX */
-                .copy-button {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 6px 12px;
-                    background-color: #f8f9fa;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 4px;
-                    color: #333;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s;
                     margin-right: 8px;
-                }
-                .copy-button:hover {
-                    background-color: #edf2f7;
-                    border-color: #cbd5e0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                .copy-button svg {
-                    width: 16px;
-                    height: 16px;
-                    margin-right: 6px;
+                    color: #4a66f0;
                 }
                 
-                /* Tooltip styles */
-                .icon-button::after, .copy-button::after {
-                    content: attr(data-tooltip);
+                /* Copy button for paragraph - positioned inline */
+                .paragraph-copy-button {
                     position: absolute;
-                    bottom: 105%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 5px 10px;
-                    background: #333;
-                    color: white;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s ease;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                .icon-button::before, .copy-button::before {
-                    content: "";
-                    position: absolute;
-                    bottom: 95%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    border: 6px solid transparent;
-                    border-top-color: #333;
-                    opacity: 0;
-                    visibility: hidden;
-                    transition: all 0.2s ease;
-                    pointer-events: none;
-                    z-index: 10;
-                }
-                .icon-button:hover::after, .icon-button:hover::before,
-                .copy-button:hover::after, .copy-button:hover::before {
-                    opacity: 1;
-                    visibility: visible;
-                }
-                
-                /* Copy feedback notification */
-                .copy-notification {
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background-color: #4a66f0;
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 4px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    transition: all 0.3s ease;
-                    z-index: 1000;
-                    opacity: 0;
-                    visibility: hidden;
-                }
-                .copy-notification.show {
-                    opacity: 1;
-                    visibility: visible;
-                }
-                
-                /* Paragraph-level copy buttons */
-                .document-section {
-                    position: relative;
-                }
-                .paragraph-copy {
-                    position: absolute;
-                    top: 8px;
-                    right: 8px;
-                    width: 30px;
-                    height: 30px;
-                    background-color: rgba(255,255,255,0.9);
-                    border: 1px solid #e2e8f0;
-                    border-radius: 4px;
+                    left: -36px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 50%;
+                    background-color: white;
+                    border: 1px solid #e5e7eb;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
                     opacity: 0;
-                    transition: opacity 0.2s;
+                    transition: all 0.2s;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
-                .document-section:hover .paragraph-copy {
+                
+                /* Only show paragraph copy buttons on hover */
+                .relevant-paragraph:hover .paragraph-copy-button,
+                .context-paragraph:hover .paragraph-copy-button {
                     opacity: 1;
                 }
-                .relevant-paragraph, .context-paragraph {
+                
+                /* Updated tooltip positioning */
+                .action-button::after,
+                .float-action-button::after,
+                .paragraph-copy-button::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    z-index: 1000;
+                    background: #333;
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: all 0.2s;
+                }
+                
+                /* Different tooltip positions based on button location */
+                .action-button::after {
+                    bottom: 105%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                }
+                
+                .float-action-button::after {
+                    left: 105%;
+                    top: 50%;
+                    transform: translateY(-50%);
+                }
+                
+                .paragraph-copy-button::after {
+                    left: -10px;
+                    top: 50%;
+                    transform: translate(-100%, -50%);
+                }
+                
+                /* Show tooltips on hover */
+                .action-button:hover::after,
+                .float-action-button:hover::after,
+                .paragraph-copy-button:hover::after {
+                    opacity: 1;
+                }
+                
+                /* Improved document section spacing */
+                .document-section {
                     position: relative;
+                    margin: 20px 0;
+                    padding-left: 40px; /* Make room for left-side copy buttons */
+                }
+                
+                .relevant-paragraph, 
+                .context-paragraph {
+                    position: relative;
+                    padding: 1rem;
+                    margin: 0;
+                }
+                
+                .relevant-paragraph {
+                    background-color: #d1fae5;
+                }
+                
+                /* Global copy all button - fixed position at top right */
+                .global-copy-button {
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    padding: 10px 16px;
+                    background-color: #4a66f0;
+                    color: white;
+                    border-radius: 30px;
+                    box-shadow: 0 2px 10px rgba(74, 102, 240, 0.3);
+                    display: flex;
+                    align-items: center;
+                    font-weight: 500;
+                    cursor: pointer;
+                    z-index: 1000;
+                    transition: all 0.2s;
+                }
+                
+                .global-copy-button:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(74, 102, 240, 0.4);
+                }
+                
+                .global-copy-button svg {
+                    width: 18px;
+                    height: 18px;
+                    margin-right: 8px;
+                }
+                
+                /* Copy feedback notification - slides in from top */
+                .copy-notification {
+                    position: fixed;
+                    top: -100px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background-color: #4a66f0;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+                    transition: top 0.3s ease;
+                    z-index: 9999;
+                    text-align: center;
+                }
+                
+                .copy-notification.show {
+                    top: 20px;
                 }
                 </style>
                 
@@ -1055,6 +1118,60 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 <div id="copyNotification" class="copy-notification">
                     Copied to clipboard!
                 </div>
+                
+                <!-- Fixed floating copy menu that follows as you scroll -->
+                <div class="floating-copy-menu">
+                    <div class="float-action-button" 
+                         onclick="navigator.clipboard.writeText('{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})'); showCopyNotification('Citation copied');" 
+                         data-tooltip="Copy citation">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        Citation
+                    </div>
+                    <div class="float-action-button" 
+                         onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText.replace('Copy', '') + '\\n\\n'); navigator.clipboard.writeText(text); showCopyNotification('All relevant passages copied');" 
+                         data-tooltip="Copy highlighted text">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                        Highlights
+                    </div>
+                    <div class="float-action-button" 
+                         onclick="const metas = document.querySelector('.case-meta').innerText; const summary = document.querySelector('.explanation').innerText; navigator.clipboard.writeText(metas + '\\n\\n' + summary); showCopyNotification('Case summary copied');" 
+                         data-tooltip="Copy case summary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Summary
+                    </div>
+                    <div class="float-action-button" 
+                         onclick="const allText = document.querySelector('.streamlit-expanderContent').innerText.replace(/Copy/g, ''); navigator.clipboard.writeText(allText); showCopyNotification('Full case copied');" 
+                         data-tooltip="Copy entire case">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Full Case
+                    </div>
+                </div>
+                
+                <!-- Global copy all results button - fixed position -->
+                <button class="global-copy-button" 
+                       onclick="let allText = ''; document.querySelectorAll('.relevant-paragraph').forEach(p => allText += p.innerText.replace('Copy', '') + '\\n\\n'); navigator.clipboard.writeText(allText); showCopyNotification('All search results copied');">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy All Results
+                </button>
                 
                 <script>
                 function showCopyNotification(text) {
@@ -1065,56 +1182,31 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                         notification.classList.remove('show');
                     }, 2000);
                 }
+                
+                // Add action buttons to each case title
+                document.addEventListener('DOMContentLoaded', function() {
+                    const expanders = document.querySelectorAll('.streamlit-expanderHeader');
+                    expanders.forEach(expander => {
+                        // Create the actions toolbar
+                        const toolbar = document.createElement('div');
+                        toolbar.className = 'case-actions-toolbar';
+                        
+                        // Add PDF button
+                        const pdfButton = document.createElement('button');
+                        pdfButton.className = 'action-button';
+                        pdfButton.setAttribute('data-tooltip', 'View PDF');
+                        pdfButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+                        toolbar.appendChild(pdfButton);
+                        
+                        // Append the toolbar to the expander
+                        expander.appendChild(toolbar);
+                    });
+                });
                 </script>
                 """, unsafe_allow_html=True)
                 
-                # Generate citation text and PDF link
-                citation = generate_citation(case)
+                # Generate case PDF link
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
-                
-                # Create action buttons with improved copy UX
-                col1, col2 = st.columns([7, 3])
-                
-                with col1:
-                    st.markdown(f"""
-                    <div class="icon-buttons-container">
-                        <a href="{pdf_url}" target="_blank" class="icon-button" data-tooltip="View Full Case PDF">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14 2 14 8 20 8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                <polyline points="10 9 9 9 8 9"></polyline>
-                            </svg>
-                        </a>
-                        <!-- Text-based copy buttons for better UX -->
-                        <button onclick="navigator.clipboard.writeText('{citation}'); showCopyNotification('Citation copied to clipboard!');" class="copy-button" data-tooltip="Copy citation for reference">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            Citation
-                        </button>
-                        <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); showCopyNotification('All relevant passages copied!');" class="copy-button" data-tooltip="Copy all highlighted passages">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                            </svg>
-                            Relevant Passages
-                        </button>
-                        <button onclick="const allText = document.querySelector('.case-meta').innerText + '\\n\\n' + document.querySelector('.explanation').innerText + '\\n\\n'; navigator.clipboard.writeText(allText); showCopyNotification('Case summary copied!');" class="copy-button" data-tooltip="Copy case summary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="8" y1="6" x2="21" y2="6"></line>
-                                <line x1="8" y1="12" x2="21" y2="12"></line>
-                                <line x1="8" y1="18" x2="21" y2="18"></line>
-                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                            </svg>
-                            Summary
-                        </button>
-                    </div>
-                    """, unsafe_allow_html=True)
                 
                 # Add case summary once per case
                 st.markdown(f"""
@@ -1132,7 +1224,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order with individual copy buttons
+                    # Now display the paragraphs in their natural order with better-positioned copy buttons
                     paragraphs_html = ""
                     
                     for para in chunk['paragraphs']:
@@ -1143,26 +1235,26 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                             # This is the matching paragraph - highlight it with green background
                             paragraphs_html += f'''
                             <div class="relevant-paragraph">
-                                {para["text"]}
-                                <button class="paragraph-copy" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied!');" data-tooltip="Copy paragraph">
+                                <button class="paragraph-copy-button" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied');" data-tooltip="Copy this paragraph">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                     </svg>
                                 </button>
+                                {para["text"]}
                             </div>
                             '''
                         else:
                             # This is a context paragraph - normal styling
                             paragraphs_html += f'''
                             <div class="context-paragraph">
-                                {para["text"]}
-                                <button class="paragraph-copy" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied!');" data-tooltip="Copy paragraph">
+                                <button class="paragraph-copy-button" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied');" data-tooltip="Copy this paragraph">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                     </svg>
                                 </button>
+                                {para["text"]}
                             </div>
                             '''
                     
