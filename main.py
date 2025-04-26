@@ -626,6 +626,13 @@ def generate_relevance_explanation(text, query_terms):
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
+# Function to generate properly formatted citation for a case
+def generate_citation(case):
+    """Generate a properly formatted citation for academic or legal reference."""
+    # Format: "Case ID, Case Title, Court of Arbitration for Sport (Decision Date)"
+    citation = f"{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})"
+    return citation
+
 # Generate a concise summary of a case for search results - shorter versions
 def generate_case_summary(case):
     case_id = case['id']
@@ -882,6 +889,20 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     <strong>Panel:</strong> {case['panel']}
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # Add citation buttons and PDF link
+                col1, col2 = st.columns([1, 3])
+                with col1:
+                    # Generate PDF link - in a real app, this would link to the actual PDF
+                    pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
+                    st.markdown(f"[View Case PDF]({pdf_url})", unsafe_allow_html=False)
+                
+                with col2:
+                    # Generate citation text
+                    citation = generate_citation(case)
+                    # Using a text input with a button is a common pattern for copy functionality
+                    st.text_input("Case citation:", value=citation, key=f"citation_{case['id']}", 
+                                 help="Click to select, then copy with Ctrl+C / Cmd+C")
                 
                 # Add case summary once per case
                 st.markdown(f"""
