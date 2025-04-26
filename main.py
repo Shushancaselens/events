@@ -590,6 +590,47 @@ def generate_relevance_explanation(text, query_terms):
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
+# Generate a case-level relevance explanation
+def generate_case_relevance(case, query_terms):
+    # Generate explanation based on keywords that match query terms
+    matching_keywords = []
+    for keyword in case["keywords"]:
+        if any(term in keyword.lower() for term in query_terms):
+            matching_keywords.append(keyword)
+    
+    if matching_keywords:
+        keywords_str = ", ".join(matching_keywords)
+        return f"This case directly addresses {keywords_str}, which are central to your query."
+    
+    # If no direct keyword match, generate based on case type
+    if "football" in case["sport"].lower() and any(term in ["contract", "player", "transfer", "compensation"] for term in query_terms):
+        return f"This {case['sport']} case establishes important principles regarding {' '.join(query_terms)} in sports contracts."
+    
+    if "space" in case["sport"].lower() and any(term in ["satellite", "frequency", "regulation"] for term in query_terms):
+        return f"This case examines regulatory issues in {case['sport']} that relate to your query about {' '.join(query_terms)}."
+    
+    # Default explanation
+    return f"This case contains relevant legal analysis and precedent related to your search for '{' '.join(query_terms)}'."
+
+# Generate a concise case summary
+def generate_case_summary(case):
+    # Extract key information from the case
+    year = case["date"].split("-")[0]
+    
+    # Create different summaries based on the case type
+    if "Football" in case["sport"]:
+        if "buy-out clause" in case["keywords"]:
+            return f"({year}) The dispute concerned the enforceability of a €30M buy-out clause in a player's contract. The panel ruled that the buy-out clause was valid and enforceable, dismissing Atlético Madrid's appeal seeking higher compensation."
+        
+        if "coach" in case["keywords"] or "sporting results" in case["keywords"]:
+            return f"({year}) This case established that poor sporting results alone do not constitute just cause for terminating a coach's contract. The club's appeal was dismissed and they were ordered to pay the remaining value of the coach's contract minus earnings from his new position."
+    
+    if "Space Technology" in case["sport"]:
+        return f"({year}) This case examined whether a national regulatory authority's rejection of a satellite frequency application was legitimate. The panel upheld the regulator's decision, finding that protection of weather monitoring capabilities constituted a compelling public interest."
+    
+    # Default summary using the decision field
+    return f"({year}) {case['decision']}"
+
 # Function removed as history feature is no longer used
 
 # ===== SIDEBAR COMPONENTS =====
@@ -819,6 +860,41 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case relevance explanation and summary
+                query_terms = st.session_state.current_query.lower().split()
+                
+                # Create a container for the case summary and relevance
+                st.markdown("""
+                <style>
+                .case-summary-box {
+                    background-color: #f8f9fa;
+                    border-left: 4px solid #4a66f0;
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                    border-radius: 0 4px 4px 0;
+                }
+                .case-relevance {
+                    color: #1e3a8a;
+                    font-weight: 500;
+                    margin-bottom: 0.5rem;
+                }
+                .case-summary {
+                    margin-bottom: 0;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Case relevance and summary
+                relevance = generate_case_relevance(case, query_terms)
+                summary = generate_case_summary(case)
+                
+                st.markdown(f"""
+                <div class="case-summary-box">
+                    <div class="case-relevance"><strong>Case Relevance:</strong> {relevance}</div>
+                    <div class="case-summary"><strong>Summary:</strong> {summary}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
                 # Case metadata
                 st.markdown(f"""
                 <div class="case-meta">
