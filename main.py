@@ -451,7 +451,7 @@ def semantic_search(query):
                     "case_title": case["title"],
                     "paragraphs": context_paragraphs,
                     "relevance_score": score,
-                    "explanation": explanation
+                    "explanation": explanation if explanation else "No specific explanation available."
                 }
                 
                 case_chunks.append(chunk)
@@ -837,13 +837,6 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Add case summary with relevance explanation - styled similar to explanation box
-                st.markdown(f"""
-                <div class="explanation">
-                <strong>Case Summary:</strong> {generate_case_summary(case)} <strong>Outcome:</strong> {case['decision']}
-                </div>
-                """, unsafe_allow_html=True)
-                
                 # Case metadata
                 st.markdown(f"""
                 <div class="case-meta">
@@ -854,12 +847,19 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # Add case summary with relevance explanation - styled similar to explanation box
+                st.markdown(f"""
+                <div class="explanation">
+                <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
+                </div>
+                """, unsafe_allow_html=True)
+                
                 # Display each relevant chunk with its context
                 for chunk in case['relevant_chunks']:
                     # First, show the explanation box
                     st.markdown(f"""
                     <div class="explanation">
-                    <strong>Explanation:</strong> {chunk['explanation']}
+                    <strong>Explanation:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
                     </div>
                     """, unsafe_allow_html=True)
                     
