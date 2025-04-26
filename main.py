@@ -1,4 +1,88 @@
-import streamlit as st
+# Add action buttons for the case with icons-only design
+                st.markdown("""
+                <style>
+                .icon-button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    margin: 0 12px 16px 0;
+                    background-color: #f8f9fa;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 50%;
+                    color: #333;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                }
+                .icon-button:hover {
+                    background-color: #edf2f7;
+                    border-color: #cbd5e0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .icon-button svg {
+                    width: 18px;
+                    height: 18px;
+                }
+                .icon-buttons-container {
+                    display: flex;
+                    margin-bottom: 16px;
+                }
+                /* Tooltip styles */
+                .icon-button::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 105%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    padding: 5px 10px;
+                    background: #333;
+                    color: white;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                .icon-button::before {
+                    content: "";
+                    position: absolute;
+                    bottom: 95%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 6px solid transparent;
+                    border-top-color: #333;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                .icon-button:hover::after, .icon-button:hover::before {
+                    opacity: 1;
+                    visibility: visible;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Generate citation text and PDF link
+                citation = generate_citation(case)
+                pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
+                
+                st.markdown(f"""
+                <div class="icon-buttons-container">
+                    <a href="{pdf_url}" target="_blank" class="icon-button" data-tooltip="View Full Case PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
@@ -890,44 +974,70 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Case metadata
-                st.markdown(f"""
-                <div class="case-meta">
-                    <strong>Date:</strong> {case['date']} | 
-                    <strong>Type:</strong> {case['type']} | 
-                    <strong>Sport:</strong> {case['sport']} | 
-                    <strong>Panel:</strong> {case['panel']}
-                </div>
+                # Add action buttons for the case with improved styling
+                st.markdown("""
+                <style>
+                .action-button {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 8px 16px;
+                    margin: 0 8px 16px 0;
+                    background-color: #f8f9fa;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 4px;
+                    color: #333;
+                    font-weight: 500;
+                    text-decoration: none;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .action-button:hover {
+                    background-color: #edf2f7;
+                    border-color: #cbd5e0;
+                }
+                .action-button svg {
+                    margin-right: 8px;
+                }
+                .action-buttons-container {
+                    display: flex;
+                    flex-wrap: wrap;
+                    margin-bottom: 16px;
+                }
+                </style>
                 """, unsafe_allow_html=True)
                 
                 # Generate citation text and PDF link
                 citation = generate_citation(case)
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
                 
-                # Function to extract all relevant paragraphs into a single text
-                def get_relevant_passages(case_chunks):
-                    passages = []
-                    for chunk in case_chunks:
-                        for para in chunk['paragraphs']:
-                            if para['position'] == 'match':
-                                passages.append(para['text'])
-                    return "\n\n".join(passages)
-                
-                # Create a row of buttons using Streamlit components
-                button_cols = st.columns(3)
-                
-                with button_cols[0]:
-                    st.markdown(f"[📄 View PDF]({pdf_url})", unsafe_allow_html=False)
-                
-                with button_cols[1]:
-                    # For citation copying, use a text area that's easier to copy from
-                    st.text_area("Citation", citation, height=40, key=f"citation_{case['id']}")
-                
-                with button_cols[2]:
-                    # For relevant passages, create a text area with the content
-                    relevant_text = get_relevant_passages(case['relevant_chunks'])
-                    st.text_area("Relevant Passages", relevant_text, height=40, key=f"passages_{case['id']}")
+                st.markdown(f"""
+                <div class="action-buttons-container">
+                    <a href="{pdf_url}" target="_blank" class="action-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        View Full Case PDF
+                    </a>
+                    <button onclick="navigator.clipboard.writeText('{citation}'); this.innerText='Citation Copied!'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>Copy Citation', 2000)" class="action-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy Citation
+                    </button>
+                    <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); this.innerText='Relevant Passages Copied!'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'16\\' height=\\'16\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\\'></path><rect x=\\'8\\' y=\\'2\\' width=\\'8\\' height=\\'4\\' rx=\\'1\\' ry=\\'1\\'></rect></svg>Copy Relevant Passages', 2000)" class="action-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                        Copy Relevant Passages
+                    </button>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Add case summary once per case
                 st.markdown(f"""
