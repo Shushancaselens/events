@@ -569,24 +569,60 @@ def passes_filters(case):
 
 # Generate a detailed explanation for the blue box at the top
 def generate_relevance_explanation(text, query_terms):
-    # Default explanations based on common legal topics
+    # Default explanations based on common legal topics - expanded with more terms
     explanations = {
         "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
+        "buy out": "Buy-out provisions in contracts represent a pre-agreed amount for compensation in case of early termination.",
+        "buyout": "Buyout clauses set a predetermined financial value for contract termination without requiring further negotiation.",
         "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
+        "terminate contract": "Termination of contracts in sports requires analysis of the justification and appropriate compensation.",
+        "termination": "Contract termination in sports law examines whether proper procedures were followed and appropriate compensation was provided.",
         "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
         "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
+        "coach": "Coaching contracts in sports have unique characteristics that distinguish them from player contracts.",
         "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
+        "compensation": "Compensation analysis in sports contracts involves examining contract terms, applicable regulations, and mitigating factors.",
         "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
+        "satellite": "Satellite-related disputes involve complex technical and regulatory considerations specific to space technology.",
         "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
-        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes."
+        "frequency": "Radio frequency matters involve balancing technical requirements, regulatory oversight, and international coordination.",
+        "spectrum": "Spectrum management disputes involve balancing commercial interests against public good considerations.",
+        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes.",
+        "security": "Security considerations can influence regulatory decisions and may justify certain limitations on commercial activities.",
+        "regulatory": "Regulatory decisions are subject to review based on proper procedure, proportionality, and legitimate aims.",
+        "football": "Football-related disputes often involve contract interpretation, transfer regulations, and applicable FIFA rules.",
+        "fifa": "FIFA regulations establish a specialized legal framework for football-related disputes.",
+        "transfer": "Player transfers in football are subject to specific regulations regarding contract stability and compensation.",
+        "employment": "Employment relationships in sports are governed by both standard employment law and specific sports regulations."
     }
     
-    # Check if any of our pre-defined topics match the query
+    # First check for exact matches with the whole query
+    full_query = " ".join(query_terms).lower()
     for topic, explanation in explanations.items():
-        if topic in " ".join(query_terms).lower():
+        if topic == full_query:
             return explanation
     
-    # If no pre-defined explanation matches, generate a generic one
+    # Then check for partial matches
+    for topic, explanation in explanations.items():
+        if topic in full_query:
+            return explanation
+    
+    # Check individual terms
+    for term in query_terms:
+        term = term.lower()
+        for topic, explanation in explanations.items():
+            if term == topic or term in topic.split():
+                return explanation
+    
+    # If no pre-defined explanation matches, generate a generic one based on the text content
+    if "contract" in text.lower() or "agreement" in text.lower():
+        return f"This passage discusses contractual obligations and their enforcement in the sporting context."
+    elif "compens" in text.lower() or "payment" in text.lower() or "amount" in text.lower():
+        return f"This passage addresses financial considerations and compensation issues in sports law."
+    elif "arbitrat" in text.lower() or "panel" in text.lower() or "tribunal" in text.lower():
+        return f"This passage explains procedural aspects and the reasoning of the arbitration panel."
+    
+    # Final fallback - create a generic explanation from the search terms
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
