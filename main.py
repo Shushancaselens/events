@@ -1,4 +1,36 @@
-import streamlit as st
+# Add case summary once per case
+                        st.markdown(f"""
+                        <div class="explanation">
+                        <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Display each relevant chunk with its context
+                        for chunk in case['relevant_chunks']:
+                            # Show the relevance explanation for this specific chunk
+                            st.markdown(f"""
+                            <div class="explanation">
+                            <strong>Relevance:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Now display the paragraphs in their natural order
+                            paragraphs_html = ""
+                            
+                            for para in chunk['paragraphs']:
+                                if para['position'] == 'match':
+                                    # This is the matching paragraph - highlight it with green background
+                                    paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                                else:
+                                    # This is a context paragraph - normal styling
+                                    paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
+                            
+                            # Output the entire document section
+                            st.markdown(f"""
+                            <div class="document-section">
+                            {paragraphs_html}
+                            </div>
+                            """, unsafe_allow_html=True)import streamlit as st
 import pandas as pd
 from datetime import datetime
 import re
