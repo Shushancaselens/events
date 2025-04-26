@@ -890,95 +890,44 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Add action buttons for the case with improved styling - icon-only with hover text
-                st.markdown("""
-                <style>
-                .action-button {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 40px;
-                    height: 40px;
-                    margin: 0 12px 16px 0;
-                    background-color: #f8f9fa;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 50%;
-                    color: #4a5568;
-                    text-decoration: none;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    position: relative;
-                }
-                .action-button:hover {
-                    background-color: #4a66f0;
-                    border-color: #4a66f0;
-                    color: white;
-                }
-                .action-button:hover::after {
-                    content: attr(data-tooltip);
-                    position: absolute;
-                    bottom: -30px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 4px 8px;
-                    background-color: #1a202c;
-                    color: white;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    z-index: 10;
-                }
-                .action-buttons-container {
-                    display: flex;
-                    margin-bottom: 16px;
-                }
-                .success-message {
-                    position: absolute;
-                    bottom: -30px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 4px 8px;
-                    background-color: #48bb78;
-                    color: white;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    z-index: 10;
-                }
-                </style>
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
                 """, unsafe_allow_html=True)
                 
                 # Generate citation text and PDF link
                 citation = generate_citation(case)
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
                 
-                st.markdown(f"""
-                <div class="action-buttons-container">
-                    <a href="{pdf_url}" target="_blank" class="action-button" data-tooltip="View Full Case PDF">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                    </a>
-                    
-                    <button onclick="navigator.clipboard.writeText('{citation}'); const msg = document.createElement('div'); msg.className = 'success-message'; msg.innerText = 'Citation copied!'; this.appendChild(msg); setTimeout(() => msg.remove(), 2000);" class="action-button" data-tooltip="Copy Citation">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                    </button>
-                    
-                    <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); const msg = document.createElement('div'); msg.className = 'success-message'; msg.innerText = 'Passages copied!'; this.appendChild(msg); setTimeout(() => msg.remove(), 2000);" class="action-button" data-tooltip="Copy Relevant Passages">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                        </svg>
-                    </button>
-                </div>
-                """, unsafe_allow_html=True)
+                # Function to extract all relevant paragraphs into a single text
+                def get_relevant_passages(case_chunks):
+                    passages = []
+                    for chunk in case_chunks:
+                        for para in chunk['paragraphs']:
+                            if para['position'] == 'match':
+                                passages.append(para['text'])
+                    return "\n\n".join(passages)
+                
+                # Create a row of buttons using Streamlit components
+                button_cols = st.columns(3)
+                
+                with button_cols[0]:
+                    st.markdown(f"[📄 View PDF]({pdf_url})", unsafe_allow_html=False)
+                
+                with button_cols[1]:
+                    # For citation copying, use a text area that's easier to copy from
+                    st.text_area("Citation", citation, height=40, key=f"citation_{case['id']}")
+                
+                with button_cols[2]:
+                    # For relevant passages, create a text area with the content
+                    relevant_text = get_relevant_passages(case['relevant_chunks'])
+                    st.text_area("Relevant Passages", relevant_text, height=40, key=f"passages_{case['id']}")
                 
                 # Add case summary once per case
                 st.markdown(f"""
