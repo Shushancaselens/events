@@ -45,40 +45,7 @@ st.markdown("""
         font-weight: bold;
     }
     
-    /* History item styling */
-    .history-section {
-        margin-top: 2rem;
-        margin-bottom: 3rem;
-    }
-    
-    .history-title {
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 1.5rem;
-        color: #333;
-    }
-    
-    .history-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-    
-    .history-radio {
-        margin-right: 10px;
-    }
-    
-    .history-query {
-        font-size: 16px;
-        font-weight: 500;
-        margin-bottom: 0;
-    }
-    
-    .history-time {
-        font-size: 14px;
-        color: #888;
-        margin-top: 0.2rem;
-    }
+
     
     /* User profile section */
     .profile-section {
@@ -376,12 +343,6 @@ The Court of Arbitration for Sport rules that:
 df_decisions = pd.DataFrame(cas_decisions)
 
 # Initialize session state
-if 'search_history' not in st.session_state:
-    st.session_state.search_history = [
-        {"query": "Processing of satellite collision events", "timestamp": "2024-07-14 18:22:42"},
-        {"query": "facts related to national security in the problem", "timestamp": "2024-07-14 18:20:23"},
-        {"query": "why the tribunal asked to redo the search if collision report is already available?", "timestamp": "2024-07-14 18:15:18"}
-    ]
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
 if 'search_results' not in st.session_state:
@@ -619,30 +580,7 @@ def generate_relevance_explanation(text, query_terms):
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
-# Add to search history
-def add_to_history(query):
-    if query and query.strip() != "":
-        # Add new search to history
-        now = datetime.now()
-        formatted_time = now.strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Check if this query is already in history
-        exists = False
-        for item in st.session_state.search_history:
-            if item["query"].lower() == query.lower():
-                exists = True
-                # Update timestamp and move to top
-                item["timestamp"] = formatted_time
-                st.session_state.search_history.remove(item)
-                st.session_state.search_history.insert(0, item)
-                break
-        
-        # If not in history, add it
-        if not exists:
-            st.session_state.search_history.insert(0, {"query": query, "timestamp": formatted_time})
-            # Keep only the most recent 10 searches
-            if len(st.session_state.search_history) > 10:
-                st.session_state.search_history = st.session_state.search_history[:10]
+# Function removed as history feature is no longer used
 
 # ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
@@ -662,31 +600,53 @@ with st.sidebar:
         st.session_state.selected_langs = st.multiselect("Select language(s)", lang_options, st.session_state.selected_langs)
     
     with st.expander("Year", expanded=False):
-        year_options = list(range(2010, 2025))
-        st.session_state.selected_years = st.multiselect("Select year(s)", year_options, st.session_state.selected_years)
+        # Offer two ways to filter by year: a range slider or specific years
+        year_filter_type = st.radio("Filter by", ["Year Range", "Specific Years"], horizontal=True)
+        
+        if year_filter_type == "Year Range":
+            year_min, year_max = 2010, 2025
+            year_range = st.slider("Select year range", 
+                                  min_value=year_min, 
+                                  max_value=year_max, 
+                                  value=(year_min, year_max))
+            # Convert range to list of years for the filter function
+            st.session_state.selected_years = list(range(year_range[0], year_range[1] + 1))
+        else:
+            year_options = list(range(2010, 2025))
+            st.session_state.selected_years = st.multiselect("Select specific year(s)", 
+                                                           year_options, 
+                                                           st.session_state.selected_years)
     
     with st.expander("Procedural Types", expanded=False):
         proc_options = ["Appeal", "First instance", "Advisory opinion"]
         st.session_state.selected_proc = st.multiselect("Select procedural type(s)", proc_options, st.session_state.selected_proc)
     
     with st.expander("Sport", expanded=False):
-        sport_options = ["Football", "Cycling", "Athletics", "Swimming", "Space Technology", "Other"]
-        st.session_state.selected_sports = st.multiselect("Select sport(s)", sport_options, st.session_state.selected_sports)
+        sport_options = sorted(["Football", "Cycling", "Athletics", "Swimming", "Space Technology", "Other"])
+        # Add a "Select All" option for sports
+        select_all_sports = st.checkbox("Select All Sports", key="select_all_sports")
+        if select_all_sports:
+            st.session_state.selected_sports = sport_options
+        else:
+            st.session_state.selected_sports = st.multiselect("Select sport(s)", sport_options, st.session_state.selected_sports)
     
     with st.expander("Matter", expanded=False):
         matter_options = ["Doping", "Transfer", "Contract", "Eligibility", "Regulatory", "Disciplinary", "Other"]
         st.session_state.selected_matters = st.multiselect("Select matter(s)", matter_options, st.session_state.selected_matters)
     
     with st.expander("Arbitrators", expanded=False):
+        # Use autocomplete-style inputs for arbitrators (simulated with regular inputs)
+        st.text_input("Search any arbitrator", placeholder="Search across all arbitrators...")
+        st.markdown("<p style='font-size:12px; color:#666;'>Or search by specific role:</p>", unsafe_allow_html=True)
         st.session_state.president_filter = st.text_input("President/Sole Arbitrator", 
                                                         value=st.session_state.president_filter, 
-                                                        placeholder="Search by name...")
+                                                        placeholder="Enter name...")
         st.session_state.arbitrator1_filter = st.text_input("Arbitrator 1", 
                                                           value=st.session_state.arbitrator1_filter, 
-                                                          placeholder="Search by name...")
+                                                          placeholder="Enter name...")
         st.session_state.arbitrator2_filter = st.text_input("Arbitrator 2", 
                                                           value=st.session_state.arbitrator2_filter, 
-                                                          placeholder="Search by name...")
+                                                          placeholder="Enter name...")
     
     with st.expander("Category", expanded=False):
         category_options = [
@@ -702,11 +662,36 @@ with st.sidebar:
                                                             st.session_state.selected_categories)
     
     with st.expander("Decision Date", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.session_state.start_date = st.date_input("From", value=st.session_state.start_date)
-        with col2:
-            st.session_state.end_date = st.date_input("To", value=st.session_state.end_date)
+        # Offer two ways to filter by date: calendar or "last X" quick filters
+        date_filter_type = st.radio("Filter by", ["Specific Dates", "Recent Period"], horizontal=True)
+        
+        if date_filter_type == "Specific Dates":
+            col1, col2 = st.columns(2)
+            with col1:
+                st.session_state.start_date = st.date_input("From", value=st.session_state.start_date)
+            with col2:
+                st.session_state.end_date = st.date_input("To", value=st.session_state.end_date)
+        else:
+            time_period = st.selectbox("Show cases from:", 
+                                      ["Last 3 months", "Last 6 months", "Last year", "Last 2 years", "Last 5 years"])
+            
+            # Calculate date based on selected period
+            today = datetime.now().date()
+            if time_period == "Last 3 months":
+                st.session_state.start_date = today.replace(month=today.month-3 if today.month > 3 else today.month+9, 
+                                                          year=today.year if today.month > 3 else today.year-1)
+            elif time_period == "Last 6 months":
+                st.session_state.start_date = today.replace(month=today.month-6 if today.month > 6 else today.month+6, 
+                                                          year=today.year if today.month > 6 else today.year-1)
+            elif time_period == "Last year":
+                st.session_state.start_date = today.replace(year=today.year-1)
+            elif time_period == "Last 2 years":
+                st.session_state.start_date = today.replace(year=today.year-2)
+            elif time_period == "Last 5 years":
+                st.session_state.start_date = today.replace(year=today.year-5)
+            
+            st.session_state.end_date = today
+            st.info(f"Showing cases from {st.session_state.start_date.strftime('%d %b %Y')} to {st.session_state.end_date.strftime('%d %b %Y')}")
     
     with st.expander("Outcome", expanded=False):
         outcome_options = ["Appeal upheld", "Appeal partially upheld", "Appeal dismissed", "Settlement"]
@@ -714,8 +699,27 @@ with st.sidebar:
                                                           outcome_options, 
                                                           st.session_state.selected_outcomes)
         
-    # Add a reset filters button
-    if st.button("Reset Filters"):
+    # Add a counter for active filters
+    active_filters_count = (
+        len(st.session_state.selected_langs) + 
+        len(st.session_state.selected_years) + 
+        len(st.session_state.selected_proc) + 
+        len(st.session_state.selected_sports) + 
+        len(st.session_state.selected_matters) + 
+        len(st.session_state.selected_categories) + 
+        len(st.session_state.selected_outcomes) + 
+        bool(st.session_state.president_filter) + 
+        bool(st.session_state.arbitrator1_filter) + 
+        bool(st.session_state.arbitrator2_filter) + 
+        bool(st.session_state.start_date) + 
+        bool(st.session_state.end_date)
+    )
+    
+    if active_filters_count > 0:
+        st.markdown(f"<div style='text-align:center; margin-top:10px;'><span style='background-color:#4a66f0; color:white; padding:4px 8px; border-radius:10px; font-size:14px;'>{active_filters_count} active filters</span></div>", unsafe_allow_html=True)
+        
+    # Reset filters button
+    if st.button("Reset All Filters"):
         st.session_state.selected_langs = []
         st.session_state.selected_years = []
         st.session_state.selected_proc = []
@@ -731,27 +735,6 @@ with st.sidebar:
         st.rerun()
     
     st.markdown('<hr style="margin: 15px 0;">', unsafe_allow_html=True)
-    
-    # History section
-    st.markdown('<div class="history-section">', unsafe_allow_html=True)
-    st.markdown('<div class="history-title">History</div>', unsafe_allow_html=True)
-    
-    # Display search history with radio buttons
-    for i, item in enumerate(st.session_state.search_history):
-        col1, col2 = st.columns([1, 9])
-        
-        with col1:
-            selected = st.radio("", [""], key=f"history_{i}", label_visibility="collapsed")
-            if selected:
-                st.session_state.current_query = item["query"]
-                st.session_state.is_searching = True
-                st.session_state.search_complete = False
-        
-        with col2:
-            st.markdown(f"<div class='history-query'>{item['query']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='history-time'>{item['timestamp']}</div>", unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
     
     # User profile section
     st.markdown('<div class="profile-section">', unsafe_allow_html=True)
@@ -793,7 +776,6 @@ if search_button and search_query:
     st.session_state.current_query = search_query
     st.session_state.is_searching = True
     st.session_state.search_complete = False
-    add_to_history(search_query)
 
 # Display loading state
 if st.session_state.is_searching:
