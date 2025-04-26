@@ -610,8 +610,6 @@ def generate_case_summary(case):
         # Generate a generic summary based on available information
         return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
 
-# Function removed as history feature is no longer used
-
 # ===== SIDEBAR COMPONENTS =====
 with st.sidebar:
     # Logo and app title
