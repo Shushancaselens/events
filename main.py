@@ -736,7 +736,7 @@ with st.sidebar:
         st.session_state.arbitrator2_filter = ""
         
         # Force page refresh
-        st.experimental_rerun()
+        st.rerun()
     
     # User profile section
     st.markdown('<div class="profile-section">', unsafe_allow_html=True)
