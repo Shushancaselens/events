@@ -318,18 +318,22 @@ if st.session_state.search_query:
             case = result["case"]
             
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Basic case info
-                st.write(f"**Date:** {case['date']} | **Type:** {case['type']} | **Sport:** {case['sport']}")
+                # Basic case info and action buttons in an optimized layout
+                cols = st.columns([3, 1, 1, 1])
                 
-                # Action buttons in a row
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col1:
-                    st.link_button("View PDF", f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf")
-                with col2:
-                    if st.button("Copy Citation", key=f"cite_{case['id']}"):
+                with cols[0]:
+                    st.write(f"**Date:** {case['date']} | **Type:** {case['type']} | **Sport:** {case['sport']} | **Panel:** {case['panel']}")
+                
+                # Icon buttons in the right columns
+                with cols[1]:
+                    st.link_button("📄", f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf", help="View PDF document")
+                
+                with cols[2]:
+                    if st.button("📋", key=f"cite_{case['id']}", help="Copy citation to clipboard"):
                         st.code(generate_citation(case))
-                with col3:
-                    if st.button("Copy Paragraphs", key=f"para_{case['id']}"):
+                
+                with cols[3]:
+                    if st.button("📝", key=f"para_{case['id']}", help="Copy relevant paragraphs"):
                         text = "\n\n".join([p["text"] for chunk in result["relevant_paragraphs"] 
                                           for p in chunk["paragraphs"] if p["is_match"]])
                         st.code(text)
