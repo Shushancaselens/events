@@ -885,10 +885,10 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 
                 # Display each relevant chunk with its context
                 for chunk in case['relevant_chunks']:
-                    # First, show the explanation box (with improved UX writing)
+                    # First, show the explanation box (with improved UX writing focused on relevance)
                     st.markdown(f"""
                     <div class="explanation">
-                    <strong>Key Legal Principle:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
+                    <strong>Relevance to Your Search:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
                     </div>
                     """, unsafe_allow_html=True)
                     
