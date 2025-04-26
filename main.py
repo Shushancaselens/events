@@ -590,17 +590,17 @@ def generate_relevance_explanation(text, query_terms):
     terms_text = ", ".join([f"'{term}'" for term in query_terms])
     return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
 
-# Generate a concise summary of a case for search results
+# Generate a concise summary of a case for search results - shorter versions
 def generate_case_summary(case):
     case_id = case['id']
     
-    # Pre-defined summaries for each case in our dataset
+    # Pre-defined summaries for each case in our dataset - more concise versions
     summaries = {
-        "CAS 2020/A/6978": "Football Club Atlético Madrid challenged FIFA's decision regarding a player's buy-out clause. The club argued that the €30 million buy-out clause in Diego Costa's contract was below his actual market value and sought €80 million in compensation after Chelsea FC signed the player.",
+        "CAS 2020/A/6978": "Dispute over a €30M buy-out clause in player Diego Costa's contract. Atlético Madrid sought higher compensation after Chelsea signed the player.",
         
-        "CAS 2011/A/2596": "Anorthosis Famagusta FC appealed the FIFA PSC's decision that ordered them to pay compensation to coach Ernst Middendorp after terminating his contract without just cause following a loss in a Euro League qualification match.",
+        "CAS 2011/A/2596": "Club terminated coach's contract after poor sporting results. Coach contested termination was without just cause and sought compensation.",
         
-        "CAS 2023/A/9872": "Astra Satellite Communications contested the Celestrian National Frequency Authority's rejection of their application for Ku-band frequency authorization, claiming the decision was arbitrary and discriminatory. The case also involved a satellite collision incident that raised national security concerns."
+        "CAS 2023/A/9872": "Challenge to regulatory decision denying satellite frequency authorization, with additional satellite collision incident raising security concerns."
     }
     
     # Return the appropriate summary or a generic one if not found
@@ -608,7 +608,7 @@ def generate_case_summary(case):
         return summaries[case_id]
     else:
         # Generate a generic summary based on available information
-        return f"This case involved a dispute between {case['claimant']} and {case['respondent']} regarding matters of {', '.join(case['keywords'][:3])}."
+        return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
 
 # Function removed as history feature is no longer used
 
@@ -839,23 +839,12 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
         # Display results grouped by case
         for case in st.session_state.search_results:
             with st.expander(f"{case['id']} - {case['title']}", expanded=True):
-                # Add case summary with relevance explanation
-                st.markdown("""
-                <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #4a66f0;">
-                    <h4 style="margin-top: 0; color: #1e3a8a;">Case Summary</h4>
-                    <p><strong>Why this is relevant:</strong> This case addresses key issues related to your search, including {}.
-                    </p>
-                    <p><strong>Summary:</strong> {} </p>
-                    <p><strong>Outcome:</strong> <span style="color: #1e3a8a; font-weight: 500;">{}</span></p>
+                # Add case summary with relevance explanation - styled similar to explanation box
+                st.markdown(f"""
+                <div class="explanation">
+                <strong>Case Summary:</strong> {generate_case_summary(case)} <strong>Outcome:</strong> {case['decision']}
                 </div>
-                """.format(
-                    # Display relevant keywords that match the search
-                    ", ".join([f"<span style='background-color:#e5e7eb; padding:2px 6px; border-radius:4px;'>{kw}</span>" for kw in case['keywords'] if kw.lower() in st.session_state.current_query.lower() or any(term in kw.lower() for term in st.session_state.current_query.lower().split())]),
-                    # Generate a summary based on the case
-                    generate_case_summary(case),
-                    # Add the outcome
-                    case['decision']
-                ), unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                 
                 # Case metadata
                 st.markdown(f"""
