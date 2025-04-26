@@ -910,4 +910,3 @@ if not st.session_state.is_searching and not st.session_state.search_complete:
     - contract termination
     - compensation
     """)
-
