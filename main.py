@@ -847,6 +847,15 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # Display explanation first for the top chunk
+                if case['relevant_chunks']:
+                    top_chunk = case['relevant_chunks'][0]
+                    st.markdown(f"""
+                    <div class="explanation">
+                    <strong>Explanation:</strong> {top_chunk['explanation']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
                 # Add case summary with relevance explanation - styled similar to explanation box
                 st.markdown(f"""
                 <div class="explanation">
@@ -854,16 +863,18 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Display each relevant chunk with its context
-                for chunk in case['relevant_chunks']:
-                    # First, show the explanation box
+                # Display explanation first for the top chunk
+                if case['relevant_chunks']:
+                    top_chunk = case['relevant_chunks'][0]
                     st.markdown(f"""
                     <div class="explanation">
-                    <strong>Explanation:</strong> {chunk['explanation']}
+                    <strong>Explanation:</strong> {top_chunk['explanation']}
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order
+                # Display each relevant chunk with its context
+                for chunk in case['relevant_chunks']:
+                    # Display the paragraphs in their natural order
                     paragraphs_html = ""
                     
                     for para in chunk['paragraphs']:
