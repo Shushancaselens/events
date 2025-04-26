@@ -49,8 +49,6 @@ st.markdown("""
     
     /* User profile section */
     .profile-section {
-        border-top: 1px solid #ddd;
-        border-bottom: 1px solid #ddd;
         padding: 2rem 0;
         margin-bottom: 2rem;
     }
@@ -343,6 +341,18 @@ The Court of Arbitration for Sport rules that:
 df_decisions = pd.DataFrame(cas_decisions)
 
 # Initialize session state
+if 'selected_case' not in st.session_state:
+    st.session_state.selected_case = None
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'chunks' not in st.session_state:
+    st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 if 'selected_case' not in st.session_state:
     st.session_state.selected_case = None
 if 'search_results' not in st.session_state:
@@ -699,7 +709,8 @@ with st.sidebar:
                                                           outcome_options, 
                                                           st.session_state.selected_outcomes)
         
-    # Add a counter for active filters
+    # Add an active filter counter that shows how many filters are currently applied
+    # with improved spacing before the reset button
     active_filters_count = (
         len(st.session_state.selected_langs) + 
         len(st.session_state.selected_years) + 
@@ -716,8 +727,11 @@ with st.sidebar:
     )
     
     if active_filters_count > 0:
-        st.markdown(f"<div style='text-align:center; margin-top:10px;'><span style='background-color:#4a66f0; color:white; padding:4px 8px; border-radius:10px; font-size:14px;'>{active_filters_count} active filters</span></div>", unsafe_allow_html=True)
-        
+        st.markdown(f"<div style='text-align:center; margin:20px 0;'><span style='background-color:#4a66f0; color:white; padding:6px 12px; border-radius:20px; font-size:14px;'>{active_filters_count} active filters</span></div>", unsafe_allow_html=True)
+    
+    # Add more vertical space before reset button
+    st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+    
     # Reset filters button - alternative implementation without rerun
     if st.button("Reset All Filters"):
         # Clear all filters
