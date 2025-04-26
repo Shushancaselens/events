@@ -891,257 +891,351 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Add action buttons for the case with improved UX for copy functionality
+                # Add action buttons for the case with optimized UX for copy functionality
                 st.markdown("""
                 <style>
-                /* Case header styling to make room for action buttons */
-                .streamlit-expanderHeader {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    width: 100%;
+                /* Main containers and positioning */
+                body {
+                    position: relative; /* For absolute positioning context */
                 }
                 
-                /* Action toolbar - positioned at top right of each case */
-                .case-actions-toolbar {
+                /* Copy toolbar - a mini-toolbar that appears on text selection */
+                .copy-selection-toolbar {
                     position: absolute;
-                    top: 12px;
-                    right: 50px;
-                    display: flex;
-                    align-items: center;
-                    z-index: 100;
+                    display: none;
+                    background-color: #4a66f0;
+                    border-radius: 4px;
+                    padding: 4px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                    z-index: 2000;
+                    animation: fadeIn 0.2s;
                 }
                 
-                /* Fixed copy menu that follows you as you scroll */
-                .floating-copy-menu {
+                .copy-selection-toolbar button {
+                    background: none;
+                    border: none;
+                    color: white;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    display: flex;
+                    align-items: center;
+                }
+                
+                .copy-selection-toolbar button svg {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 6px;
+                }
+                
+                .copy-selection-toolbar:after {
+                    content: '';
+                    position: absolute;
+                    bottom: -6px;
+                    left: 50%;
+                    margin-left: -6px;
+                    width: 0;
+                    height: 0;
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-top: 6px solid #4a66f0;
+                }
+                
+                /* Smart copy fab - appears in bottom right */
+                .smart-copy-fab {
                     position: fixed;
                     right: 20px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    display: flex;
-                    flex-direction: column;
-                    background-color: white;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    border-radius: 8px;
-                    padding: 8px 0;
-                    z-index: 1000;
-                }
-                
-                /* Core button styles */
-                .action-button {
+                    bottom: 20px;
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 28px;
+                    background-color: #4a66f0;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 8px;
-                    background-color: white;
-                    border: 1px solid #e5e7eb;
-                    margin: 0 4px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    position: relative;
+                    z-index: 1000;
+                    transition: all 0.3s ease;
                 }
                 
-                .action-button:hover {
+                .smart-copy-fab:hover {
+                    transform: scale(1.1);
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+                }
+                
+                .smart-copy-fab svg {
+                    color: white;
+                    width: 26px;
+                    height: 26px;
+                }
+                
+                /* Smart copy menu */
+                .smart-copy-menu {
+                    position: fixed;
+                    bottom: 84px;
+                    right: 24px;
+                    background-color: white;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    padding: 8px 0;
+                    z-index: 999;
+                    transform: scale(0);
+                    transform-origin: bottom right;
+                    transition: transform 0.2s ease-out;
+                    min-width: 220px;
+                }
+                
+                .smart-copy-menu.visible {
+                    transform: scale(1);
+                }
+                
+                .menu-item {
+                    display: flex;
+                    align-items: center;
+                    padding: 10px 16px;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                }
+                
+                .menu-item:hover {
                     background-color: #f3f4f6;
-                    transform: translateY(-2px);
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                 }
                 
-                .action-button svg {
+                .menu-item svg {
                     width: 20px;
                     height: 20px;
+                    margin-right: 12px;
                     color: #4a66f0;
                 }
                 
-                /* Floating menu buttons - vertical */
-                .float-action-button {
-                    display: flex;
-                    align-items: center;
-                    padding: 8px 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    white-space: nowrap;
+                .menu-item-label {
+                    font-size: 14px;
                 }
                 
-                .float-action-button:hover {
-                    background-color: #f3f4f6;
+                .menu-item-shortcut {
+                    margin-left: auto;
+                    color: #9ca3af;
+                    font-size: 12px;
                 }
                 
-                .float-action-button svg {
-                    width: 18px;
-                    height: 18px;
-                    margin-right: 8px;
-                    color: #4a66f0;
+                .menu-separator {
+                    height: 1px;
+                    background-color: #e5e7eb;
+                    margin: 6px 0;
                 }
                 
-                /* Copy button for paragraph - positioned inline */
+                /* Inline copy buttons - appear when hovering paragraphs */
+                .paragraph-wrapper {
+                    position: relative;
+                    padding-left: 0;
+                    transition: padding-left 0.2s;
+                }
+                
+                .paragraph-wrapper:hover {
+                    padding-left: 40px; /* Make space for the copy button */
+                }
+                
                 .paragraph-copy-button {
                     position: absolute;
-                    left: -36px;
+                    left: 8px;
                     top: 50%;
-                    transform: translateY(-50%);
-                    width: 28px;
-                    height: 28px;
-                    border-radius: 50%;
+                    transform: translateY(-50%) scale(0);
+                    width: 30px;
+                    height: 30px;
                     background-color: white;
+                    border-radius: 50%;
                     border: 1px solid #e5e7eb;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
                     opacity: 0;
-                    transition: all 0.2s;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    transition: all 0.2s ease;
                 }
                 
-                /* Only show paragraph copy buttons on hover */
-                .relevant-paragraph:hover .paragraph-copy-button,
-                .context-paragraph:hover .paragraph-copy-button {
+                .paragraph-wrapper:hover .paragraph-copy-button {
+                    transform: translateY(-50%) scale(1);
                     opacity: 1;
                 }
                 
-                /* Updated tooltip positioning */
-                .action-button::after,
-                .float-action-button::after,
-                .paragraph-copy-button::after {
-                    content: attr(data-tooltip);
-                    position: absolute;
-                    z-index: 1000;
-                    background: #333;
-                    color: white;
-                    padding: 5px 10px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    pointer-events: none;
-                    opacity: 0;
-                    transition: all 0.2s;
+                .paragraph-copy-button svg {
+                    width: 16px;
+                    height: 16px;
+                    color: #4a66f0;
                 }
                 
-                /* Different tooltip positions based on button location */
-                .action-button::after {
-                    bottom: 105%;
-                    left: 50%;
-                    transform: translateX(-50%);
+                /* Context menu that appears on right-click */
+                .context-menu {
+                    position: fixed;
+                    background-color: white;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-radius: 6px;
+                    padding: 8px 0;
+                    z-index: 2001;
+                    min-width: 180px;
+                    display: none;
                 }
                 
-                .float-action-button::after {
-                    left: 105%;
-                    top: 50%;
-                    transform: translateY(-50%);
-                }
-                
-                .paragraph-copy-button::after {
-                    left: -10px;
-                    top: 50%;
-                    transform: translate(-100%, -50%);
-                }
-                
-                /* Show tooltips on hover */
-                .action-button:hover::after,
-                .float-action-button:hover::after,
-                .paragraph-copy-button:hover::after {
-                    opacity: 1;
-                }
-                
-                /* Improved document section spacing */
+                /* Improved document section styling */
                 .document-section {
                     position: relative;
                     margin: 20px 0;
-                    padding-left: 40px; /* Make room for left-side copy buttons */
+                    border: 1px solid #e5e7eb;
+                    border-radius: 6px;
+                    overflow: hidden;
                 }
                 
                 .relevant-paragraph, 
                 .context-paragraph {
                     position: relative;
-                    padding: 1rem;
+                    padding: 16px 16px 16px 16px;
                     margin: 0;
+                    transition: background-color 0.2s;
                 }
                 
                 .relevant-paragraph {
                     background-color: #d1fae5;
                 }
                 
-                /* Global copy all button - fixed position at top right */
-                .global-copy-button {
-                    position: fixed;
-                    top: 80px;
-                    right: 20px;
-                    padding: 10px 16px;
-                    background-color: #4a66f0;
-                    color: white;
-                    border-radius: 30px;
-                    box-shadow: 0 2px 10px rgba(74, 102, 240, 0.3);
-                    display: flex;
-                    align-items: center;
-                    font-weight: 500;
-                    cursor: pointer;
-                    z-index: 1000;
-                    transition: all 0.2s;
+                .relevant-paragraph:hover,
+                .context-paragraph:hover {
+                    background-color: #f0fcf9;
                 }
                 
-                .global-copy-button:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(74, 102, 240, 0.4);
-                }
-                
-                .global-copy-button svg {
-                    width: 18px;
-                    height: 18px;
-                    margin-right: 8px;
-                }
-                
-                /* Copy feedback notification - slides in from top */
+                /* Smart copy notification */
                 .copy-notification {
                     position: fixed;
-                    top: -100px;
                     left: 50%;
-                    transform: translateX(-50%);
-                    background-color: #4a66f0;
+                    transform: translateX(-50%) translateY(-100px);
+                    top: 20px;
+                    background-color: rgba(74, 102, 240, 0.95);
                     color: white;
                     padding: 12px 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-                    transition: top 0.3s ease;
+                    border-radius: 40px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
                     z-index: 9999;
                     text-align: center;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    pointer-events: none;
                 }
                 
                 .copy-notification.show {
-                    top: 20px;
+                    transform: translateX(-50%) translateY(0);
+                }
+                
+                .copy-notification svg {
+                    width: 20px;
+                    height: 20px;
+                    margin-right: 8px;
+                }
+                
+                /* Keyboard shortcut info */
+                .shortcut-key {
+                    display: inline-block;
+                    background-color: #f3f4f6;
+                    border-radius: 4px;
+                    padding: 2px 6px;
+                    font-size: 12px;
+                    color: #6b7280;
+                    margin-left: 6px;
+                }
+                
+                /* Utility classes */
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                /* Mobile responsiveness */
+                @media (max-width: 768px) {
+                    .smart-copy-fab {
+                        width: 48px;
+                        height: 48px;
+                        right: 16px;
+                        bottom: 16px;
+                    }
+                    
+                    .smart-copy-menu {
+                        right: 16px;
+                        bottom: 72px;
+                        width: 240px;
+                    }
+                    
+                    .paragraph-wrapper:hover {
+                        padding-left: 32px;
+                    }
+                    
+                    .paragraph-copy-button {
+                        left: 4px;
+                        width: 24px;
+                        height: 24px;
+                    }
                 }
                 </style>
                 
-                <!-- Copy notification element -->
+                <!-- Smart copy UI elements -->
                 <div id="copyNotification" class="copy-notification">
-                    Copied to clipboard!
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span id="copyNotificationText">Copied to clipboard!</span>
                 </div>
                 
-                <!-- Fixed floating copy menu that follows as you scroll -->
-                <div class="floating-copy-menu">
-                    <div class="float-action-button" 
-                         onclick="navigator.clipboard.writeText('{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})'); showCopyNotification('Citation copied');" 
-                         data-tooltip="Copy citation">
+                <!-- Text selection toolbar -->
+                <div id="copySelectionToolbar" class="copy-selection-toolbar">
+                    <button onclick="copySelectedText()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
-                        Citation
-                    </div>
-                    <div class="float-action-button" 
-                         onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText.replace('Copy', '') + '\\n\\n'); navigator.clipboard.writeText(text); showCopyNotification('All relevant passages copied');" 
-                         data-tooltip="Copy highlighted text">
+                        Copy
+                    </button>
+                </div>
+                
+                <!-- Smart copy floating action button -->
+                <div id="smartCopyFab" class="smart-copy-fab" onclick="toggleSmartCopyMenu()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </div>
+                
+                <!-- Smart copy menu -->
+                <div id="smartCopyMenu" class="smart-copy-menu">
+                    <div class="menu-item" onclick="copyAllHighlights()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                             <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                         </svg>
-                        Highlights
+                        <span class="menu-item-label">All Highlights</span>
+                        <span class="menu-item-shortcut">⌘H</span>
                     </div>
-                    <div class="float-action-button" 
-                         onclick="const metas = document.querySelector('.case-meta').innerText; const summary = document.querySelector('.explanation').innerText; navigator.clipboard.writeText(metas + '\\n\\n' + summary); showCopyNotification('Case summary copied');" 
-                         data-tooltip="Copy case summary">
+                    <div class="menu-item" onclick="copyCurrentCase()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span class="menu-item-label">Current Case</span>
+                        <span class="menu-item-shortcut">⌘C</span>
+                    </div>
+                    <div class="menu-item" onclick="copyCitation()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                        <span class="menu-item-label">Citation</span>
+                        <span class="menu-item-shortcut">⌘⇧C</span>
+                    </div>
+                    <div class="menu-separator"></div>
+                    <div class="menu-item" onclick="copyAllResults()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="8" y1="6" x2="21" y2="6"></line>
                             <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -1150,56 +1244,196 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                             <line x1="3" y1="12" x2="3.01" y2="12"></line>
                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
-                        Summary
-                    </div>
-                    <div class="float-action-button" 
-                         onclick="const allText = document.querySelector('.streamlit-expanderContent').innerText.replace(/Copy/g, ''); navigator.clipboard.writeText(allText); showCopyNotification('Full case copied');" 
-                         data-tooltip="Copy entire case">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        Full Case
+                        <span class="menu-item-label">All Search Results</span>
+                        <span class="menu-item-shortcut">⌘⇧A</span>
                     </div>
                 </div>
                 
-                <!-- Global copy all results button - fixed position -->
-                <button class="global-copy-button" 
-                       onclick="let allText = ''; document.querySelectorAll('.relevant-paragraph').forEach(p => allText += p.innerText.replace('Copy', '') + '\\n\\n'); navigator.clipboard.writeText(allText); showCopyNotification('All search results copied');">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    Copy All Results
-                </button>
+                <!-- Context menu -->
+                <div id="contextMenu" class="context-menu">
+                    <!-- Menu will be populated dynamically based on context -->
+                </div>
                 
                 <script>
-                function showCopyNotification(text) {
+                // Helper function to show copy notification with custom text
+                function showCopyNotification(text, preview = "") {
                     const notification = document.getElementById('copyNotification');
-                    notification.textContent = text || 'Copied to clipboard!';
+                    const notificationText = document.getElementById('copyNotificationText');
+                    
+                    // If preview is provided, show it truncated
+                    if (preview) {
+                        const truncatedPreview = preview.length > 40 ? preview.substring(0, 40) + '...' : preview;
+                        notificationText.textContent = `${text}: "${truncatedPreview}"`;
+                    } else {
+                        notificationText.textContent = text;
+                    }
+                    
                     notification.classList.add('show');
                     setTimeout(() => {
                         notification.classList.remove('show');
                     }, 2000);
                 }
                 
-                // Add action buttons to each case title
+                // Copy functions
+                function copyAllHighlights() {
+                    const paragraphs = document.querySelectorAll('.relevant-paragraph');
+                    let text = '';
+                    
+                    paragraphs.forEach(p => {
+                        // Get text and clean up any button text
+                        let paragraphText = p.innerText.replace(/Copy/g, '').trim();
+                        text += paragraphText + '\\n\\n';
+                    });
+                    
+                    navigator.clipboard.writeText(text);
+                    showCopyNotification("Copied all highlighted paragraphs", text);
+                    hideSmartCopyMenu();
+                }
+                
+                function copyCurrentCase() {
+                    // Get the closest expanderContent to where user activated the copy menu
+                    const expanderContent = document.querySelector('.streamlit-expanderContent');
+                    if (expanderContent) {
+                        const text = expanderContent.innerText.replace(/Copy/g, '').trim();
+                        navigator.clipboard.writeText(text);
+                        showCopyNotification("Copied current case", text);
+                    } else {
+                        showCopyNotification("No case selected");
+                    }
+                    hideSmartCopyMenu();
+                }
+                
+                function copyCitation() {
+                    const meta = document.querySelector('.case-meta');
+                    if (meta) {
+                        const text = meta.innerText.trim();
+                        navigator.clipboard.writeText(text);
+                        showCopyNotification("Copied citation", text);
+                    } else {
+                        showCopyNotification("No citation available");
+                    }
+                    hideSmartCopyMenu();
+                }
+                
+                function copyAllResults() {
+                    const paragraphs = document.querySelectorAll('.relevant-paragraph');
+                    let text = '';
+                    
+                    paragraphs.forEach(p => {
+                        // Include case info with each paragraph
+                        const caseSection = p.closest('.streamlit-expanderContent');
+                        if (caseSection) {
+                            const caseHeader = caseSection.previousElementSibling;
+                            if (caseHeader) {
+                                const caseTitle = caseHeader.innerText.trim();
+                                text += `[${caseTitle}]\\n`;
+                            }
+                        }
+                        
+                        // Add paragraph text
+                        const paragraphText = p.innerText.replace(/Copy/g, '').trim();
+                        text += paragraphText + '\\n\\n';
+                    });
+                    
+                    navigator.clipboard.writeText(text);
+                    showCopyNotification(`Copied all search results (${paragraphs.length} paragraphs)`, text);
+                    hideSmartCopyMenu();
+                }
+                
+                function copySelectedText() {
+                    const selection = window.getSelection();
+                    if (selection.toString()) {
+                        navigator.clipboard.writeText(selection.toString());
+                        showCopyNotification("Copied selected text", selection.toString());
+                        hideCopySelectionToolbar();
+                    }
+                }
+                
+                // Copy button functionality for individual paragraphs
+                function copyParagraph(text) {
+                    navigator.clipboard.writeText(text);
+                    showCopyNotification("Copied paragraph", text);
+                }
+                
+                // Smart copy menu handling
+                function toggleSmartCopyMenu() {
+                    const menu = document.getElementById('smartCopyMenu');
+                    menu.classList.toggle('visible');
+                }
+                
+                function hideSmartCopyMenu() {
+                    const menu = document.getElementById('smartCopyMenu');
+                    menu.classList.remove('visible');
+                }
+                
+                // Selection toolbar handling
+                document.addEventListener('selectionchange', function() {
+                    const selection = window.getSelection();
+                    const toolbar = document.getElementById('copySelectionToolbar');
+                    
+                    if (selection.toString().length > 10) {
+                        // Get selection coordinates
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        
+                        // Position toolbar above the selection
+                        toolbar.style.top = `${window.scrollY + rect.top - 45}px`;
+                        toolbar.style.left = `${window.scrollX + rect.left + (rect.width / 2) - (toolbar.offsetWidth / 2)}px`;
+                        toolbar.style.display = 'block';
+                    } else {
+                        hideCopySelectionToolbar();
+                    }
+                });
+                
+                function hideCopySelectionToolbar() {
+                    const toolbar = document.getElementById('copySelectionToolbar');
+                    toolbar.style.display = 'none';
+                }
+                
+                // Keyboard shortcuts
+                document.addEventListener('keydown', function(e) {
+                    // Only handle if modifier key is pressed
+                    if (e.metaKey || e.ctrlKey) {
+                        // cmd+H: Copy all highlights
+                        if (e.key === 'h' || e.key === 'H') {
+                            e.preventDefault();
+                            copyAllHighlights();
+                        }
+                        // cmd+C: In our context, copy current case (browser will handle normal copy)
+                        else if (e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+                            e.preventDefault();
+                            copyCitation();
+                        }
+                        // cmd+shift+A: Copy all results
+                        else if (e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+                            e.preventDefault();
+                            copyAllResults();
+                        }
+                    }
+                });
+                
+                // Hide menus when clicking elsewhere
+                document.addEventListener('click', function(e) {
+                    // If click is outside the smart copy menu and fab
+                    if (!e.target.closest('#smartCopyMenu') && !e.target.closest('#smartCopyFab')) {
+                        hideSmartCopyMenu();
+                    }
+                    
+                    // Always hide selection toolbar when clicking
+                    hideCopySelectionToolbar();
+                });
+                
+                // Set up immediately when content loads
                 document.addEventListener('DOMContentLoaded', function() {
-                    const expanders = document.querySelectorAll('.streamlit-expanderHeader');
-                    expanders.forEach(expander => {
-                        // Create the actions toolbar
-                        const toolbar = document.createElement('div');
-                        toolbar.className = 'case-actions-toolbar';
-                        
-                        // Add PDF button
-                        const pdfButton = document.createElement('button');
-                        pdfButton.className = 'action-button';
-                        pdfButton.setAttribute('data-tooltip', 'View PDF');
-                        pdfButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
-                        toolbar.appendChild(pdfButton);
-                        
-                        // Append the toolbar to the expander
-                        expander.appendChild(toolbar);
+                    // Initialize UI elements
+                    document.body.addEventListener('mouseup', function() {
+                        // Small delay to ensure selection is complete
+                        setTimeout(function() {
+                            const selection = window.getSelection();
+                            if (selection.toString().length > 10) {
+                                // Selection handling is done in the selectionchange event
+                            }
+                        }, 50);
                     });
                 });
                 </script>
@@ -1207,6 +1441,8 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                 
                 # Generate case PDF link
                 pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
+                
+                # Note: Removed the manual buttons since the smart copy system replaces them
                 
                 # Add case summary once per case
                 st.markdown(f"""
@@ -1224,7 +1460,7 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Now display the paragraphs in their natural order with better-positioned copy buttons
+                    # Now display the paragraphs in their natural order with optimized copy buttons
                     paragraphs_html = ""
                     
                     for para in chunk['paragraphs']:
@@ -1234,27 +1470,31 @@ if st.session_state.search_complete and 'search_results' in st.session_state:
                         if para['position'] == 'match':
                             # This is the matching paragraph - highlight it with green background
                             paragraphs_html += f'''
-                            <div class="relevant-paragraph">
-                                <button class="paragraph-copy-button" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied');" data-tooltip="Copy this paragraph">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                </button>
-                                {para["text"]}
+                            <div class="paragraph-wrapper">
+                                <div class="relevant-paragraph">
+                                    <button class="paragraph-copy-button" onclick="copyParagraph('{text_for_js}')" data-tooltip="Copy this paragraph">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    {para["text"]}
+                                </div>
                             </div>
                             '''
                         else:
                             # This is a context paragraph - normal styling
                             paragraphs_html += f'''
-                            <div class="context-paragraph">
-                                <button class="paragraph-copy-button" onclick="navigator.clipboard.writeText('{text_for_js}'); showCopyNotification('Paragraph copied');" data-tooltip="Copy this paragraph">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                </button>
-                                {para["text"]}
+                            <div class="paragraph-wrapper">
+                                <div class="context-paragraph">
+                                    <button class="paragraph-copy-button" onclick="copyParagraph('{text_for_js}')" data-tooltip="Copy this paragraph">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    {para["text"]}
+                                </div>
                             </div>
                             '''
                     
