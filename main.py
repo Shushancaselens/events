@@ -718,23 +718,25 @@ with st.sidebar:
     if active_filters_count > 0:
         st.markdown(f"<div style='text-align:center; margin-top:10px;'><span style='background-color:#4a66f0; color:white; padding:4px 8px; border-radius:10px; font-size:14px;'>{active_filters_count} active filters</span></div>", unsafe_allow_html=True)
         
-    # Reset filters button
+    # Reset filters button with improved functionality
     if st.button("Reset All Filters"):
-        st.session_state.selected_langs = []
-        st.session_state.selected_years = []
-        st.session_state.selected_proc = []
-        st.session_state.selected_sports = []
-        st.session_state.selected_matters = []
-        st.session_state.selected_categories = []
-        st.session_state.selected_outcomes = []
+        # Clear all filters
+        for key in ["selected_langs", "selected_years", "selected_proc", "selected_sports", 
+                   "selected_matters", "selected_categories", "selected_outcomes"]:
+            if key in st.session_state:
+                st.session_state[key] = []
+                
+        # Clear date filters
         st.session_state.start_date = None
         st.session_state.end_date = None
+        
+        # Clear text filters
         st.session_state.president_filter = ""
         st.session_state.arbitrator1_filter = ""
         st.session_state.arbitrator2_filter = ""
-        st.rerun()
-    
-    st.markdown('<hr style="margin: 15px 0;">', unsafe_allow_html=True)
+        
+        # Force page refresh
+        st.experimental_rerun()
     
     # User profile section
     st.markdown('<div class="profile-section">', unsafe_allow_html=True)
