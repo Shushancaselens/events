@@ -45,6 +45,8 @@ st.markdown("""
         font-weight: bold;
     }
     
+
+    
     /* User profile section */
     .profile-section {
         padding: 2rem 0;
@@ -351,7 +353,18 @@ if 'search_complete' not in st.session_state:
     st.session_state.search_complete = False
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
-
+if 'selected_case' not in st.session_state:
+    st.session_state.selected_case = None
+if 'search_results' not in st.session_state:
+    st.session_state.search_results = []
+if 'chunks' not in st.session_state:
+    st.session_state.chunks = []
+if 'is_searching' not in st.session_state:
+    st.session_state.is_searching = False
+if 'search_complete' not in st.session_state:
+    st.session_state.search_complete = False
+if 'current_query' not in st.session_state:
+    st.session_state.current_query = ""
 # Initialize filter states
 if 'selected_langs' not in st.session_state:
     st.session_state.selected_langs = []
@@ -535,4 +548,516 @@ def passes_filters(case):
         for matter in st.session_state.selected_matters:
             matter_keywords = {
                 "Doping": ["doping", "anti-doping", "prohibited substance"],
-                "Transfer": ["transfer", "
+                "Transfer": ["transfer", "buy-out", "player registration"],
+                "Contract": ["contract", "employment", "agreement"],
+                "Eligibility": ["eligibility", "qualification"],
+                "Regulatory": ["regulation", "regulatory", "rule"],
+                "Disciplinary": ["disciplinary", "sanction", "suspension"]
+            }
+            
+            if matter in matter_keywords:
+                for keyword in matter_keywords[matter]:
+                    if any(keyword in kw.lower() for kw in case['keywords']):
+                        keywords_matched = True
+                        break
+        
+        if st.session_state.selected_matters and not keywords_matched:
+            return False
+    
+    # If all filters passed
+    return True
+
+# Generate a detailed explanation for the blue box at the top
+def generate_relevance_explanation(text, query_terms):
+    # Default explanations based on common legal topics - expanded with more terms
+    explanations = {
+        "buy-out clause": "Understanding buy-out clauses involves examining their contractual nature, enforceability, and proportionality.",
+        "buy out": "Buy-out provisions in contracts represent a pre-agreed amount for compensation in case of early termination.",
+        "buyout": "Buyout clauses set a predetermined financial value for contract termination without requiring further negotiation.",
+        "contract termination": "Contract termination analysis requires determining whether just cause existed and calculating appropriate compensation.",
+        "terminate contract": "Termination of contracts in sports requires analysis of the justification and appropriate compensation.",
+        "termination": "Contract termination in sports law examines whether proper procedures were followed and appropriate compensation was provided.",
+        "sporting results": "Poor sporting results alone typically do not constitute just cause for terminating a coach's contract.",
+        "coach contract": "Coach employment contracts have specific characteristics different from player contracts under FIFA regulations.",
+        "coach": "Coaching contracts in sports have unique characteristics that distinguish them from player contracts.",
+        "just cause": "Just cause for termination requires serious breaches of contract obligations, not merely disappointing performance.",
+        "compensation": "Compensation analysis in sports contracts involves examining contract terms, applicable regulations, and mitigating factors.",
+        "satellite collision": "Processing of satellite collision events involves assessing damage, analyzing data, and preparing software updates.",
+        "satellite": "Satellite-related disputes involve complex technical and regulatory considerations specific to space technology.",
+        "frequency allocation": "Frequency allocation disputes involve regulatory discretion, technical assessments, and protection of public interests.",
+        "frequency": "Radio frequency matters involve balancing technical requirements, regulatory oversight, and international coordination.",
+        "spectrum": "Spectrum management disputes involve balancing commercial interests against public good considerations.",
+        "national security": "Facts related to national security may affect the legal assessment of regulatory decisions and contractual disputes.",
+        "security": "Security considerations can influence regulatory decisions and may justify certain limitations on commercial activities.",
+        "regulatory": "Regulatory decisions are subject to review based on proper procedure, proportionality, and legitimate aims.",
+        "football": "Football-related disputes often involve contract interpretation, transfer regulations, and applicable FIFA rules.",
+        "fifa": "FIFA regulations establish a specialized legal framework for football-related disputes.",
+        "transfer": "Player transfers in football are subject to specific regulations regarding contract stability and compensation.",
+        "employment": "Employment relationships in sports are governed by both standard employment law and specific sports regulations."
+    }
+    
+    # First check for exact matches with the whole query
+    full_query = " ".join(query_terms).lower()
+    for topic, explanation in explanations.items():
+        if topic == full_query:
+            return explanation
+    
+    # Then check for partial matches
+    for topic, explanation in explanations.items():
+        if topic in full_query:
+            return explanation
+    
+    # Check individual terms
+    for term in query_terms:
+        term = term.lower()
+        for topic, explanation in explanations.items():
+            if term == topic or term in topic.split():
+                return explanation
+    
+    # If no pre-defined explanation matches, generate a generic one based on the text content
+    if "contract" in text.lower() or "agreement" in text.lower():
+        return f"This passage discusses contractual obligations and their enforcement in the sporting context."
+    elif "compens" in text.lower() or "payment" in text.lower() or "amount" in text.lower():
+        return f"This passage addresses financial considerations and compensation issues in sports law."
+    elif "arbitrat" in text.lower() or "panel" in text.lower() or "tribunal" in text.lower():
+        return f"This passage explains procedural aspects and the reasoning of the arbitration panel."
+    
+    # Final fallback - create a generic explanation from the search terms
+    terms_text = ", ".join([f"'{term}'" for term in query_terms])
+    return f"Legal analysis of {terms_text} involves examining relevant regulations, precedents, and specific case circumstances."
+
+# Function to generate properly formatted citation for a case
+def generate_citation(case):
+    """Generate a properly formatted citation for academic or legal reference."""
+    # Format: "Case ID, Case Title, Court of Arbitration for Sport (Decision Date)"
+    citation = f"{case['id']}, {case['title']}, Court of Arbitration for Sport ({case['date']})"
+    return citation
+
+# Generate a concise summary of a case for search results - shorter versions
+def generate_case_summary(case):
+    case_id = case['id']
+    
+    # Pre-defined summaries for each case in our dataset - more concise versions
+    summaries = {
+        "CAS 2020/A/6978": "Dispute over a €30M buy-out clause in player Diego Costa's contract. Atlético Madrid sought higher compensation after Chelsea signed the player.",
+        
+        "CAS 2011/A/2596": "Club terminated coach's contract after poor sporting results. Coach contested termination was without just cause and sought compensation.",
+        
+        "CAS 2023/A/9872": "Challenge to regulatory decision denying satellite frequency authorization, with additional satellite collision incident raising security concerns."
+    }
+    
+    # Return the appropriate summary or a generic one if not found
+    if case_id in summaries:
+        return summaries[case_id]
+    else:
+        # Generate a generic summary based on available information
+        return f"Dispute between {case['claimant']} and {case['respondent']} regarding {', '.join(case['keywords'][:2])}."
+
+# ===== SIDEBAR COMPONENTS =====
+with st.sidebar:
+    # Logo and app title
+    st.markdown("""
+    <div class="sidebar-logo">
+        <div class="logo-icon">c</div>
+        <div class="logo-text">caselens</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Filters section
+    st.markdown("<h3>Filters</h3>", unsafe_allow_html=True)
+    
+    with st.expander("Language", expanded=False):
+        lang_options = ["English", "French", "German", "Spanish"]
+        st.session_state.selected_langs = st.multiselect("Select language(s)", lang_options, st.session_state.selected_langs)
+    
+    with st.expander("Year", expanded=False):
+        # Offer two ways to filter by year: a range slider or specific years
+        year_filter_type = st.radio("Filter by", ["Year Range", "Specific Years"], horizontal=True)
+        
+        if year_filter_type == "Year Range":
+            year_min, year_max = 2010, 2025
+            year_range = st.slider("Select year range", 
+                                  min_value=year_min, 
+                                  max_value=year_max, 
+                                  value=(year_min, year_max))
+            # Convert range to list of years for the filter function
+            st.session_state.selected_years = list(range(year_range[0], year_range[1] + 1))
+        else:
+            year_options = list(range(2010, 2025))
+            st.session_state.selected_years = st.multiselect("Select specific year(s)", 
+                                                           year_options, 
+                                                           st.session_state.selected_years)
+    
+    with st.expander("Procedural Types", expanded=False):
+        proc_options = ["Appeal", "First instance", "Advisory opinion"]
+        st.session_state.selected_proc = st.multiselect("Select procedural type(s)", proc_options, st.session_state.selected_proc)
+    
+    with st.expander("Sport", expanded=False):
+        sport_options = sorted(["Football", "Cycling", "Athletics", "Swimming", "Space Technology", "Other"])
+        # Add a "Select All" option for sports
+        select_all_sports = st.checkbox("Select All Sports", key="select_all_sports")
+        if select_all_sports:
+            st.session_state.selected_sports = sport_options
+        else:
+            st.session_state.selected_sports = st.multiselect("Select sport(s)", sport_options, st.session_state.selected_sports)
+    
+    with st.expander("Matter", expanded=False):
+        matter_options = ["Doping", "Transfer", "Contract", "Eligibility", "Regulatory", "Disciplinary", "Other"]
+        st.session_state.selected_matters = st.multiselect("Select matter(s)", matter_options, st.session_state.selected_matters)
+    
+    with st.expander("Arbitrators", expanded=False):
+        # Use autocomplete-style inputs for arbitrators (simulated with regular inputs)
+        st.text_input("Search any arbitrator", placeholder="Search across all arbitrators...")
+        st.markdown("<p style='font-size:12px; color:#666;'>Or search by specific role:</p>", unsafe_allow_html=True)
+        st.session_state.president_filter = st.text_input("President/Sole Arbitrator", 
+                                                        value=st.session_state.president_filter, 
+                                                        placeholder="Enter name...")
+        st.session_state.arbitrator1_filter = st.text_input("Arbitrator 1", 
+                                                          value=st.session_state.arbitrator1_filter, 
+                                                          placeholder="Enter name...")
+        st.session_state.arbitrator2_filter = st.text_input("Arbitrator 2", 
+                                                          value=st.session_state.arbitrator2_filter, 
+                                                          placeholder="Enter name...")
+    
+    with st.expander("Category", expanded=False):
+        category_options = [
+            "A - Appeal",
+            "D - Disciplinary",
+            "O - Ordinary procedure",
+            "T - Transfer-related dispute",
+            "PA - Other appeals",
+            "IA - Internal appeals"
+        ]
+        st.session_state.selected_categories = st.multiselect("Select category(ies)", 
+                                                            category_options, 
+                                                            st.session_state.selected_categories)
+    
+    with st.expander("Decision Date", expanded=False):
+        # Offer two ways to filter by date: calendar or "last X" quick filters
+        date_filter_type = st.radio("Filter by", ["Specific Dates", "Recent Period"], horizontal=True)
+        
+        if date_filter_type == "Specific Dates":
+            col1, col2 = st.columns(2)
+            with col1:
+                st.session_state.start_date = st.date_input("From", value=st.session_state.start_date)
+            with col2:
+                st.session_state.end_date = st.date_input("To", value=st.session_state.end_date)
+        else:
+            time_period = st.selectbox("Show cases from:", 
+                                      ["Last 3 months", "Last 6 months", "Last year", "Last 2 years", "Last 5 years"])
+            
+            # Calculate date based on selected period
+            today = datetime.now().date()
+            if time_period == "Last 3 months":
+                st.session_state.start_date = today.replace(month=today.month-3 if today.month > 3 else today.month+9, 
+                                                          year=today.year if today.month > 3 else today.year-1)
+            elif time_period == "Last 6 months":
+                st.session_state.start_date = today.replace(month=today.month-6 if today.month > 6 else today.month+6, 
+                                                          year=today.year if today.month > 6 else today.year-1)
+            elif time_period == "Last year":
+                st.session_state.start_date = today.replace(year=today.year-1)
+            elif time_period == "Last 2 years":
+                st.session_state.start_date = today.replace(year=today.year-2)
+            elif time_period == "Last 5 years":
+                st.session_state.start_date = today.replace(year=today.year-5)
+            
+            st.session_state.end_date = today
+            st.info(f"Showing cases from {st.session_state.start_date.strftime('%d %b %Y')} to {st.session_state.end_date.strftime('%d %b %Y')}")
+    
+    with st.expander("Outcome", expanded=False):
+        outcome_options = ["Appeal upheld", "Appeal partially upheld", "Appeal dismissed", "Settlement"]
+        st.session_state.selected_outcomes = st.multiselect("Select outcome(s)", 
+                                                          outcome_options, 
+                                                          st.session_state.selected_outcomes)
+        
+    # Add an active filter counter that shows how many filters are currently applied
+    # with improved spacing before the reset button
+    active_filters_count = (
+        len(st.session_state.selected_langs) + 
+        len(st.session_state.selected_years) + 
+        len(st.session_state.selected_proc) + 
+        len(st.session_state.selected_sports) + 
+        len(st.session_state.selected_matters) + 
+        len(st.session_state.selected_categories) + 
+        len(st.session_state.selected_outcomes) + 
+        bool(st.session_state.president_filter) + 
+        bool(st.session_state.arbitrator1_filter) + 
+        bool(st.session_state.arbitrator2_filter) + 
+        bool(st.session_state.start_date) + 
+        bool(st.session_state.end_date)
+    )
+    
+    if active_filters_count > 0:
+        st.markdown(f"<div style='text-align:center; margin:20px 0;'><span style='background-color:#4a66f0; color:white; padding:6px 12px; border-radius:20px; font-size:14px;'>{active_filters_count} active filters</span></div>", unsafe_allow_html=True)
+    
+    # Add more vertical space before reset button
+    st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
+    
+    # Reset filters button - alternative implementation without rerun
+    if st.button("Reset All Filters"):
+        # Clear all filters
+        st.session_state.selected_langs = []
+        st.session_state.selected_years = []
+        st.session_state.selected_proc = []
+        st.session_state.selected_sports = []
+        st.session_state.selected_matters = []
+        st.session_state.selected_categories = []
+        st.session_state.selected_outcomes = []
+                
+        # Clear date filters
+        st.session_state.start_date = None
+        st.session_state.end_date = None
+        
+        # Clear text filters
+        st.session_state.president_filter = ""
+        st.session_state.arbitrator1_filter = ""
+        st.session_state.arbitrator2_filter = ""
+        
+        # Show confirmation message
+        st.success("All filters have been reset. Refresh the page to see all results.")
+    
+    # User profile section
+    st.markdown('<div class="profile-section">', unsafe_allow_html=True)
+    st.markdown('<div class="profile-name">Shushan Yazichyan</div>', unsafe_allow_html=True)
+    st.markdown('<div class="logout-btn">Logout</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Social media section
+    st.markdown('<div class="social-section">', unsafe_allow_html=True)
+    st.markdown('<div class="social-title">Connect with us!</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="social-icons">
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+            </svg>
+        </div>
+        <div class="social-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+            </svg>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Main content area
+# Simple search bar at top
+search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+search_button = st.button("Search", key="search_btn")
+
+# If search button clicked, start the search process
+if search_button and search_query:
+    st.session_state.current_query = search_query
+    st.session_state.is_searching = True
+    st.session_state.search_complete = False
+
+# Display loading state
+if st.session_state.is_searching:
+    with st.spinner(f"Searching for '{st.session_state.current_query}'..."):
+        # Simulate search processing time
+        time.sleep(2)  # 2 second delay
+        
+        # Perform the actual search
+        results, chunks = semantic_search(st.session_state.current_query)
+        st.session_state.search_results = results
+        st.session_state.chunks = chunks
+        
+        # Update state
+        st.session_state.is_searching = False
+        st.session_state.search_complete = True
+
+# Show results when search is complete
+if st.session_state.search_complete and 'search_results' in st.session_state:
+    if st.session_state.search_results:
+        st.markdown(f"**Found {len(st.session_state.chunks)} relevant passages in {len(st.session_state.search_results)} decisions**")
+        
+        # Display results grouped by case
+        for case in st.session_state.search_results:
+            with st.expander(f"{case['id']} - {case['title']}", expanded=True):
+                # Case metadata
+                st.markdown(f"""
+                <div class="case-meta">
+                    <strong>Date:</strong> {case['date']} | 
+                    <strong>Type:</strong> {case['type']} | 
+                    <strong>Sport:</strong> {case['sport']} | 
+                    <strong>Panel:</strong> {case['panel']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Add action buttons for the case with icons-only design
+                st.markdown("""
+                <style>
+                .icon-button {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 40px;
+                    height: 40px;
+                    margin: 0 12px 16px 0;
+                    background-color: #f8f9fa;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 50%;
+                    color: #333;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    position: relative;
+                }
+                .icon-button:hover {
+                    background-color: #edf2f7;
+                    border-color: #cbd5e0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .icon-button svg {
+                    width: 18px;
+                    height: 18px;
+                }
+                .icon-buttons-container {
+                    display: flex;
+                    margin-bottom: 16px;
+                }
+                /* Tooltip styles */
+                .icon-button::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 105%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    padding: 5px 10px;
+                    background: #333;
+                    color: white;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                .icon-button::before {
+                    content: "";
+                    position: absolute;
+                    bottom: 95%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 6px solid transparent;
+                    border-top-color: #333;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: all 0.2s ease;
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                .icon-button:hover::after, .icon-button:hover::before {
+                    opacity: 1;
+                    visibility: visible;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Generate citation text and PDF link
+                citation = generate_citation(case)
+                pdf_url = f"https://jurisprudence.tas-cas.org/Shared%20Documents/{case['id'].replace('/', '_')}.pdf"
+                
+                st.markdown(f"""
+                <div class="icon-buttons-container">
+                    <a href="{pdf_url}" target="_blank" class="icon-button" data-tooltip="View Full Case PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </a>
+                    <button onclick="navigator.clipboard.writeText('{citation}'); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><rect x=\\'9\\' y=\\'9\\' width=\\'13\\' height=\\'13\\' rx=\\'2\\' ry=\\'2\\'></rect><path d=\\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\'></path></svg>', 2000)" class="icon-button" data-tooltip="Copy Citation">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                    <button onclick="const paragraphs = document.querySelectorAll('.relevant-paragraph'); let text = ''; paragraphs.forEach(p => text += p.innerText + '\\n\\n'); navigator.clipboard.writeText(text); this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'#4CAF50\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><polyline points=\\'20 6 9 17 4 12\\'></polyline></svg>'; setTimeout(() => this.innerHTML='<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\\'></path><rect x=\\'8\\' y=\\'2\\' width=\\'8\\' height=\\'4\\' rx=\\'1\\' ry=\\'1\\'></rect></svg>', 2000)" class="icon-button" data-tooltip="Copy Relevant Passages">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </button>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Add case summary once per case
+                st.markdown(f"""
+                <div class="explanation">
+                <strong>Case Summary:</strong> {generate_case_summary(case)} {case['decision']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Display each relevant chunk with its context
+                for chunk in case['relevant_chunks']:
+                    # Show the relevance explanation for this specific chunk
+                    st.markdown(f"""
+                    <div class="explanation">
+                    <strong>Relevance:</strong> {chunk.get('explanation', 'No explanation available for this match.')}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Now display the paragraphs in their natural order
+                    paragraphs_html = ""
+                    
+                    for para in chunk['paragraphs']:
+                        if para['position'] == 'match':
+                            # This is the matching paragraph - highlight it with green background
+                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                        else:
+                            # This is a context paragraph - normal styling
+                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
+                    
+                    # Output the entire document section
+                    st.markdown(f"""
+                    <div class="document-section">
+                    {paragraphs_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Now display the paragraphs in their natural order
+                    paragraphs_html = ""
+                    
+                    for para in chunk['paragraphs']:
+                        if para['position'] == 'match':
+                            # This is the matching paragraph - highlight it with green background
+                            paragraphs_html += f'<div class="relevant-paragraph">{para["text"]}</div>'
+                        else:
+                            # This is a context paragraph - normal styling
+                            paragraphs_html += f'<div class="context-paragraph">{para["text"]}</div>'
+                    
+                    # Output the entire document section
+                    st.markdown(f"""
+                    <div class="document-section">
+                    {paragraphs_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+    else:
+        st.info("No results found. Try different search terms.")
+
+# Show welcome screen if no search has been done
+if not st.session_state.is_searching and not st.session_state.search_complete:
+    st.markdown("""
+    ### Welcome to CaseLens
+    
+    Search for legal concepts, case types, or specific terms to find relevant passages from 
+    Court of Arbitration for Sport decisions.
+    
+    **Example searches:**
+    - buy-out clause
+    - sporting results
+    - satellite collision
+    - national security
+    - contract termination
+    - compensation
+    """)
