@@ -847,9 +847,12 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Main content area
-# Simple search bar at top
-search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
-search_button = st.button("Search", key="search_btn")
+# Search bar with button next to it
+col1, col2 = st.columns([5, 1])  # 5:1 ratio gives more space to search box
+with col1:
+    search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+with col2:
+    search_button = st.button("Search", key="search_btn")
 
 # If search button clicked, start the search process
 if search_button and search_query:
