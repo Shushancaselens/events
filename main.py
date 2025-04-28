@@ -534,4 +534,4 @@ def passes_filters(case):
     # Category filter - this would require a dedicated category field
     # For this example, we'll use the case ID format to guess the category
     if st.session_state.selected_categories:
-        case_id_parts = case['i
+        case_id_parts = case['id'].split('/')
