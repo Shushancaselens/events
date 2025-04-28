@@ -847,12 +847,43 @@ with st.sidebar:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Main content area
-# Search bar with button next to it
-col1, col2 = st.columns([5, 1])  # 5:1 ratio gives more space to search box
-with col1:
-    search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
-with col2:
-    search_button = st.button("Search", key="search_btn")
+# Use a container and custom CSS to place the button right next to the input
+st.markdown("""
+<style>
+.stButton > button {
+    height: 2.6rem;
+    margin-top: 0.2rem;
+    margin-left: -0.5rem;
+    border-radius: 0 4px 4px 0;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 4px 0 0 4px;
+}
+
+.inline-wrapper {
+    display: flex;
+    flex-direction: row;
+}
+
+.container {
+    width: 85%;
+}
+
+.button {
+    width: 15%;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Create inline wrapper container to force items to be on the same line
+container = st.container()
+with container:
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        search_query = st.text_input("", placeholder="Search CAS decisions...", key="search_input")
+    with col2:
+        search_button = st.button("Search", key="search_btn")
 
 # If search button clicked, start the search process
 if search_button and search_query:
