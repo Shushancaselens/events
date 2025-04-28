@@ -45,8 +45,6 @@ st.markdown("""
         font-weight: bold;
     }
     
-
-    
     /* User profile section */
     .profile-section {
         padding: 2rem 0;
@@ -353,18 +351,7 @@ if 'search_complete' not in st.session_state:
     st.session_state.search_complete = False
 if 'current_query' not in st.session_state:
     st.session_state.current_query = ""
-if 'selected_case' not in st.session_state:
-    st.session_state.selected_case = None
-if 'search_results' not in st.session_state:
-    st.session_state.search_results = []
-if 'chunks' not in st.session_state:
-    st.session_state.chunks = []
-if 'is_searching' not in st.session_state:
-    st.session_state.is_searching = False
-if 'search_complete' not in st.session_state:
-    st.session_state.search_complete = False
-if 'current_query' not in st.session_state:
-    st.session_state.current_query = ""
+
 # Initialize filter states
 if 'selected_langs' not in st.session_state:
     st.session_state.selected_langs = []
@@ -535,3 +522,17 @@ def passes_filters(case):
     # For this example, we'll use the case ID format to guess the category
     if st.session_state.selected_categories:
         case_id_parts = case['id'].split('/')
+        if len(case_id_parts) >= 3:
+            case_category = case_id_parts[1]  # e.g., "A" from "CAS 2020/A/6978"
+            matching_categories = [cat for cat in st.session_state.selected_categories 
+                                  if cat.startswith(case_category + " -")]
+            if not matching_categories:
+                return False
+    
+    # For "Matter" filter, we'll use keywords as a proxy
+    if st.session_state.selected_matters:
+        keywords_matched = False
+        for matter in st.session_state.selected_matters:
+            matter_keywords = {
+                "Doping": ["doping", "anti-doping", "prohibited substance"],
+                "Transfer": ["transfer", "
